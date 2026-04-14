@@ -1,4 +1,8 @@
 spring:
+  config:
+    import:
+      - optional:file:./local-mail.properties
+      - optional:file:./apps/api/local-mail.properties
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/airticket}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}

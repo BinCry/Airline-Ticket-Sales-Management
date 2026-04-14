@@ -5,6 +5,20 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/airticket}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: ${SPRING_MAIL_CONNECTION_TIMEOUT:5000}
+          timeout: ${SPRING_MAIL_TIMEOUT:5000}
+          writetimeout: ${SPRING_MAIL_WRITE_TIMEOUT:5000}
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
@@ -34,6 +48,9 @@ app:
     otp:
       password-reset-ttl-seconds: ${APP_AUTH_OTP_PASSWORD_RESET_TTL_SECONDS:300}
       max-attempts: ${APP_AUTH_OTP_MAX_ATTEMPTS:5}
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+    from-email: ${APP_MAIL_FROM_EMAIL:${SPRING_MAIL_USERNAME:}}
 
 logging:
   level:

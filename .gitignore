@@ -6,6 +6,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+local-mail.properties
+apps/api/local-mail.properties
 
 # Node
 node_modules/
