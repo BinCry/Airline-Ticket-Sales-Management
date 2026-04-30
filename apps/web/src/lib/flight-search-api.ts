@@ -86,14 +86,35 @@ function laMangGoiGiaHopLe(giaTri: unknown): giaTri is ApiFareCard[] {
   return Array.isArray(giaTri);
 }
 
+function formatNgayTheoInput(date: Date): string {
+  const nam = date.getFullYear();
+  const thang = String(date.getMonth() + 1).padStart(2, "0");
+  const ngay = String(date.getDate()).padStart(2, "0");
+  return `${nam}-${thang}-${ngay}`;
+}
+
+function taoNgayMacDinh() {
+  const homNay = new Date();
+  const ngayDi = new Date(homNay);
+  ngayDi.setDate(homNay.getDate() + 7);
+  const ngayVe = new Date(ngayDi);
+  ngayVe.setDate(ngayDi.getDate() + 3);
+
+  return {
+    departureDate: formatNgayTheoInput(ngayDi),
+    returnDate: formatNgayTheoInput(ngayVe)
+  };
+}
+
 export function chuanHoaTieuChiTimChuyenBay(
   searchParams: Record<string, RawSearchParam>
 ): ApiFlightSearchCriteria {
+  const ngayMacDinh = taoNgayMacDinh();
   const tripType = chuanHoaLoaiHanhTrinh(searchParams.tripType);
-  const departureDate = chuanHoaNgay(searchParams.departureDate, "2026-03-20");
+  const departureDate = chuanHoaNgay(searchParams.departureDate, ngayMacDinh.departureDate);
   const returnDate = tripType === "one_way"
     ? null
-    : chuanHoaNgay(searchParams.returnDate, "2026-03-23");
+    : chuanHoaNgay(searchParams.returnDate, ngayMacDinh.returnDate);
 
   return {
     from: chuanHoaMaSanBay(searchParams.from, "SGN"),

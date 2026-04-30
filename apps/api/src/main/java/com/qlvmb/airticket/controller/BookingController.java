@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/bookings")
-@PreAuthorize("hasAuthority('" + PermissionCode.CUSTOMER_SELF_SERVICE + "')")
 public class BookingController {
 
   private final DemoDataService demoDataService;
@@ -20,11 +19,13 @@ public class BookingController {
     this.demoDataService = demoDataService;
   }
 
+  @PreAuthorize("hasAuthority('" + PermissionCode.CUSTOMER_SELF_SERVICE + "')")
   @GetMapping("/checkout-preview")
   public BookingOverviewResponse getCheckoutPreview() {
     return demoDataService.getBookingOverview("A6C2P1");
   }
 
+  @PreAuthorize("hasAnyAuthority('" + PermissionCode.PUBLIC_BOOKING_LOOKUP + "', '" + PermissionCode.CUSTOMER_SELF_SERVICE + "')")
   @GetMapping("/manage/{bookingCode}")
   public BookingOverviewResponse getBooking(@PathVariable String bookingCode) {
     return demoDataService.getBookingOverview(bookingCode);

@@ -14,13 +14,34 @@ const tripLabels: Record<TripType, string> = {
   multi_city: "Nhiều chặng"
 };
 
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildDefaultDates() {
+  const today = new Date();
+  const departure = new Date(today);
+  departure.setDate(today.getDate() + 7);
+  const returnDate = new Date(departure);
+  returnDate.setDate(departure.getDate() + 3);
+
+  return {
+    departureDate: toDateInputValue(departure),
+    returnDate: toDateInputValue(returnDate)
+  };
+}
+
 export function FlightSearchPanel() {
   const router = useRouter();
+  const defaultDates = useMemo(buildDefaultDates, []);
   const [tripType, setTripType] = useState<TripType>("round_trip");
   const [from, setFrom] = useState("SGN");
   const [to, setTo] = useState("HAN");
-  const [departureDate, setDepartureDate] = useState("2026-03-20");
-  const [returnDate, setReturnDate] = useState("2026-03-23");
+  const [departureDate, setDepartureDate] = useState(defaultDates.departureDate);
+  const [returnDate, setReturnDate] = useState(defaultDates.returnDate);
   const [fareFamily, setFareFamily] = useState<FareFamily>("pho_thong_linh_hoat");
   const [adultCount, setAdultCount] = useState(1);
   const [childCount, setChildCount] = useState(0);
@@ -344,7 +365,7 @@ export function FlightSearchPanel() {
           disabled={tripType === "multi_city" || dangChuyenTrang}
         >
           {tripType === "multi_city"
-            ? "Sẽ hỗ trợ sau"
+            ? "Tạm thời chưa khả dụng"
             : dangChuyenTrang
               ? "Đang mở kết quả"
               : "Tìm chuyến bay"}

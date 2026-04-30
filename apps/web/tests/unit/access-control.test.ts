@@ -2,12 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   canAccessBackofficeModule,
-  getAllowedBackofficeModules
+  getAllowedBackofficeModulesByPermissions
 } from "@/lib/access-control";
 
 describe("access-control", () => {
   it("cho nhan vien cham soc khach hang truy cap cac module da duoc gop", () => {
-    expect(getAllowedBackofficeModules("customer_support")).toEqual([
+    expect(
+      getAllowedBackofficeModulesByPermissions([
+        "backoffice.sales",
+        "backoffice.support",
+        "backoffice.finance",
+        "backoffice.cms"
+      ])
+    ).toEqual([
       "sales",
       "support",
       "finance",
@@ -16,17 +23,22 @@ describe("access-control", () => {
   });
 
   it("cho nhan vien van hanh truy cap dieu hanh va kiem soat", () => {
-    expect(getAllowedBackofficeModules("operations_staff")).toEqual([
+    expect(
+      getAllowedBackofficeModulesByPermissions([
+        "backoffice.operations",
+        "backoffice.admin"
+      ])
+    ).toEqual([
       "operations",
       "admin"
     ]);
   });
 
   it("chan nhan vien cham soc khach hang vao module dieu hanh", () => {
-    expect(canAccessBackofficeModule("customer_support", "operations")).toBe(false);
+    expect(canAccessBackofficeModule(["backoffice.support"], "operations")).toBe(false);
   });
 
   it("chan khach vang lai vao backoffice", () => {
-    expect(getAllowedBackofficeModules("guest")).toEqual([]);
+    expect(getAllowedBackofficeModulesByPermissions([])).toEqual([]);
   });
 });

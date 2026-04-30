@@ -19,7 +19,6 @@ import {
   type UpdateMyProfilePayload,
   type UpsertMyPassengerPayload
 } from "@/lib/my-account-api";
-import { accountHighlights, notifications } from "@/lib/mock-data";
 
 const EMPTY_PROFILE_FORM: UpdateMyProfilePayload = {
   displayName: "",
@@ -235,6 +234,47 @@ export default function AccountPage() {
   const roleSummary = activeProfile?.roles.join(", ") ?? "khách";
   const phoneSummary = activeProfile?.phone?.trim() ? activeProfile.phone : "Chưa cập nhật";
   const isEditingPassenger = editingPassengerId !== null;
+  const accountStats = [
+    {
+      label: "Hành khách thường dùng",
+      value: String(passengers.length)
+    },
+    {
+      label: "Vai trò hiện tại",
+      value: roleSummary
+    },
+    {
+      label: "Trạng thái hồ sơ",
+      value: activeProfile
+        ? (isLoadingProfile ? "Đang đồng bộ" : "Sẵn sàng")
+        : "Chưa đăng nhập"
+    }
+  ];
+  const activityFeed = activeProfile
+    ? [
+        {
+          title: "Hồ sơ tài khoản",
+          time: isLoadingProfile ? "Đang đồng bộ" : "Đã sẵn sàng",
+          summary: `Email đăng nhập: ${activeProfile.email}. Số điện thoại: ${phoneSummary}.`
+        },
+        {
+          title: "Danh sách hành khách",
+          time: isLoadingPassengers ? "Đang cập nhật" : "Đã cập nhật",
+          summary: `Đã lưu ${passengers.length} hành khách thường dùng.`
+        },
+        {
+          title: "Quyền truy cập",
+          time: "Theo role hiện tại",
+          summary: `Vai trò đang dùng: ${roleSummary}.`
+        }
+      ]
+    : [
+        {
+          title: "Chưa có phiên đăng nhập",
+          time: "Yêu cầu đăng nhập",
+          summary: "Đăng nhập để đồng bộ hồ sơ tài khoản và hành khách thường dùng."
+        }
+      ];
 
   function handleProfileFieldChange<Key extends keyof UpdateMyProfilePayload>(
     fieldName: Key,
@@ -420,7 +460,7 @@ export default function AccountPage() {
                 <span className="pill">Vai trò: {roleSummary}</span>
                 <span className="pill">Số điện thoại: {phoneSummary}</span>
                 <span className="pill">
-                  {isLoadingProfile ? "Đang đồng bộ hồ sơ" : "Hồ sơ customer đã sẵn sàng"}
+                  {isLoadingProfile ? "Đang đồng bộ hồ sơ" : "Hồ sơ tài khoản đã sẵn sàng"}
                 </span>
               </div>
             ) : null}
@@ -471,7 +511,7 @@ export default function AccountPage() {
 
         <div className="section-gap" />
         <div className="metric-grid">
-          {accountHighlights.map((item) => (
+          {accountStats.map((item) => (
             <article key={item.label} className="metric-card metric-card-strong">
               <span>{item.label}</span>
               <strong>{item.value}</strong>
@@ -490,8 +530,8 @@ export default function AccountPage() {
             {activeProfile ? (
               <form className="surface-card" onSubmit={handleProfileSubmit}>
                 <div className="auth-note-head">
-                  <h3>Cập nhật hồ sơ customer</h3>
-                  <span className="pill">PATCH /api/me/profile</span>
+                  <h3>Cập nhật hồ sơ tài khoản</h3>
+                  <span className="pill">Đồng bộ hồ sơ</span>
                 </div>
                 <div className="auth-field-grid auth-field-grid-double">
                   <label className="field auth-field">
@@ -753,7 +793,7 @@ export default function AccountPage() {
               description="Hành khách có thể xem lại trạng thái thanh toán, mở làm thủ tục, thay đổi chuyến bay và phản hồi từ bộ phận hỗ trợ."
             />
             <div className="stack-list">
-              {notifications.map((item) => (
+              {activityFeed.map((item) => (
                 <article key={item.title} className="surface-card notification-card">
                   <span className="pill">{item.time}</span>
                   <h3>{item.title}</h3>

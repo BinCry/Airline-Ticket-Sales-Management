@@ -8,7 +8,7 @@ import {
   loadActiveAuthSession
 } from "@/lib/auth-session";
 import type { BackofficeModuleKey } from "@/lib/access-control";
-import { canAccessBackofficeModuleByRoles } from "@/lib/access-control";
+import { canAccessBackofficeModuleByPermissions } from "@/lib/access-control";
 
 type BackofficeAccessChipProps = {
   moduleKey: BackofficeModuleKey;
@@ -21,7 +21,9 @@ export function BackofficeAccessChip({ moduleKey }: BackofficeAccessChipProps) {
     function sync() {
       const authSession = loadActiveAuthSession();
       setHasAccess(
-        authSession ? canAccessBackofficeModuleByRoles(authSession.user.roles, moduleKey) : false
+        authSession
+          ? canAccessBackofficeModuleByPermissions(authSession.user.permissions, moduleKey)
+          : false
       );
     }
 

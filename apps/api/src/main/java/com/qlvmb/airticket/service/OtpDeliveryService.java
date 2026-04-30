@@ -28,7 +28,7 @@ public class OtpDeliveryService {
 
   public void sendForgotPasswordOtp(String email, String otp) {
     if (!mailEnabled) {
-      LOGGER.info("Ma OTP dat lai mat khau cho {} la {}", maskEmail(email), otp);
+      LOGGER.info("Da tao OTP dat lai mat khau cho {}", maskEmail(email));
       return;
     }
 

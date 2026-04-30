@@ -234,7 +234,8 @@ public class AuthService {
             userAccount.getDisplayName(),
             userAccount.getPhone(),
             userAccount.isEmailVerified(),
-            extractRoleCodes(userAccount)
+            extractRoleCodes(userAccount),
+            extractPermissionCodes(userAccount)
         )
     );
   }
@@ -259,6 +260,15 @@ public class AuthService {
   private List<String> extractRoleCodes(UserAccountEntity userAccount) {
     return userAccount.getRoles().stream()
         .map(role -> role.getCode())
+        .sorted()
+        .toList();
+  }
+
+  private List<String> extractPermissionCodes(UserAccountEntity userAccount) {
+    return userAccount.getRoles().stream()
+        .flatMap(role -> role.getPermissions().stream())
+        .map(permission -> permission.getCode())
+        .distinct()
         .sorted()
         .toList();
   }

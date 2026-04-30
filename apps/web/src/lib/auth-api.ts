@@ -19,6 +19,16 @@ export interface AuthRegisterPayload {
   password: string;
 }
 
+export interface ForgotPasswordOtpResponse {
+  status: string;
+  message: string;
+}
+
+export interface ForgotPasswordOtpVerifyResponse {
+  verified: boolean;
+  message: string;
+}
+
 export class AuthApiError extends Error {
   status: number;
   errors: Record<string, string>;
@@ -125,6 +135,36 @@ export function refreshAuthSession(refreshToken: string): Promise<AuthSession> {
 
 export function logoutAuthSession(refreshToken: string): Promise<void> {
   return postAuthJson<void>("/api/auth/logout", { refreshToken });
+}
+
+export function requestForgotPasswordOtp(
+  email: string
+): Promise<ForgotPasswordOtpResponse> {
+  return postAuthJson<ForgotPasswordOtpResponse>("/api/auth/forgot-password/request-otp", {
+    email
+  });
+}
+
+export function verifyForgotPasswordOtp(
+  email: string,
+  otp: string
+): Promise<ForgotPasswordOtpVerifyResponse> {
+  return postAuthJson<ForgotPasswordOtpVerifyResponse>("/api/auth/forgot-password/verify-otp", {
+    email,
+    otp
+  });
+}
+
+export function resetForgottenPassword(
+  email: string,
+  otp: string,
+  newPassword: string
+): Promise<void> {
+  return postAuthJson<void>("/api/auth/reset-password", {
+    email,
+    otp,
+    newPassword
+  });
 }
 
 export function resolveAuthErrorMessage(

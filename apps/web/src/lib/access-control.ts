@@ -1,4 +1,4 @@
-import type { StaffRole, UserRole } from "@qlvmb/shared-types";
+import type { UserRole } from "@qlvmb/shared-types";
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   guest: "Khách vãng lai",
@@ -8,41 +8,40 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   operations_staff: "Nhân viên vận hành"
 };
 
-export const BACKOFFICE_ACCESS = {
-  sales: ["customer_support"],
-  support: ["customer_support"],
-  operations: ["operations_staff"],
-  finance: ["customer_support"],
-  cms: ["customer_support"],
-  admin: ["operations_staff"]
-} as const satisfies Record<string, readonly StaffRole[]>;
+export const BACKOFFICE_PERMISSION_BY_MODULE = {
+  sales: "backoffice.sales",
+  support: "backoffice.support",
+  operations: "backoffice.operations",
+  finance: "backoffice.finance",
+  cms: "backoffice.cms",
+  admin: "backoffice.admin"
+} as const;
 
-export type BackofficeModuleKey = keyof typeof BACKOFFICE_ACCESS;
+export type BackofficeModuleKey = keyof typeof BACKOFFICE_PERMISSION_BY_MODULE;
 
 export function canAccessBackofficeModule(
-  role: UserRole,
+  permissions: string[],
   moduleKey: BackofficeModuleKey
 ): boolean {
-  const allowedRoles = BACKOFFICE_ACCESS[moduleKey] as readonly StaffRole[];
-
-  return allowedRoles.includes(role as StaffRole);
-}
-
-export function canAccessBackofficeModuleByRoles(
-  roles: string[],
-  moduleKey: BackofficeModuleKey
-): boolean {
-  if (!Array.isArray(roles) || roles.length === 0) {
+  if (!Array.isArray(permissions) || permissions.length === 0) {
     return false;
   }
 
-  return roles.some((role) => canAccessBackofficeModule(role as UserRole, moduleKey));
+  const requiredPermission = BACKOFFICE_PERMISSION_BY_MODULE[moduleKey];
+  return permissions.includes(requiredPermission);
 }
 
-export function getAllowedBackofficeModules(
-  role: UserRole
+export function canAccessBackofficeModuleByPermissions(
+  permissions: string[],
+  moduleKey: BackofficeModuleKey
+): boolean {
+  return canAccessBackofficeModule(permissions, moduleKey);
+}
+
+export function getAllowedBackofficeModulesByPermissions(
+  permissions: string[]
 ): BackofficeModuleKey[] {
-  return (Object.keys(BACKOFFICE_ACCESS) as BackofficeModuleKey[]).filter(
-    (moduleKey) => canAccessBackofficeModule(role, moduleKey)
+  return (Object.keys(BACKOFFICE_PERMISSION_BY_MODULE) as BackofficeModuleKey[]).filter(
+    (moduleKey) => canAccessBackofficeModule(permissions, moduleKey)
   );
 }

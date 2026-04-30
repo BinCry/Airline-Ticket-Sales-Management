@@ -18,7 +18,7 @@ public class BackofficeCmsController {
     this.demoDataService = demoDataService;
   }
 
-  @PreAuthorize("hasAnyAuthority('" + PermissionCode.BACKOFFICE_CMS + "', '" + PermissionCode.BACKOFFICE_ADMIN + "')")
+  @PreAuthorize("hasAuthority('" + PermissionCode.BACKOFFICE_CMS + "')")
   @GetMapping("/homepage")
   public CmsHomepageResponse getHomepageContent() {
     return demoDataService.getCmsHomepage();

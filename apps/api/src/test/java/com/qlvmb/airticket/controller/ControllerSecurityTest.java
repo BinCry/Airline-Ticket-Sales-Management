@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
     controllers = {
         MeController.class,
         CustomerController.class,
+        BookingController.class,
         SupportController.class,
         BackofficeCmsController.class,
         AdminController.class
@@ -112,10 +113,24 @@ class ControllerSecurityTest {
   }
 
   @Test
+  void getSupportOverview_shouldRejectOperationsAdminPermission() throws Exception {
+    mockMvc.perform(get("/api/support/overview")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("operations_staff"), List.of("backoffice.admin"))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void getBackofficeCmsHomepage_shouldAllowCustomerSupportPermission() throws Exception {
     mockMvc.perform(get("/api/backoffice/cms/homepage")
             .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer_support"), List.of("backoffice.support", "backoffice.cms"))))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBackofficeCmsHomepage_shouldRejectOperationsAdminPermission() throws Exception {
+    mockMvc.perform(get("/api/backoffice/cms/homepage")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("operations_staff"), List.of("backoffice.admin"))))
+        .andExpect(status().isForbidden());
   }
 
   @Test
@@ -133,6 +148,20 @@ class ControllerSecurityTest {
                 bearerToken(List.of("operations_staff"), List.of("backoffice.operations", "backoffice.admin"))
             ))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBookingManage_shouldAllowGuestLookupPermission() throws Exception {
+    mockMvc.perform(get("/api/bookings/manage/A6C2P1")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("guest"), List.of("public.booking_lookup"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBookingCheckoutPreview_shouldRejectGuestLookupPermission() throws Exception {
+    mockMvc.perform(get("/api/bookings/checkout-preview")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("guest"), List.of("public.booking_lookup"))))
+        .andExpect(status().isForbidden());
   }
 
   private String bearerToken(List<String> roles, List<String> permissions) {

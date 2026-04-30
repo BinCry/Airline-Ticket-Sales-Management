@@ -18,7 +18,7 @@ public class SupportController {
     this.demoDataService = demoDataService;
   }
 
-  @PreAuthorize("hasAnyAuthority('" + PermissionCode.BACKOFFICE_SUPPORT + "', '" + PermissionCode.BACKOFFICE_ADMIN + "')")
+  @PreAuthorize("hasAuthority('" + PermissionCode.BACKOFFICE_SUPPORT + "')")
   @GetMapping("/overview")
   public SupportOverviewResponse getSupportOverview() {
     return demoDataService.getSupportOverview();

@@ -56,7 +56,8 @@ function createAuthSession(overrides: Partial<AuthSession> = {}): AuthSession {
       displayName: "Khach Hang",
       phone: "0909123456",
       emailVerified: true,
-      roles: ["customer"]
+      roles: ["customer"],
+      permissions: ["customer.self_service"]
     },
     ...overrides
   };

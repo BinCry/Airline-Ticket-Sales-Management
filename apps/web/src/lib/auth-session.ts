@@ -9,6 +9,7 @@ export interface AuthSessionUser {
   phone: string | null;
   emailVerified: boolean;
   roles: string[];
+  permissions: string[];
 }
 
 export interface AuthSession {
@@ -45,6 +46,10 @@ export function parseAuthSession(serializedSession: string | null): AuthSession 
       return null;
     }
 
+    const normalizedPermissions = isStringArray(parsedUser.permissions)
+      ? parsedUser.permissions
+      : [];
+
     if (
       typeof parsedSession.accessToken !== "string" ||
       typeof parsedSession.refreshToken !== "string" ||
@@ -71,7 +76,8 @@ export function parseAuthSession(serializedSession: string | null): AuthSession 
         displayName: parsedUser.displayName,
         phone: parsedUser.phone,
         emailVerified: parsedUser.emailVerified,
-        roles: parsedUser.roles
+        roles: parsedUser.roles,
+        permissions: normalizedPermissions
       }
     };
   } catch {

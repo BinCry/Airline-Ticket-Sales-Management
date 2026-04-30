@@ -2,10 +2,7 @@ import { notFound } from "next/navigation";
 
 import { SectionHeading } from "@/components/section-heading";
 import { ROLE_LABELS } from "@/lib/access-control";
-import {
-  backofficeModuleDetails,
-  backofficeModules
-} from "@/lib/mock-data";
+import { backofficeModuleDetails, backofficeModules } from "@/lib/backoffice-content";
 
 type ModulePageProps = {
   params: Promise<{
@@ -17,12 +14,10 @@ export function generateStaticParams() {
   return backofficeModules.map((module) => ({ module: module.key }));
 }
 
-export default async function BackofficeModulePage({
-  params
-}: ModulePageProps) {
+export default async function BackofficeModulePage({ params }: ModulePageProps) {
   const { module } = await params;
   const moduleConfig = backofficeModules.find((item) => item.key === module);
-  const detail = backofficeModuleDetails[module];
+  const detail = backofficeModuleDetails[module as keyof typeof backofficeModuleDetails];
 
   if (!moduleConfig || !detail) {
     notFound();
@@ -38,7 +33,9 @@ export default async function BackofficeModulePage({
         />
         <div className="surface-card">
           <strong>Nhóm được cấp quyền:</strong>{" "}
-          {moduleConfig.roles.map((role) => ROLE_LABELS[role]).join(", ")}
+          {moduleConfig.roles
+            .map((role) => ROLE_LABELS[role as keyof typeof ROLE_LABELS])
+            .join(", ")}
         </div>
         <div className="section-gap" />
         <div className="card-grid">
