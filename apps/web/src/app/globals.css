@@ -3901,10 +3901,103 @@ th {
   grid-column: 1 / -1;
 }
 
+.finance-table-card {
+  position: relative;
+  display: grid;
+  gap: 18px;
+}
+
+.finance-table-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.finance-table-head h3,
+.finance-table-head p {
+  margin: 0;
+}
+
+.finance-table-wrap td {
+  vertical-align: top;
+}
+
+.finance-cell-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.finance-cell-stack span,
+.finance-cell-stack small,
+.finance-muted-action {
+  color: var(--muted);
+}
+
+.finance-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.finance-action-row .button {
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.finance-status-pill {
+  justify-content: center;
+}
+
+.finance-status-approved {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.finance-status-rejected {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.finance-status-pending {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.finance-approve-button {
+  background: linear-gradient(135deg, #0f8b60, #16986a);
+  box-shadow: 0 16px 34px rgba(15, 139, 96, 0.22);
+}
+
+.finance-reject-button {
+  border-color: rgba(194, 79, 79, 0.18);
+  color: var(--danger);
+}
+
+.finance-processing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: rgba(244, 242, 235, 0.7);
+  backdrop-filter: blur(8px);
+}
+
+.finance-processing-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
 @media (max-width: 820px) {
   .booking-modal-actions,
   .boarding-pass-head,
-  .booking-ticket-meta {
+  .booking-ticket-meta,
+  .finance-table-head {
     flex-direction: column;
     align-items: flex-start;
   }

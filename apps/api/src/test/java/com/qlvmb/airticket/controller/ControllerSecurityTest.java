@@ -1,7 +1,6 @@
 package com.qlvmb.airticket.controller;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,6 +14,7 @@ import com.qlvmb.airticket.service.AuthService;
 import com.qlvmb.airticket.service.BookingService;
 import com.qlvmb.airticket.service.CheckinService;
 import com.qlvmb.airticket.service.DemoDataService;
+import com.qlvmb.airticket.service.FinanceService;
 import com.qlvmb.airticket.service.MyAccountService;
 import com.qlvmb.airticket.service.PaymentService;
 import io.jsonwebtoken.Jwts;
@@ -25,11 +25,12 @@ import java.time.ZoneOffset;
 import java.util.List;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
@@ -42,6 +43,7 @@ import org.springframework.test.web.servlet.MockMvc;
         CheckinController.class,
         SupportController.class,
         BackofficeCmsController.class,
+        FinanceController.class,
         AdminController.class,
         CmsController.class
     },
@@ -63,23 +65,26 @@ class ControllerSecurityTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   private DemoDataService demoDataService;
 
-  @MockBean
+  @MockitoBean
   private AuthService authService;
 
-  @MockBean
+  @MockitoBean
   private MyAccountService myAccountService;
 
-  @MockBean
+  @MockitoBean
   private BookingService bookingService;
 
-  @MockBean
+  @MockitoBean
   private PaymentService paymentService;
 
-  @MockBean
+  @MockitoBean
   private CheckinService checkinService;
+
+  @MockitoBean
+  private FinanceService financeService;
 
   @Test
   void getMyProfile_shouldRequireAuthentication() throws Exception {
@@ -104,7 +109,7 @@ class ControllerSecurityTest {
 
   @Test
   void getMyProfile_shouldAllowAuthenticatedUser() throws Exception {
-    when(authService.getMyProfile(org.mockito.ArgumentMatchers.any()))
+    org.mockito.Mockito.when(authService.getMyProfile(ArgumentMatchers.any()))
         .thenReturn(new MyProfileResponse(
             101L,
             "khach@example.com",
@@ -170,6 +175,22 @@ class ControllerSecurityTest {
   void getBackofficeCmsHomepage_shouldRejectOperationsAdminPermission() throws Exception {
     mockMvc.perform(get("/api/backoffice/cms/homepage")
             .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("operations_staff"), List.of("backoffice.admin"))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.message").value("Bạn không có quyền thực hiện thao tác này."));
+  }
+
+  @Test
+  void getFinanceRefunds_shouldAllowCustomerSupportPermission() throws Exception {
+    mockMvc.perform(get("/api/backoffice/finance/refunds")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer_support"), List.of("backoffice.finance"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void getFinanceRefunds_shouldRejectCustomerPermission() throws Exception {
+    mockMvc.perform(get("/api/backoffice/finance/refunds")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.status").value(403))
         .andExpect(jsonPath("$.message").value("Bạn không có quyền thực hiện thao tác này."));
@@ -303,8 +324,19 @@ class ControllerSecurityTest {
   }
 
   @Test
-  void unknownApiRoute_shouldReturnJsonNotFound() throws Exception {
+  void unknownApiRoute_shouldReturnJsonUnauthorizedWhenUnauthenticated() throws Exception {
     mockMvc.perform(get("/api/khong-ton-tai"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.message").value("Bạn cần đăng nhập để tiếp tục."))
+        .andExpect(jsonPath("$.errors").isMap())
+        .andExpect(jsonPath("$.timestamp").exists());
+  }
+
+  @Test
+  void unknownApiRoute_shouldReturnJsonNotFoundWhenAuthenticated() throws Exception {
+    mockMvc.perform(get("/api/khong-ton-tai")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.status").value(404))
         .andExpect(jsonPath("$.message").value("Không tìm thấy đường dẫn hoặc tài nguyên yêu cầu."))

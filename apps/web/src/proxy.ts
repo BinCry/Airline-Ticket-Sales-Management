@@ -41,7 +41,7 @@ function sanitizeRedirectTarget(value: string | null): string | null {
   return trimmed;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/register";
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value ?? "";
@@ -62,7 +62,7 @@ export function middleware(request: NextRequest) {
   }
 
   const payload = parseJwtPayload(decodedToken);
-  if (!payload || payload["type"] !== "access") {
+  if (!payload || payload.type !== "access") {
     if (isAuthPage) {
       return NextResponse.next();
     }

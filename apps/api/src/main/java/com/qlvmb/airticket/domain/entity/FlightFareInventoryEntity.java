@@ -66,6 +66,6 @@ public class FlightFareInventoryEntity {
   }
 
   public void releaseSeats(int seatCount) {
-    availableSeats += seatCount;
+    availableSeats = Math.min(totalSeats, availableSeats + seatCount);
   }
 }

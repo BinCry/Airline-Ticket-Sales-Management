@@ -420,6 +420,19 @@ export interface ApiRefundRequestSummary {
   createdAt: string;
 }
 
+export type ApiBackofficeRefundStatus = "pending" | "approved" | "rejected";
+
+export interface ApiBackofficeRefundItem {
+  id: number;
+  bookingCode: string;
+  bookingStatus: Extract<BookingStatus, "ticketed" | "refund_pending" | "cancelled">;
+  contactName: string;
+  reason: string;
+  refundAmount: number;
+  status: ApiBackofficeRefundStatus;
+  createdAt: string;
+}
+
 export interface ApiManageBookingPriceSummary {
   baseAmount: number;
   ancillaryAmount: number;

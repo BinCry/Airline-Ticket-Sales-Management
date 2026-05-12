@@ -66,30 +66,31 @@ public class SecurityConfig {
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers("/error").permitAll()
-            .requestMatchers("/api/meta/**", "/api/airports/**", "/api/flights/**", "/api/cms/homepage").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/bookings/manage/*").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/auth/roles").permitAll()
+            .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+            .requestMatchers(
+                HttpMethod.GET,
+                "/api/flights/search",
+                "/api/airports",
+                "/api/cms/homepage",
+                "/api/bookings/manage/*"
+            ).permitAll()
             .requestMatchers(
                 HttpMethod.POST,
                 "/api/bookings/holds",
                 "/api/bookings/*/payments/session",
                 "/api/bookings/*/refund-request",
                 "/api/payments/callback",
-                "/api/check-in/complete",
-                "/api/auth/register",
-                "/api/auth/login",
-                "/api/auth/refresh",
-                "/api/auth/logout",
-                "/api/auth/forgot-password/request-otp",
-                "/api/auth/forgot-password/verify-otp",
-                "/api/auth/reset-password"
+                "/api/check-in/complete"
             ).permitAll()
             .requestMatchers("/api/backoffice/operations/**", "/api/admin/**")
-            .hasAuthority("ROLE_OPERATIONS_STAFF")
-            .requestMatchers("/api/backoffice/sales/**", "/api/support/**", "/api/finance/**", "/api/backoffice/cms/**")
-            .hasAuthority("ROLE_CUSTOMER_SUPPORT")
+            .hasRole("OPERATIONS_STAFF")
+            .requestMatchers(
+                "/api/backoffice/sales/**",
+                "/api/support/**",
+                "/api/backoffice/finance/**",
+                "/api/backoffice/cms/**"
+            ).hasRole("CUSTOMER_SUPPORT")
             .requestMatchers("/api/me/**", "/api/customers/**").authenticated()
-            .requestMatchers("/api/**").permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

@@ -92,4 +92,14 @@ public class RefundRequestEntity {
   public boolean isPending() {
     return STATUS_PENDING.equals(status);
   }
+
+  public void markApproved(OffsetDateTime updatedAt) {
+    status = STATUS_APPROVED;
+    this.updatedAt = updatedAt;
+  }
+
+  public void markRejected(OffsetDateTime updatedAt) {
+    status = STATUS_REJECTED;
+    this.updatedAt = updatedAt;
+  }
 }

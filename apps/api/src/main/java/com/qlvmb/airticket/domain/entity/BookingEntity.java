@@ -279,4 +279,14 @@ public class BookingEntity {
     status = STATUS_REFUND_PENDING;
     this.updatedAt = updatedAt;
   }
+
+  public void markCancelled(OffsetDateTime updatedAt) {
+    status = STATUS_CANCELLED;
+    this.updatedAt = updatedAt;
+  }
+
+  public void markTicketedAgain(OffsetDateTime updatedAt) {
+    status = STATUS_TICKETED;
+    this.updatedAt = updatedAt;
+  }
 }

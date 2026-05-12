@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-airticket}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-airticket}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-airticket}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-true}
+      APP_AUTH_JWT_SECRET: ${APP_AUTH_JWT_SECRET:?Ban_can_cau_hinh_APP_AUTH_JWT_SECRET}
+      APP_AUTH_JWT_ISSUER: ${APP_AUTH_JWT_ISSUER:-airticket-api}
+      APP_AUTH_JWT_ACCESS_TOKEN_TTL_SECONDS: ${APP_AUTH_JWT_ACCESS_TOKEN_TTL_SECONDS:-900}
+      APP_AUTH_JWT_REFRESH_TOKEN_TTL_SECONDS: ${APP_AUTH_JWT_REFRESH_TOKEN_TTL_SECONDS:-2592000}
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:3000,http://127.0.0.1:3000}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_SMTP_AUTH: ${SPRING_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SPRING_MAIL_CONNECTION_TIMEOUT: ${SPRING_MAIL_CONNECTION_TIMEOUT:-5000}
+      SPRING_MAIL_TIMEOUT: ${SPRING_MAIL_TIMEOUT:-5000}
+      SPRING_MAIL_WRITE_TIMEOUT: ${SPRING_MAIL_WRITE_TIMEOUT:-5000}
+      APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
+      APP_MAIL_FROM_EMAIL: ${APP_MAIL_FROM_EMAIL:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

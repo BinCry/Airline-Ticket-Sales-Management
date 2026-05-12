@@ -20,10 +20,10 @@ export class ApiClientError extends Error {
   timestamp: string | null;
 
   constructor(
-    message: string,
-    status: number,
-    errors: Record<string, string> = {},
-    timestamp: string | null = null
+      message: string,
+      status: number,
+      errors: Record<string, string> = {},
+      timestamp: string | null = null
   ) {
     super(message);
     this.name = "ApiClientError";
@@ -193,4 +193,3 @@ export async function requestApi<TResponse>(
 
   return (await response.json()) as TResponse;
 }
-

@@ -1,191 +1,161 @@
-﻿# Quản Lý Bán Vé Máy Bay (Sườn Dự Án)
+# Quản lý bán vé máy bay
 
-### Kiến trúc tổng thể
-- Giao diện web: `Next.js` + `React` + `TypeScript`
-- Backend chính: `Java 21` + `Spring Boot`
-- Cơ sở dữ liệu: `Supabase PostgreSQL`
-- Hạ tầng phụ trợ: `Docker`, `Nginx`, `GitHub Actions`
+## Tổng quan
+- Dự án gồm 2 phần chính:
+  - `apps/api`: Máy chủ `Spring Boot` chạy trên `Java 21`
+  - `apps/web`: Giao diện `Next.js` dùng `App Router`
+- Cơ sở dữ liệu chính là `PostgreSQL`.
+- Các thay đổi cấu trúc dữ liệu được quản lý bằng `Flyway`.
 
-### Công nghệ phía giao diện
-- `Next.js App Router`: Xây dựng giao diện web và điều hướng trang.
-- `React`: Tổ chức giao diện theo thành phần.
-- `TypeScript`: Giúp kiểm soát kiểu dữ liệu rõ ràng hơn.
-- `Tailwind CSS`: Viết giao diện nhanh và đồng bộ.
-- `shadcn/ui`: Dùng các thành phần giao diện sẵn có để làm web nhanh hơn.
+## Cấu trúc thư mục
+- `apps/api`: API, nghiệp vụ, di trú dữ liệu và kiểm thử máy chủ
+- `apps/web`: giao diện người dùng, đường dẫn, thành phần hiển thị và kiểm thử giao diện
+- `packages/shared-types`: kiểu dữ liệu dùng chung giữa giao diện và máy chủ
+- `docker-compose.prod.yml`: cấu hình dựng `PostgreSQL` và `API` cho môi trường VPS
 
-### Công nghệ phía backend
-- `Java 21`: Ngôn ngữ backend chính của dự án.
-- `Spring Boot`: Tạo các API và tổ chức nghiệp vụ phía máy chủ.
-- `Spring Web`: Xử lý yêu cầu và phản hồi HTTP.
-- `Spring Security`: Quản lý xác thực và phân quyền khi cần.
-- `Spring Data JPA`: Làm việc với dữ liệu theo mô hình đối tượng.
-- `Bean Validation`: Kiểm tra dữ liệu đầu vào ở phía backend.
+## Cách chạy dự án ở máy cục bộ
 
-### Dữ liệu và dịch vụ nền
-- `Supabase PostgreSQL`: Cơ sở dữ liệu chính của hệ thống.
-- `Flyway`: Quản lý lịch sử thay đổi cấu trúc dữ liệu.
-- `Supabase Storage`: Dùng khi cần lưu tệp như ảnh, vé điện tử hoặc tài liệu đính kèm.
+### 1. Chuẩn bị biến môi trường
+- Tạo file `.env` ở thư mục gốc từ `.env.example`.
+- Tạo file `apps/web/.env.local` từ `apps/web/.env.example`.
+- File `.env` dùng làm nguồn tham chiếu cho máy chủ và Docker Compose.
+- File `apps/web/.env.local` được `Next.js` đọc trực tiếp khi chạy máy cục bộ.
 
-### Kiểm thử dự kiến
-- `Vitest`: Kiểm thử đơn vị cho phần giao diện nếu cần.
-- `Playwright`: Kiểm thử luồng sử dụng trên web.
-- `JUnit 5`: Kiểm thử cho backend Java.
-- `Mockito`: Giả lập phụ thuộc khi kiểm thử backend.
+### 2. Khởi động cơ sở dữ liệu
+- Từ thư mục gốc, chạy:
 
-## Triển khai Vercel
-- Có thể triển khai ngay phần `apps/web` lên `Vercel` dù chưa có backend thật, vì giao diện hiện dùng dữ liệu mẫu trong `apps/web/src/lib/mock-data.ts`.
-- Khi import repo lên `Vercel`, hãy tạo một project riêng cho phần web và chọn `Root Directory` là `apps/web`.
-- `Vercel` sẽ tự nhận diện `Next.js`; tệp `apps/web/vercel.json` chỉ dùng để chốt rõ framework triển khai.
-- Nhánh `deploy` là nhánh triển khai tự động cho `Vercel`, được đồng bộ từ `main` qua `GitHub Actions` và không được xóa.
-- Trong `Vercel`, `Production Branch` phải đặt là `deploy` để giữ luồng triển khai ổn định với gói miễn phí.
-- Sau khi có backend thật, cần bổ sung biến môi trường và địa chỉ API tương ứng rồi triển khai lại.
+```powershell
+docker compose -f docker-compose.prod.yml up -d postgres
+```
 
-### Biến môi trường cho web
-- Chạy local: tạo `apps/web/.env.local` dựa trên `apps/web/.env.example`.
-- Triển khai `Vercel`: khai báo đúng các biến tương tự trong phần `Environment Variables` của project `apps/web`.
-- Trợ lý du lịch dùng 1 trong 2 biến khóa Gemini: `GEMINI_API_KEY` hoặc `GOOGLE_GENERATIVE_AI_API_KEY`.
-- Có thể khai báo thêm `OPENWEATHER_API_KEY` để trợ lý du lịch trả lời thời tiết hiện tại theo địa điểm; nếu không khai báo thì web đang dùng khóa dự phòng trong mã phía server.
-- Bài viết du lịch dùng 1 trong 2 biến khóa NewsData: `NEWSDATA_API_KEY` hoặc `NEWSDATAIO_API_KEY`.
-- Có thể đặt thêm `GEMINI_MODEL=gemini-2.5-flash` để chốt model chạy ổn định giữa local và deploy.
+- Mặc định cơ sở dữ liệu máy cục bộ dùng:
+  - Tên cơ sở dữ liệu: `airticket`
+  - Tài khoản: `postgres`
+  - Mật khẩu: lấy từ `POSTGRES_PASSWORD` trong `.env`
 
-## Lộ trình hoàn thiện hệ thống
+### 3. Chạy máy chủ bằng Maven Wrapper
+- Mở terminal tại `apps/api`.
+- Khai báo tối thiểu các biến môi trường trong terminal hoặc trong cấu hình chạy của IDE:
 
-### Ưu tiên triển khai
-- Giai đoạn đầu ưu tiên khu công khai và tự phục vụ để khách vãng lai vẫn xem web, tìm chuyến bay, tra cứu đặt chỗ và làm các thao tác cơ bản.
-- Backoffice được chốt còn 2 vai trò nội bộ theo sơ đồ nghiệp vụ: `customer_support` và `operations_staff`.
-- `customer_support` nhận thêm các phần việc cần giữ từ `ticket_agent`, `finance_staff`, `content_editor` để không mất luồng bán vé hộ, hoàn tiền, nội dung hỗ trợ và chăm sóc sau bán.
-- `operations_staff` giữ điều hành chuyến bay và nhận thêm phần kiểm soát hệ thống từ `system_admin` để tập trung giá, lịch bay, trạng thái chuyến bay, tồn ghế và nhật ký kiểm soát.
-- Mọi thay đổi phải đi theo nhịp nhỏ: đọc hiểu -> sửa đúng phạm vi -> kiểm tra -> commit riêng từng mục tiêu.
-- Tài liệu backlog backend nhiều vai trò nằm tại `docs/architecture/lo-trinh-backend-nhieu-vai-tro.md`.
+```powershell
+$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/airticket"
+$env:SPRING_DATASOURCE_USERNAME="postgres"
+$env:SPRING_DATASOURCE_PASSWORD="doi-mat-khau-database"
+$env:APP_AUTH_JWT_SECRET="doi-secret-toi-thieu-32-ky-tu-va-phai-thay-doi"
+$env:APP_AUTH_JWT_ISSUER="airticket-api"
+```
 
-### Ma trận vai trò
-| Vai trò | Phạm vi chính | Không được phép |
+- Sau đó chạy:
+
+```powershell
+./mvnw.cmd spring-boot:run
+```
+
+- Nếu chạy trên `bash` hoặc `zsh`, dùng:
+
+```bash
+./mvnw spring-boot:run
+```
+
+- Địa chỉ API máy cục bộ mặc định: `http://localhost:8080`
+
+### 4. Chạy giao diện
+- Cài gói ở thư mục gốc:
+
+```powershell
+npm install
+```
+
+- Chạy web từ thư mục gốc:
+
+```powershell
+npm run dev:web
+```
+
+- Hoặc chạy trực tiếp trong `apps/web`:
+
+```powershell
+npm run dev
+```
+
+- Địa chỉ web máy cục bộ mặc định: `http://localhost:3000`
+
+### 5. Chạy kiểm thử trước khi làm việc tiếp
+- Backend:
+
+```powershell
+cd apps/api
+./mvnw.cmd clean test
+```
+
+- Web:
+
+```powershell
+npm run test:web
+npm run build:web
+```
+
+## Triển khai lên Azure VPS
+
+### 1. Chuẩn bị máy chủ
+- Cài sẵn `Docker` và `Docker Compose`.
+- Sao chép mã nguồn lên VPS.
+- Tạo file `.env` ở thư mục gốc từ `.env.example`.
+
+### 2. Cấu hình bắt buộc trong `.env`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `APP_AUTH_JWT_SECRET`
+- `APP_AUTH_JWT_ISSUER`
+- `APP_CORS_ALLOWED_ORIGIN_PATTERNS`
+
+### 3. Cấu hình nên điền trước khi mở trình diễn
+- `SPRING_MAIL_HOST`
+- `SPRING_MAIL_PORT`
+- `SPRING_MAIL_USERNAME`
+- `SPRING_MAIL_PASSWORD`
+- `SPRING_MAIL_SMTP_AUTH`
+- `SPRING_MAIL_SMTP_STARTTLS_ENABLE`
+- `APP_MAIL_ENABLED`
+- `APP_MAIL_FROM_EMAIL`
+
+### 4. Dựng dịch vụ trên VPS
+- Từ thư mục gốc, chạy:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- Kiểm tra log máy chủ:
+
+```bash
+docker compose -f docker-compose.prod.yml logs -f api
+```
+
+- Kiểm tra trạng thái cơ sở dữ liệu:
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+```
+
+### 5. Gợi ý hoàn thiện trước khi public
+- Gắn tên miền hoặc bộ chuyển tiếp cho cổng `8080`.
+- Cấu hình `NEXT_PUBLIC_API_BASE_URL` của giao diện trỏ về địa chỉ API trên VPS.
+- Thay toàn bộ khóa bí mật mặc định trong `.env` trước khi mở truy cập thật.
+
+## Tài khoản thử nội bộ
+- Mật khẩu mặc định cho cả 5 tài khoản: `Demo@123456`
+
+| Vai trò | Email đăng nhập | Ghi chú |
 | --- | --- | --- |
-| `guest` | Xem trang công khai, tìm chuyến bay, xem khuyến mãi, FAQ, tạo đặt chỗ không cần tài khoản, tra cứu bằng mã đặt chỗ có xác minh | Vào backoffice, xem dữ liệu tài khoản người khác |
-| `customer` | Đặt vé, thanh toán, quản lý đặt chỗ, đổi hoặc hủy theo điều kiện, làm thủ tục trực tuyến | Động vào dữ liệu và thao tác nội bộ |
-| `member` | Toàn bộ quyền của `customer` kèm điểm thưởng, voucher, ưu đãi theo hạng | Tự sửa điều kiện hội viên |
-| `customer_support` | Tra cứu booking có xác minh, bán vé hộ, xử lý yêu cầu hỗ trợ, đổi hoặc hủy thủ công, bù dịch vụ, hoàn tiền, theo dõi SLA, cập nhật nội dung hỗ trợ | Sửa giá gốc, đổi lịch bay tổng, mở hoặc đóng bán chặng |
-| `operations_staff` | Quản lý giá, lịch bay, tồn ghế, trạng thái chuyến bay, mở hoặc đóng bán chặng, kiểm soát cấu hình và nhật ký hệ thống | Thao tác thay mặt bộ phận chăm sóc khách hàng, xem dữ liệu thẻ thanh toán đầy đủ |
+| `guest` | `guest.demo@qlvmb.local` | Tài khoản quyền thấp nhất để giáo viên kiểm tra luồng công khai |
+| `customer` | `customer.demo@qlvmb.local` | Tài khoản khách hàng thông thường |
+| `member` | `member.demo@qlvmb.local` | Tài khoản hội viên |
+| `customer_support` | `support.demo@qlvmb.local` | Tài khoản chăm sóc khách hàng và tài chính nội bộ |
+| `operations_staff` | `operations.demo@qlvmb.local` | Tài khoản vận hành và quản trị backoffice |
 
-### Gộp vai trò backoffice
-| Vai trò mới | Vai trò cũ được gộp | Chức năng cần giữ lại |
-| --- | --- | --- |
-| `customer_support` | `ticket_agent`, `customer_support`, `finance_staff`, `content_editor` | Bán vé hộ, tra cứu booking, xử lý hỗ trợ, đổi hoặc hủy thủ công, bù dịch vụ, hoàn tiền, cập nhật FAQ và nội dung hỗ trợ |
-| `operations_staff` | `operations_staff`, `system_admin` | Quản lý giá, lịch bay, tồn ghế, trạng thái chuyến bay, mở hoặc đóng bán, cấu hình quy tắc và nhật ký kiểm soát |
-
-### Luồng chính cần hoàn thiện
-- Luồng công khai: trang chủ -> tìm chuyến bay -> xem gói giá -> chọn chuyến -> tạo giữ chỗ -> thanh toán sandbox -> nhận vé và thông báo.
-- Luồng tự phục vụ: tra cứu đặt chỗ bằng mã đặt chỗ + email hoặc số điện thoại -> xác minh OTP -> đổi chuyến, hoàn hoặc hủy, mua thêm dịch vụ, làm thủ tục trực tuyến.
-- Luồng tài khoản: đăng ký -> đăng nhập -> làm mới phiên -> quên mật khẩu qua OTP email -> đặt lại mật khẩu theo chính sách an toàn.
-- Luồng backoffice vai trò `customer_support`: tra cứu booking -> xác minh OTP khi cần -> xử lý bán vé hộ hoặc yêu cầu hỗ trợ -> đổi hoặc hủy thủ công, hoàn tiền, bù dịch vụ -> cập nhật nội dung hỗ trợ liên quan.
-- Luồng backoffice vai trò `operations_staff`: quản lý giá -> quản lý chuyến bay và lịch bay -> mở hoặc đóng bán -> cập nhật tồn ghế, trạng thái chuyến bay -> ghi nhật ký kiểm soát và đồng bộ ra khu công khai.
-
-### Danh sách màn hình theo mức ưu tiên
-- MVP công khai: `/`, `/search`, `/booking`, `/manage-booking`, `/check-in`, `/flight-status`, `/support`, `/blog`, `/account`, `login`, `register`, `forgot-password`, `reset-password`.
-- MVP dữ liệu và API: xác thực JWT, OTP email, danh mục sân bay và chuyến bay, giữ chỗ, thanh toán sandbox, thông báo, tra cứu booking cho guest và customer.
-- Nâng cao sau MVP: dashboard 2 vai trò nội bộ, điều hành chuyến bay nâng cao, đối soát tài chính trong luồng chăm sóc khách hàng, nội dung hỗ trợ có phiên bản và lịch đăng, báo cáo tổng hợp.
-
-### Nhịp chia task và commit
-- Mỗi giai đoạn chỉ xử lý một mục tiêu chính và có commit riêng.
-- Commit phải đúng mẫu `Type(scope):description` và dùng tiếng Việt có dấu.
-- Sau từng commit phải có kiểm tra phù hợp như `build web`, `test web`, `test api` hoặc kiểm tra giao diện ở các kích thước `320`, `360`, `390`, `412`, `768`, `1024`, `1280`.
-- Không dồn nhiều đầu việc không liên quan vào cùng một commit.
-
-### Nguyên tắc phân vai kỹ thuật
-- `apps/web` chỉ phụ trách giao diện, nhập liệu, hiển thị dữ liệu và gọi API.
-- `apps/api` là backend chính, chứa nghiệp vụ cốt lõi như đăng nhập, tìm chuyến bay, đặt vé, giữ chỗ, thanh toán và quản trị.
-- Không đặt nghiệp vụ chính ở cả `web` và `backend` cùng lúc để tránh trùng logic.
-
-## Quy tắc làm việc với công cụ hỗ trợ lập trình
-1. Luôn làm theo thứ tự: hiểu bối cảnh -> lập kế hoạch -> xin/đợi xác nhận nếu tác vụ có rủi ro cao -> mới sửa mã.
-2. Chỉ sửa trong phạm vi tệp cần thiết hoặc các tệp phát sinh lỗi liên đới.
-3. Không tự ý đổi hợp đồng API, lược đồ dữ liệu, thư viện phụ thuộc, cấu hình môi trường, luồng xác thực, nghiệp vụ thanh toán, di trú dữ liệu hoặc CI/CD khi chưa được cho phép rõ ràng.
-4. Mọi mã sinh ra chỉ là bản nháp cho tới khi có kiểm thử, kiểm tra chuẩn mã, kiểm tra kiểu dữ liệu và rà soát thủ công.
-5. Luôn ưu tiên bản vá nhỏ nhất giải quyết đúng vấn đề.
-6. Không tái cấu trúc ngoài phạm vi yêu cầu.
-7. Sau mỗi thay đổi phải báo cáo: đã sửa gì, vì sao, test nào đã chạy, rủi ro nào còn lại.
-8. Nếu thiếu thông tin, nêu giả định thay vì tự bịa.
-9. Nếu có nhiều phương án, nêu rõ phần đánh đổi trước khi triển khai.
-10. Không dùng tiếng Anh trong `README.md` và trong comment mã.
-11. Comment mã phải bằng tiếng Việt, ngắn gọn, trực quan và nêu rõ chỗ nào thay thế cái gì (nếu có).
-
-## Quy ước commit GitHub (bắt buộc)
-Áp dụng cho mọi thành viên tham gia dự án.
-
-1. Mọi commit bắt buộc theo đúng mẫu: `Type(scope):description`.
-2. `Type` phải thuộc danh sách cho phép bên dưới và dùng chữ thường.
-3. `scope` là phạm vi thay đổi chính, không được để trống.
-4. `description` bắt buộc viết bằng tiếng Việt có dấu, ngắn gọn, nêu đúng thay đổi chính.
-5. Không dùng thông điệp commit mơ hồ hoặc sai mẫu (ví dụ: `update`, `fix bug`, `abc`).
-6. Mỗi commit chỉ nên chứa một mục tiêu thay đổi chính để dễ truy vết.
-
-### Các Type hay dùng
-- `feat`: Một tính năng mới.
-- `fix`: Sửa lỗi.
-- `docs`: Cập nhật tài liệu.
-- `style`: Cải thiện định dạng, kiểu dáng, chuẩn mã nguồn.
-- `refactor`: Sửa đổi mã nguồn không ảnh hưởng tính năng.
-- `perf`: Cải thiện hiệu năng.
-- `chore`: Cập nhật công cụ, thư viện hỗ trợ.
-- `test`: Thêm hoặc cập nhật kiểm thử.
-- `revert`: Quay lại một số thay đổi trước đó.
-
-### Hướng dẫn viết thông điệp commit
-- Chỉ dùng một `Type` trong danh sách cho phép.
-- Luôn có `scope` rõ ràng theo phạm vi thay đổi chính (ví dụ: `api`, `ui`, `dat-ve`, `thanh-toan`).
-- Phần `description` phải là tiếng Việt có dấu, đi thẳng vào thay đổi chính, không mơ hồ.
-- Không chèn nhiều thay đổi không liên quan trong một commit.
-
-### Ví dụ đúng
-- `feat(dat-ve):thêm bộ lọc chuyến bay theo hạng ghế`
-- `fix(thanh-toan):sửa lỗi nhân đôi giao dịch khi tải lại trang`
-- `docs(api):bổ sung hướng dẫn xác thực bằng jwt`
-- `refactor(booking-service):tách hàm tính giá vé theo từng bước`
-- `test(dat-ve):thêm kiểm thử đơn vị cho hàm tính tổng tiền`
-
-### Quy định trước khi đẩy mã
-- Mọi thành viên phải tự kiểm tra thông điệp commit đúng mẫu trước khi `git commit`.
-- Nếu sai mẫu hoặc phần `description` không phải tiếng Việt có dấu, phải sửa lại trước khi đẩy lên GitHub.
-
-## Quy tắc teamwork GitHub cho nhóm 4 (bắt buộc)
-Áp dụng cho toàn bộ thành viên trong nhóm.
-
-### Mô hình nhánh
-- `main`: Nhánh ổn định, cấm đẩy trực tiếp.
-- `deploy`: Nhánh chỉ dùng để triển khai `Vercel`, được đồng bộ tự động từ `main`, không dùng để phát triển tính năng và không được xóa.
-- `feat/<pham-vi>-<mo-ta-ngan>`: Nhánh làm tính năng mới.
-- `fix/<pham-vi>-<mo-ta-ngan>`: Nhánh sửa lỗi.
-- `docs/<pham-vi>-<mo-ta-ngan>`, `test/<pham-vi>-<mo-ta-ngan>`, `refactor/<pham-vi>-<mo-ta-ngan>`, `chore/<pham-vi>-<mo-ta-ngan>`: Nhánh cho thay đổi kỹ thuật tương ứng.
-- `hotfix/<pham-vi>-<mo-ta-ngan>`: Nhánh xử lý lỗi khẩn cấp phát sinh trên `main`.
-
-### Quy trình làm việc theo nhánh
-1. Luôn tạo nhánh mới từ `main`.
-2. Mỗi nhánh chỉ xử lý một mục tiêu chính.
-3. Mọi commit trong nhánh phải theo mẫu `Type(scope):description` và phần `description` bằng tiếng Việt có dấu.
-4. Đẩy nhánh lên sớm và mở yêu cầu hợp nhất (`pull request`) ngay khi có bản chạy được.
-5. Trước khi xin duyệt, phải cập nhật thay đổi mới nhất từ `main` và xử lý xung đột.
-6. Không thao tác thủ công trên `deploy` trừ trường hợp bảo trì đặc biệt; mọi cập nhật triển khai phải đi từ `main` qua workflow tự động.
-
-### Quy tắc duyệt và hợp nhất mã
-1. Không hợp nhất trực tiếp vào `main`; chỉ hợp nhất qua `pull request`.
-2. Bắt buộc có ít nhất 1 người duyệt; phần nhạy cảm (xác thực, thanh toán, di trú dữ liệu) cần 2 người duyệt.
-3. Bắt buộc qua toàn bộ kiểm tra tự động: biên dịch, kiểm thử, kiểm tra chuẩn mã.
-4. Bắt buộc xử lý hết toàn bộ trao đổi trước khi hợp nhất.
-5. Ưu tiên kiểu hợp nhất `squash and merge` để lịch sử thay đổi gọn và rõ.
-6. Tiêu đề `pull request` hoặc thông điệp hợp nhất phải theo mẫu `Type(scope):description`, phần `description` bằng tiếng Việt có dấu.
-7. Sau khi hợp nhất phải xóa nhánh để tránh tồn đọng nhánh cũ.
-8. Riêng bạn (người có quyền hạn cao nhất) có quyền quyết định cuối cùng và được phép tự duyệt, tự hợp nhất khi cần.
-9. Không xóa nhánh `deploy` sau khi hợp nhất, vì đây là nhánh triển khai cố định cho `Vercel`.
-
-### Thiết lập bảo vệ nhánh `main` trên GitHub
-- Bật yêu cầu mở `pull request` trước khi hợp nhất.
-- Bật yêu cầu số lượt duyệt tối thiểu.
-- Bật yêu cầu các kiểm tra tự động phải thành công trước khi hợp nhất.
-- Bật yêu cầu xử lý xong mọi trao đổi trước khi hợp nhất.
-- Tắt quyền đẩy thẳng và tắt `force push` vào `main`, trừ tài khoản của bạn trong trường hợp cần xử lý khẩn.
-- Bật hủy duyệt cũ khi có commit mới được đẩy lên.
-
-### Quy ước phối hợp trong nhóm 4
-- Mỗi `pull request` có 1 người duyệt chính và luân phiên theo tuần.
-- Thành viên khác không tự duyệt và tự hợp nhất mã của chính mình; riêng bạn được phép thực hiện khi cần.
-- Ưu tiên `pull request` nhỏ (khoảng dưới 300 dòng thay đổi) để duyệt nhanh và giảm sót lỗi.
+## Ghi chú thêm
+- File `apps/api/local-mail.properties` chỉ dùng cho cấu hình máy cục bộ riêng của máy bạn và đang bị bỏ qua khỏi Git.
+- `docker-compose.prod.yml` của pha này chỉ dựng `PostgreSQL` và `API`, chưa dựng dịch vụ giao diện.
+- Nếu cần cấu hình mail OTP thật, hãy điền nhóm biến `SPRING_MAIL_*` và `APP_MAIL_*` trong `.env` trước khi khởi động lại API.

@@ -114,4 +114,9 @@ public class TicketEntity {
     status = STATUS_CHECKED_IN;
     this.updatedAt = updatedAt;
   }
+
+  public void markCancelled(OffsetDateTime updatedAt) {
+    status = STATUS_CANCELLED;
+    this.updatedAt = updatedAt;
+  }
 }
