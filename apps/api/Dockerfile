@@ -1,20 +1,13 @@
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /workspace
 
-COPY .mvn .mvn
-COPY mvnw .
 COPY pom.xml .
-
-RUN tr -d '\r' < mvnw > mvnw-linux \
-    && mv mvnw-linux mvnw \
-    && chmod +x mvnw
-
-RUN ./mvnw -q -DskipTests dependency:go-offline
+RUN mvn -q -DskipTests dependency:go-offline
 
 COPY src src
 
-RUN ./mvnw -q -DskipTests package \
+RUN mvn -q -DskipTests package \
     && cp target/*.jar app.jar
 
 FROM eclipse-temurin:21-jre-jammy
