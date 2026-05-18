@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { AuthGooglePlaceholder } from "@/components/auth-google-placeholder";
 import { AuthShell } from "@/components/auth-shell";
 import { PasswordField } from "@/components/password-field";
 import { PasswordChecklist } from "@/components/password-checklist";
@@ -26,7 +25,7 @@ const registerStats = [
   {
     label: "Ưu đãi cá nhân",
     value: "Theo hành trình",
-    detail: "Lưu voucher, khuyến mãi và quyền lợi phù hợp với nhu cầu của từng khách."
+    detail: "Lưu hồ sơ liên hệ và các nhắc việc cần thiết cho từng chuyến bay."
   }
 ];
 
@@ -34,18 +33,18 @@ const registerSupportItems = [
   {
     title: "Hỗ trợ tạo tài khoản",
     value: "1900 6868",
-    note: "Giải đáp về email đăng ký, xác minh thông tin và quyền lợi hội viên."
+    note: "Giải đáp về email đăng ký, xác minh thông tin và các bước khôi phục tài khoản."
   },
   {
     title: "Tra cứu hướng dẫn",
     value: "Trung tâm hỗ trợ trên web",
-    note: "Xem trước các câu hỏi thường gặp về tài khoản, điểm thưởng và quên mật khẩu."
+    note: "Xem trước các câu hỏi thường gặp về tài khoản, hồ sơ hành khách và quên mật khẩu."
   }
 ];
 
 const registerTrustPoints = [
   "Lưu người liên hệ và hành khách thường dùng cho các chặng nội địa tiếp theo.",
-  "Theo dõi voucher, điểm thưởng và thông báo trong cùng một giao diện thân thiện với mobile.",
+  "Theo dõi thông báo, email vé và các bước chuẩn bị chuyến đi trong cùng một giao diện thân thiện với mobile.",
   "Chuẩn bị trước cho các bước xác minh email, quên mật khẩu và hỗ trợ sau bán."
 ];
 
@@ -71,6 +70,11 @@ export default function RegisterPage() {
     confirmPassword === password;
   const isPrepared = authSession !== null;
 
+  function handleAuthSuccess(nextAuthSession: AuthSession) {
+    persistAuthSession(nextAuthSession);
+    setAuthSession(nextAuthSession);
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -89,8 +93,7 @@ export default function RegisterPage() {
         password
       });
 
-      persistAuthSession(nextAuthSession);
-      setAuthSession(nextAuthSession);
+      handleAuthSuccess(nextAuthSession);
     } catch (error) {
       setSubmissionError(
         resolveAuthErrorMessage(error, "Không thể tạo tài khoản trong lúc này.")
@@ -104,11 +107,11 @@ export default function RegisterPage() {
     <AuthShell
       activeTab="register"
       eyebrow="Tạo tài khoản"
-      title="Tạo tài khoản khách hàng để lưu hồ sơ, nhận ưu đãi và theo dõi hành trình thuận tiện hơn."
-      description="Tài khoản Vietnam Airlines phù hợp với hành khách thường xuyên bay nội địa, cần lưu thông tin liên hệ, hồ sơ hành khách và các ưu đãi cá nhân. Bạn vẫn có thể xem website với vai trò khách nếu chưa muốn đăng ký ngay."
+      title="Tạo tài khoản khách hàng để lưu hồ sơ và theo dõi hành trình thuận tiện hơn."
+      description="Tài khoản Vietnam Airlines phù hợp với hành khách thường xuyên bay nội địa, cần lưu thông tin liên hệ, hồ sơ hành khách và các cập nhật trước ngày khởi hành. Bạn vẫn có thể xem website với vai trò khách nếu chưa muốn đăng ký ngay."
       stats={registerStats}
       sideTitle="Tạo nền tảng cho những lần đặt vé tiếp theo"
-      sideDescription="Ngay từ bước đăng ký, hệ thống sẽ gợi ý mật khẩu an toàn, giúp chuẩn bị hồ sơ khách hàng gọn gàng và hạn chế rủi ro khi cần khôi phục tài khoản."
+      sideDescription="Ngay từ bước đăng ký, bạn sẽ được gợi ý mật khẩu an toàn để chuẩn bị hồ sơ khách hàng gọn gàng và giảm rủi ro khi cần khôi phục tài khoản."
       trustPoints={registerTrustPoints}
       supportItems={registerSupportItems}
     >
@@ -129,7 +132,7 @@ export default function RegisterPage() {
           }
           label={
             isPrepared
-              ? "Đã tạo phiên"
+              ? "Sẵn sàng sử dụng"
               : isSubmitting
                 ? "Đang tạo tài khoản"
                 : isFormValid
@@ -144,7 +147,7 @@ export default function RegisterPage() {
           <StatusChip tone="success" label="Tạo tài khoản thành công" />
           <h3>Xin chào {authSession.user.displayName}, tài khoản đã sẵn sàng</h3>
           <p>
-            Phiên đăng nhập đã được lưu trên thiết bị này. Bạn có thể vào ngay khu vực
+            Thông tin đăng nhập đã được lưu trên thiết bị này. Bạn có thể vào ngay khu vực
             tài khoản để quản lý hồ sơ hành khách, theo dõi hành trình và tiếp tục các
             bước sau khi mua vé.
           </p>
@@ -159,11 +162,6 @@ export default function RegisterPage() {
         </article>
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
-          <AuthGooglePlaceholder
-            buttonLabel="Tạo tài khoản với Google"
-            helperText="Lựa chọn đăng ký bằng Google đã có vị trí sẵn trên giao diện để tích hợp ở bước tiếp theo. Trước mắt bạn vẫn tạo tài khoản bằng email và mật khẩu."
-          />
-
           <div className="auth-field-grid auth-field-grid-double">
             <label className="field auth-field">
               <span>Họ và tên</span>
@@ -181,7 +179,7 @@ export default function RegisterPage() {
               <span>Email đăng ký</span>
               <input
                 type="email"
-                placeholder="khachhang@vietnam-airlines.vn"
+                placeholder="tenban@gmail.com"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

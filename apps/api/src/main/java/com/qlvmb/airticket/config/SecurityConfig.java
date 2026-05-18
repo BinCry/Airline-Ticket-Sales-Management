@@ -3,6 +3,7 @@ package com.qlvmb.airticket.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qlvmb.airticket.domain.dto.ApiErrorResponse;
 import com.qlvmb.airticket.security.JwtAuthenticationFilter;
+import com.qlvmb.airticket.security.PermissionCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -67,9 +68,11 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers("/error").permitAll()
             .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/meta/health").permitAll()
             .requestMatchers(
                 HttpMethod.GET,
                 "/api/flights/search",
+                "/api/flights/status",
                 "/api/airports",
                 "/api/cms/homepage",
                 "/api/bookings/manage/*"
@@ -77,19 +80,26 @@ public class SecurityConfig {
             .requestMatchers(
                 HttpMethod.POST,
                 "/api/bookings/holds",
+                "/api/bookings/lookup/request-otp",
+                "/api/bookings/lookup/verify-otp",
                 "/api/bookings/*/payments/session",
                 "/api/bookings/*/refund-request",
                 "/api/payments/callback",
+                "/api/payments/webhooks/sepay",
                 "/api/check-in/complete"
             ).permitAll()
-            .requestMatchers("/api/backoffice/operations/**", "/api/admin/**")
-            .hasRole("OPERATIONS_STAFF")
-            .requestMatchers(
-                "/api/backoffice/sales/**",
-                "/api/support/**",
-                "/api/backoffice/finance/**",
-                "/api/backoffice/cms/**"
-            ).hasRole("CUSTOMER_SUPPORT")
+            .requestMatchers("/api/backoffice/operations/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_OPERATIONS)
+            .requestMatchers("/api/admin/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_ADMIN)
+            .requestMatchers("/api/backoffice/sales/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_SALES)
+            .requestMatchers("/api/support/**", "/api/backoffice/support/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_SUPPORT)
+            .requestMatchers("/api/backoffice/finance/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_FINANCE)
+            .requestMatchers("/api/backoffice/cms/**")
+            .hasAuthority(PermissionCode.BACKOFFICE_CMS)
             .requestMatchers("/api/me/**", "/api/customers/**").authenticated()
             .anyRequest().authenticated()
         )

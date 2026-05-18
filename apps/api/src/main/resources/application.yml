@@ -56,6 +56,17 @@ app:
   mail:
     enabled: ${APP_MAIL_ENABLED:false}
     from-email: ${APP_MAIL_FROM_EMAIL:${SPRING_MAIL_USERNAME:}}
+  payment:
+    sepay:
+      token: ${APP_PAYMENT_SEPAY_TOKEN:}
+      bank-account-id: ${APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID:}
+      webhook-api-key: ${APP_PAYMENT_SEPAY_WEBHOOK_API_KEY:}
+      bank-name: ${APP_PAYMENT_SEPAY_BANK_NAME:BIDV}
+      account-number: ${APP_PAYMENT_SEPAY_ACCOUNT_NUMBER:}
+      account-holder-name: ${APP_PAYMENT_SEPAY_ACCOUNT_HOLDER_NAME:}
+      order-duration-seconds: ${APP_PAYMENT_SEPAY_ORDER_DURATION_SECONDS:900}
+  upload:
+    avatar-dir: ${APP_UPLOAD_AVATAR_DIR:uploads/avatars}
 
 logging:
   level:

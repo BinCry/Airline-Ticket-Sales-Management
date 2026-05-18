@@ -23,8 +23,8 @@ public class FlightSearchController {
   public FlightSearchResponse searchFlights(
       @RequestParam(defaultValue = "SGN") String from,
       @RequestParam(defaultValue = "HAN") String to,
-      @RequestParam(defaultValue = "2026-03-20") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
+      @RequestParam(defaultValue = "2026-05-23") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate departureDate,
+      @RequestParam(defaultValue = "2026-05-26") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate returnDate,
       @RequestParam(defaultValue = "round_trip") String tripType,
       @RequestParam(required = false) String fareFamily,
       @RequestParam(defaultValue = "1") int adultCount,

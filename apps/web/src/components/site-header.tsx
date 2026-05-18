@@ -40,16 +40,33 @@ export function SiteHeader() {
 
   const accountDisplayName = authSession?.user.displayName ?? null;
   const primaryRole = authSession?.user.roles[0] ?? null;
+  const isStaffRole =
+    primaryRole === "customer_support" || primaryRole === "operations_staff";
+  const shortStaffLabelByRole: Record<string, string> = {
+    customer_support: "CSKH",
+    operations_staff: "Vận hành"
+  };
   const primaryRoleLabel =
     primaryRole && primaryRole in ROLE_LABELS
       ? ROLE_LABELS[primaryRole as keyof typeof ROLE_LABELS]
       : null;
-  const roles = authSession?.user.roles ?? [];
-  const navigationLinks = buildMainNavigation(roles);
-  const canOpenBackoffice = hasAnyBackofficeAccess(roles);
+  const shortStaffLabel =
+    primaryRole && primaryRole in shortStaffLabelByRole
+      ? shortStaffLabelByRole[primaryRole]
+      : null;
+  const accountButtonLabel =
+    accountDisplayName
+      ? (isStaffRole ? (shortStaffLabel ?? primaryRoleLabel ?? accountDisplayName) : accountDisplayName)
+      : null;
+  const permissions = authSession?.user.permissions ?? [];
+  const canOpenBackoffice = hasAnyBackofficeAccess(permissions);
+  const navigationLinks = buildMainNavigation(permissions).filter(
+    (link) => !(canOpenBackoffice && link.href === "/backoffice")
+  );
+  const headerClassName = isStaffRole ? "site-header site-header-staff" : "site-header";
 
   return (
-    <header className="site-header">
+    <header className={headerClassName}>
       <div className="topbar">
         <div className="container topbar-row">
           <div className="topbar-badges">
@@ -69,73 +86,19 @@ export function SiteHeader() {
         </div>
       </div>
       <div className="container nav-row">
-        <div className="nav-row-primary">
-          <Link href="/" className="brand">
-            <span className="brand-logo">
-              <Image
-                src="/images/logo-vietnamairlines.jpg"
-                alt="Logo Vietnam Airlines"
-                width={1086}
-                height={159}
-                sizes="(max-width: 640px) 248px, 360px"
-                unoptimized
-                priority
-              />
-            </span>
-          </Link>
-          <div className="nav-row-actions">
-            <div className="nav-meta">
-              <span>Trung tâm hỗ trợ</span>
-              <strong>1900 6868</strong>
-            </div>
-            {accountDisplayName ? (
-              <Link
-                href="/account"
-                className="button button-secondary nav-action-button"
-              >
-                {accountDisplayName}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="button button-secondary nav-action-button"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  href="/register"
-                  className="button button-secondary nav-action-button"
-                >
-                  Tạo tài khoản
-                </Link>
-              </>
-            )}
-            {canOpenBackoffice ? (
-              <Link
-                href="/backoffice"
-                className="button button-secondary nav-action-button"
-              >
-                Backoffice
-              </Link>
-            ) : null}
-            <Link
-              href="/search"
-              className="button button-primary nav-action-button"
-            >
-              Đặt vé
-            </Link>
-            <button
-              type="button"
-              className="mobile-menu-button"
-              onClick={() => setIsMobileOpen((value) => !value)}
-              aria-expanded={isMobileOpen}
-              aria-label="Mở menu điều hướng"
-            >
-              {isMobileOpen ? "Đóng" : "Menu"}
-            </button>
-          </div>
-        </div>
+        <Link href="/" className="brand">
+          <span className="brand-logo">
+            <Image
+              src="/images/logo-vietnamairlines.jpg"
+              alt="Logo Vietnam Airlines"
+              width={1086}
+              height={159}
+              sizes="(max-width: 640px) 248px, 280px"
+              unoptimized
+              priority
+            />
+          </span>
+        </Link>
         <div className={isMobileOpen ? "nav-cluster mobile-open" : "nav-cluster"}>
           <nav className="main-nav" aria-label="Điều hướng chính">
             {navigationLinks.map((link) => {
@@ -166,9 +129,13 @@ export function SiteHeader() {
                 <span>Trung tâm hỗ trợ</span>
                 <strong>1900 6868</strong>
               </div>
-              {accountDisplayName ? (
-                <Link href="/account" className="button button-secondary">
-                  {accountDisplayName}
+              {accountButtonLabel ? (
+                <Link
+                  href="/account"
+                  className="button button-secondary nav-account-button"
+                  title={accountButtonLabel}
+                >
+                  {accountButtonLabel}
                 </Link>
               ) : (
                 <>
@@ -190,6 +157,59 @@ export function SiteHeader() {
               </Link>
             </div>
           </div>
+        </div>
+        <div className="nav-row-actions">
+          <div className="nav-meta">
+            <span>Trung tâm hỗ trợ</span>
+            <strong>1900 6868</strong>
+          </div>
+          {accountButtonLabel ? (
+            <Link
+              href="/account"
+              className="button button-secondary nav-action-button nav-account-button"
+              title={accountButtonLabel}
+            >
+              {accountButtonLabel}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="button button-secondary nav-action-button"
+              >
+                Đăng nhập
+              </Link>
+              <Link
+                href="/register"
+                className="button button-secondary nav-action-button"
+              >
+                Tạo tài khoản
+              </Link>
+            </>
+          )}
+          {canOpenBackoffice ? (
+            <Link
+              href="/backoffice"
+              className="button button-secondary nav-action-button"
+            >
+              Backoffice
+            </Link>
+          ) : null}
+          <Link
+            href="/search"
+            className="button button-primary nav-action-button"
+          >
+            Đặt vé
+          </Link>
+          <button
+            type="button"
+            className="mobile-menu-button"
+            onClick={() => setIsMobileOpen((value) => !value)}
+            aria-expanded={isMobileOpen}
+            aria-label="Mở menu điều hướng"
+          >
+            {isMobileOpen ? "Đóng" : "Menu"}
+          </button>
         </div>
       </div>
     </header>

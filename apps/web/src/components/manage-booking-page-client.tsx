@@ -5,12 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { SectionHeading } from "@/components/section-heading";
-import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import { createRefundRequest } from "@/lib/booking-api";
 import { coTheLamThuTuc, coTheYeuCauHoanVe } from "@/lib/booking-self-service";
 import { formatCurrency } from "@/lib/format";
-import { fetchManageBooking, type ManageBookingOverview } from "@/lib/manage-booking-api";
+import {
+  fetchManageBooking,
+  requestBookingLookupOtp,
+  verifyBookingLookupOtp,
+  type ManageBookingOverview
+} from "@/lib/manage-booking-api";
 import { pushToast } from "@/lib/toast";
 
 type LookupState = "idle" | "loading" | "error" | "success";
@@ -94,6 +99,11 @@ function formatDateTime(value: string | null) {
 export function ManageBookingPageClient() {
   const searchParams = useSearchParams();
   const [bookingCode, setBookingCode] = useState("");
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupOtp, setLookupOtp] = useState("");
+  const [lookupToken, setLookupToken] = useState<string | null>(null);
+  const [isSendingLookupOtp, setIsSendingLookupOtp] = useState(false);
+  const [isVerifyingLookupOtp, setIsVerifyingLookupOtp] = useState(false);
   const [lookupState, setLookupState] = useState<LookupState>("idle");
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [bookingOverview, setBookingOverview] = useState<ManageBookingOverview | null>(null);
@@ -108,14 +118,20 @@ export function ManageBookingPageClient() {
 
   useEffect(() => {
     const bookingCodeFromQuery = searchParams.get("bookingCode")?.trim().toUpperCase() ?? "";
+    const emailFromQuery = searchParams.get("email")?.trim().toLowerCase() ?? "";
     if (!bookingCodeFromQuery) {
       return;
     }
 
     setBookingCode(bookingCodeFromQuery);
-    void traCuuBooking(bookingCodeFromQuery);
+    if (emailFromQuery) {
+      setLookupEmail(emailFromQuery);
+    }
+    if (accessToken) {
+      void traCuuBooking(bookingCodeFromQuery);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, accessToken]);
 
   async function traCuuBooking(nextBookingCode: string) {
     setLookupState("loading");
@@ -123,12 +139,84 @@ export function ManageBookingPageClient() {
     setBookingOverview(null);
 
     try {
-      const nextBookingOverview = await fetchManageBooking(nextBookingCode, accessToken);
+      const nextBookingOverview = await fetchManageBooking(
+        nextBookingCode,
+        accessToken,
+        accessToken ? undefined : lookupToken ?? undefined
+      );
       setBookingOverview(nextBookingOverview);
       setLookupState("success");
     } catch (error) {
+      if (!accessToken && error instanceof ApiClientError && error.status === 401) {
+        setLookupToken(null);
+      }
       setLookupError(resolveApiClientErrorMessage(error, "Không thể tra cứu đặt chỗ lúc này."));
       setLookupState("error");
+    }
+  }
+
+  async function handleRequestLookupOtp(normalizedBookingCode: string) {
+    if (isSendingLookupOtp || accessToken) {
+      return;
+    }
+
+    const normalizedEmail = lookupEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setLookupError("Vui lòng nhập email liên hệ của booking trước khi yêu cầu OTP.");
+      setLookupState("error");
+      return;
+    }
+
+    setIsSendingLookupOtp(true);
+    setLookupError(null);
+    try {
+      await requestBookingLookupOtp({
+        bookingCode: normalizedBookingCode,
+        email: normalizedEmail
+      });
+      setLookupState("idle");
+      pushToast({
+        title: "Đã gửi OTP",
+        message: "Vui lòng kiểm tra email và nhập mã OTP tra cứu.",
+        tone: "success"
+      });
+    } catch (error) {
+      setLookupError(resolveApiClientErrorMessage(error, "Không thể gửi OTP tra cứu lúc này."));
+      setLookupState("error");
+    } finally {
+      setIsSendingLookupOtp(false);
+    }
+  }
+
+  async function handleVerifyLookupOtp(normalizedBookingCode: string) {
+    if (isVerifyingLookupOtp || accessToken) {
+      return;
+    }
+
+    const normalizedEmail = lookupEmail.trim().toLowerCase();
+    const normalizedOtp = lookupOtp.trim();
+    if (!normalizedEmail || normalizedOtp.length !== 6) {
+      setLookupError("Vui lòng nhập đầy đủ email và mã OTP 6 số.");
+      setLookupState("error");
+      return;
+    }
+
+    setIsVerifyingLookupOtp(true);
+    setLookupError(null);
+    try {
+      const verified = await verifyBookingLookupOtp({
+        bookingCode: normalizedBookingCode,
+        email: normalizedEmail,
+        otp: normalizedOtp
+      });
+      setLookupToken(verified.lookupToken);
+      setLookupOtp("");
+      await traCuuBooking(normalizedBookingCode);
+    } catch (error) {
+      setLookupError(resolveApiClientErrorMessage(error, "Không thể xác minh OTP tra cứu."));
+      setLookupState("error");
+    } finally {
+      setIsVerifyingLookupOtp(false);
     }
   }
 
@@ -137,6 +225,11 @@ export function ManageBookingPageClient() {
 
     const normalizedBookingCode = bookingCode.trim().toUpperCase();
     if (!normalizedBookingCode || lookupState === "loading") {
+      return;
+    }
+
+    if (!accessToken && !lookupToken) {
+      await handleRequestLookupOtp(normalizedBookingCode);
       return;
     }
 
@@ -156,7 +249,8 @@ export function ManageBookingPageClient() {
         {
           reason: refundReason.trim()
         },
-        accessToken
+        accessToken,
+        accessToken ? undefined : lookupToken ?? undefined
       );
 
       setBookingOverview(nextBookingOverview);
@@ -179,9 +273,9 @@ export function ManageBookingPageClient() {
         <div className="page-hero-card">
           <div>
             <span className="section-eyebrow">Quản lý đặt chỗ</span>
-            <h1 className="page-title">Tra cứu PNR thật, theo dõi vé và tự phục vụ sau bán.</h1>
+            <h1 className="page-title">Tra cứu mã đặt chỗ, theo dõi vé và xử lý nhu cầu sau chuyến bay.</h1>
             <p className="page-hero-copy">
-              Trang này đọc trực tiếp dữ liệu từ booking, ticket, boarding pass và refund request trên backend.
+              Nhập mã đặt chỗ để xem trạng thái thanh toán, vé, thẻ lên máy bay và yêu cầu hoàn vé.
             </p>
           </div>
           <div className="booking-summary-card">
@@ -190,11 +284,11 @@ export function ManageBookingPageClient() {
             <p>
               {bookingOverview
                 ? `${formatBookingStatus(bookingOverview.status)} • ${formatPaymentStatus(bookingOverview.paymentStatus)}`
-                : "Nhập mã đặt chỗ để xem dữ liệu thật từ API."}
+                : "Nhập mã đặt chỗ để xem thông tin hành trình."}
             </p>
             <div className="assurance-row">
-              <span className="assurance-chip">Không dùng dữ liệu hardcode</span>
-              <span className="assurance-chip">Lỗi hiển thị nguyên văn từ backend</span>
+              <span className="assurance-chip">Theo dõi trạng thái vé</span>
+              <span className="assurance-chip">Tự gửi yêu cầu hoàn vé</span>
             </div>
           </div>
         </div>
@@ -206,11 +300,50 @@ export function ManageBookingPageClient() {
               <span>Mã đặt chỗ</span>
               <input
                 value={bookingCode}
-                onChange={(event) => setBookingCode(event.target.value)}
+                onChange={(event) => {
+                  setBookingCode(event.target.value);
+                  if (!accessToken) {
+                    setLookupToken(null);
+                    setLookupOtp("");
+                  }
+                }}
                 placeholder="Ví dụ: A6C2P1"
               />
-              <small>Guest flow vẫn có thể tra cứu trực tiếp theo PNR.</small>
+              <small>Bạn có thể tra cứu mà không cần đăng nhập.</small>
             </label>
+            {!accessToken ? (
+              <>
+                <label className="field">
+                  <span>Email liên hệ booking</span>
+                  <input
+                    type="email"
+                    value={lookupEmail}
+                    onChange={(event) => {
+                      setLookupEmail(event.target.value);
+                      setLookupToken(null);
+                    }}
+                    placeholder="tenban@gmail.com"
+                    autoComplete="email"
+                  />
+                  <small>Dùng đúng email liên hệ đã lưu trong booking.</small>
+                </label>
+                <label className="field">
+                  <span>Mã OTP tra cứu</span>
+                  <input
+                    value={lookupOtp}
+                    onChange={(event) => setLookupOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Nhập 6 số OTP"
+                    inputMode="numeric"
+                    maxLength={6}
+                  />
+                  <small>
+                    {lookupToken
+                      ? "Phiên OTP đã hợp lệ. Bạn có thể tra cứu trực tiếp."
+                      : "Nhấn tra cứu để nhận OTP, sau đó xác minh trước khi xem thông tin."}
+                  </small>
+                </label>
+              </>
+            ) : null}
             <div className="field field-inline">
               <span>Trạng thái tra cứu</span>
               <div className="surface-card">
@@ -227,14 +360,28 @@ export function ManageBookingPageClient() {
                   {lookupState === "idle"
                     ? "Nhập mã đặt chỗ để bắt đầu tra cứu."
                     : lookupState === "loading"
-                      ? "Đang đồng bộ dữ liệu booking thật từ backend."
+                      ? "Đang tải thông tin đặt chỗ."
                       : lookupState === "success"
-                        ? "Dữ liệu thật đã sẵn sàng để kiểm tra."
+                        ? "Thông tin đặt chỗ đã sẵn sàng để kiểm tra."
                         : lookupError}
                 </p>
               </div>
             </div>
-            <button type="submit" className="button button-primary" disabled={lookupState === "loading"}>
+            {!accessToken ? (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
+                disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
+              >
+                {isVerifyingLookupOtp ? "Đang xác minh..." : "Xác minh OTP"}
+              </button>
+            ) : null}
+            <button
+              type="submit"
+              className="button button-primary"
+              disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
+            >
               {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
             </button>
           </div>
@@ -275,13 +422,34 @@ export function ManageBookingPageClient() {
                     <strong>{formatCurrency(bookingOverview.priceSummary.totalAmount)}</strong>
                   </div>
                 </div>
+                {(bookingOverview.priceSummary.discountAmount > 0 || bookingOverview.priceSummary.appliedVoucherCode) ? (
+                  <div className="result-grid result-grid-rich">
+                    <div>
+                      <span>Giảm từ voucher</span>
+                      <strong>{formatCurrency(bookingOverview.priceSummary.discountAmount)}</strong>
+                    </div>
+                    <div>
+                      <span>Mã voucher</span>
+                      <strong>{bookingOverview.priceSummary.appliedVoucherCode ?? "Không có"}</strong>
+                    </div>
+                    <div>
+                      <span>Tổng trước giảm</span>
+                      <strong>
+                        {formatCurrency(
+                          bookingOverview.priceSummary.baseAmount +
+                            bookingOverview.priceSummary.ancillaryAmount
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
               </article>
 
               <article className="surface-card">
                 <SectionHeading
                   eyebrow="Hành trình"
                   title="Chi tiết chuyến bay"
-                  description="Thông tin này lấy trực tiếp từ snapshot booking segment đã lưu khi giữ chỗ."
+                  description="Kiểm tra kỹ thời gian khởi hành, điểm đi, điểm đến và gói giá đã chọn."
                 />
                 <div className="stack-list">
                   {bookingOverview.segments.map((segment, index) => (
@@ -308,6 +476,22 @@ export function ManageBookingPageClient() {
                           <strong>{formatCurrency(segment.subtotalAmount)}</strong>
                         </div>
                       </div>
+                      {segment.statusLabel || segment.gate || segment.note ? (
+                        <div className="result-grid result-grid-rich">
+                          <div>
+                            <span>Trạng thái chuyến bay</span>
+                            <strong>{segment.statusLabel ?? "Theo lịch"}</strong>
+                          </div>
+                          <div>
+                            <span>Cửa ra tàu</span>
+                            <strong>{segment.gate ?? "Chờ cập nhật"}</strong>
+                          </div>
+                          <div>
+                            <span>Ghi chú vận hành</span>
+                            <strong>{segment.note ?? "Chưa có ghi chú"}</strong>
+                          </div>
+                        </div>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -317,7 +501,7 @@ export function ManageBookingPageClient() {
                 <SectionHeading
                   eyebrow="Hành khách"
                   title="Danh sách hành khách"
-                  description="Danh sách này được lấy trực tiếp từ bảng booking_passenger."
+                  description="Thông tin hành khách dùng để đối chiếu khi xuất vé và làm thủ tục."
                 />
                 <div className="stack-list">
                   {bookingOverview.passengers.map((passenger, index) => (
@@ -354,12 +538,20 @@ export function ManageBookingPageClient() {
                 <SectionHeading
                   eyebrow="Tự phục vụ"
                   title="Thao tác tiếp theo"
-                  description="CTA được mở theo đúng trạng thái vé thật từ backend."
+                  description="Các thao tác chỉ mở khi mã đặt chỗ đủ điều kiện xử lý."
                 />
                 <div className="booking-action-list">
                   {coTheLamThuTuc(bookingOverview) ? (
                     <Link
-                      href={`/check-in?bookingCode=${encodeURIComponent(bookingOverview.bookingCode)}`}
+                      href={`/check-in?bookingCode=${encodeURIComponent(bookingOverview.bookingCode)}${
+                        !accessToken && lookupEmail.trim()
+                          ? `&email=${encodeURIComponent(lookupEmail.trim())}`
+                          : ""
+                      }${
+                        !accessToken && lookupToken
+                          ? `&lookupToken=${encodeURIComponent(lookupToken)}`
+                          : ""
+                      }`}
                       className="button button-primary"
                     >
                       Làm thủ tục Check-in
@@ -377,7 +569,7 @@ export function ManageBookingPageClient() {
                   {bookingOverview.status === "refund_pending" ? (
                     <article className="surface-card booking-inline-info">
                       <strong>Đang chờ duyệt</strong>
-                      <p>Yêu cầu hoàn vé của bạn đã được ghi nhận và đang chờ backoffice xử lý.</p>
+                      <p>Yêu cầu hoàn vé của bạn đã được ghi nhận và đang chờ nhân sự xử lý.</p>
                     </article>
                   ) : null}
                   {!coTheLamThuTuc(bookingOverview) && !coTheYeuCauHoanVe(bookingOverview) && bookingOverview.status !== "refund_pending" ? (
@@ -487,7 +679,7 @@ export function ManageBookingPageClient() {
             </h3>
             <p>
               {lookupState === "idle"
-                ? "Nhập mã đặt chỗ và gửi yêu cầu để xem dữ liệu thật từ backend."
+                ? "Nhập mã đặt chỗ và gửi yêu cầu để xem thông tin hành trình."
                 : lookupState === "loading"
                   ? "Yêu cầu tra cứu booking đang được xử lý."
                   : lookupError}

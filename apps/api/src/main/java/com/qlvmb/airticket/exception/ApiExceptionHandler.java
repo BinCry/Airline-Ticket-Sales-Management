@@ -126,11 +126,7 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
-    String message = exception.getMessage();
-    if (message == null || message.isBlank()) {
-      message = SYSTEM_UNAVAILABLE_MESSAGE;
-    }
-    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, message, Map.of());
+    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, SYSTEM_UNAVAILABLE_MESSAGE, Map.of());
   }
 
   @ExceptionHandler(Exception.class)
@@ -206,6 +202,7 @@ public class ApiExceptionHandler {
       case "email" -> "Email";
       case "phone" -> "S\u1ed1 \u0111i\u1ec7n tho\u1ea1i";
       case "password" -> "M\u1eadt kh\u1ea9u";
+      case "currentPassword" -> "M\u1eadt kh\u1ea9u hi\u1ec7n t\u1ea1i";
       case "newPassword" -> "M\u1eadt kh\u1ea9u m\u1edbi";
       case "refreshToken" -> "M\u00e3 phi\u00ean \u0111\u0103ng nh\u1eadp";
       case "otp" -> "M\u00e3 OTP";

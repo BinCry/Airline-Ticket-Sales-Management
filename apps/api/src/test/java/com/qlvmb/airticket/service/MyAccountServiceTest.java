@@ -13,19 +13,23 @@ import com.qlvmb.airticket.domain.dto.UpdateMyProfileRequest;
 import com.qlvmb.airticket.domain.dto.UpsertMyPassengerRequest;
 import com.qlvmb.airticket.domain.entity.SavedPassengerEntity;
 import com.qlvmb.airticket.domain.entity.UserAccountEntity;
+import com.qlvmb.airticket.repository.RefreshSessionRepository;
 import com.qlvmb.airticket.repository.SavedPassengerRepository;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class MyAccountServiceTest {
@@ -36,8 +40,31 @@ class MyAccountServiceTest {
   @Mock
   private SavedPassengerRepository savedPassengerRepository;
 
-  @InjectMocks
+  @Mock
+  private RefreshSessionRepository refreshSessionRepository;
+
+  @Mock
+  private PasswordEncoder passwordEncoder;
+
+  @Mock
+  private PasswordPolicyService passwordPolicyService;
+
+  @TempDir
+  private Path avatarDir;
+
   private MyAccountService myAccountService;
+
+  @BeforeEach
+  void setUp() {
+    myAccountService = new MyAccountService(
+        userAccountRepository,
+        savedPassengerRepository,
+        refreshSessionRepository,
+        passwordEncoder,
+        passwordPolicyService,
+        avatarDir.toString()
+    );
+  }
 
   @Test
   void updateMyProfile_shouldTrimDisplayNameAndClearBlankPhone() {

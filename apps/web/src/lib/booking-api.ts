@@ -1,4 +1,5 @@
 import type {
+  ApiApplyVoucherRequest,
   ApiBoardingPass,
   ApiBookingHoldResponse,
   ApiCheckinCompleteRequest,
@@ -11,6 +12,8 @@ import type {
 } from "@qlvmb/shared-types";
 
 import { ApiClientError, requestApi } from "@/lib/api-client";
+
+const BOOKING_LOOKUP_TOKEN_HEADER = "X-Booking-Lookup-Token";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -51,6 +54,7 @@ function isManageOverview(value: unknown): value is ApiManageBookingOverview {
     Array.isArray(value.segments) &&
     Array.isArray(value.passengers) &&
     Array.isArray(value.ancillaries) &&
+    Array.isArray(value.seatSelections) &&
     Array.isArray(value.tickets) &&
     Array.isArray(value.boardingPasses) &&
     (value.refundRequest === null || isObject(value.refundRequest)) &&
@@ -67,9 +71,20 @@ function isPaymentSessionResponse(value: unknown): value is ApiPaymentSessionRes
 
   return (
     typeof value.bookingCode === "string" &&
-    typeof value.paymentUrl === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.sessionMode === "string" &&
+    (value.paymentUrl === null || typeof value.paymentUrl === "string") &&
     typeof value.paymentStatus === "string" &&
-    typeof value.expiresAt === "string"
+    typeof value.expiresAt === "string" &&
+    typeof value.referenceCode === "string" &&
+    typeof value.amount === "number" &&
+    (value.bankName === null || typeof value.bankName === "string") &&
+    (value.accountNumber === null || typeof value.accountNumber === "string") &&
+    (value.accountHolderName === null || typeof value.accountHolderName === "string") &&
+    (value.qrCodeUrl === null || typeof value.qrCodeUrl === "string") &&
+    (value.qrCodeDataUrl === null || typeof value.qrCodeDataUrl === "string") &&
+    typeof value.discountAmount === "number" &&
+    (value.appliedVoucherCode === null || typeof value.appliedVoucherCode === "string")
   );
 }
 
@@ -143,7 +158,29 @@ export async function createPaymentSession(
   return response;
 }
 
-export async function submitSandboxPayment(
+export async function applyVoucherToBooking(
+  bookingCode: string,
+  payload: ApiApplyVoucherRequest,
+  accessToken?: string
+): Promise<ApiManageBookingOverview> {
+  const response = await requestApi<unknown>(
+    `/api/bookings/${encodeURIComponent(bookingCode.trim())}/apply-voucher`,
+    {
+      accessToken,
+      fallbackMessage: "Không thể áp voucher cho booking này lúc này.",
+      json: payload,
+      method: "POST"
+    }
+  );
+
+  if (!isManageOverview(response)) {
+    throw new ApiClientError("Dữ liệu voucher trả về không hợp lệ.", 500);
+  }
+
+  return response;
+}
+
+export async function confirmLocalPayment(
   payload: ApiPaymentCallbackRequest,
   accessToken?: string
 ): Promise<ApiManageBookingOverview> {
@@ -161,12 +198,20 @@ export async function submitSandboxPayment(
   return response;
 }
 
+export const submitSandboxPayment = confirmLocalPayment;
+
 export async function completeCheckin(
   payload: ApiCheckinCompleteRequest,
-  accessToken?: string
+  accessToken?: string,
+  lookupToken?: string
 ): Promise<ApiCheckinCompleteResponse> {
   const response = await requestApi<unknown>("/api/check-in/complete", {
     accessToken,
+    headers: lookupToken
+      ? {
+          [BOOKING_LOOKUP_TOKEN_HEADER]: lookupToken
+        }
+      : undefined,
     fallbackMessage: "Kh\u00f4ng th\u1ec3 ho\u00e0n t\u1ea5t l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn l\u00fac n\u00e0y.",
     json: payload,
     method: "POST"
@@ -182,12 +227,18 @@ export async function completeCheckin(
 export async function createRefundRequest(
   bookingCode: string,
   payload: ApiRefundRequest,
-  accessToken?: string
+  accessToken?: string,
+  lookupToken?: string
 ): Promise<ApiManageBookingOverview> {
   const response = await requestApi<unknown>(
     `/api/bookings/${encodeURIComponent(bookingCode.trim())}/refund-request`,
     {
       accessToken,
+      headers: lookupToken
+        ? {
+            [BOOKING_LOOKUP_TOKEN_HEADER]: lookupToken
+          }
+        : undefined,
       fallbackMessage: "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 l\u00fac n\u00e0y.",
       json: payload,
       method: "POST"

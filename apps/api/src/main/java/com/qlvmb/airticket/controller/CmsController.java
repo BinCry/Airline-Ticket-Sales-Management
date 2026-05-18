@@ -1,7 +1,7 @@
 package com.qlvmb.airticket.controller;
 
 import com.qlvmb.airticket.domain.dto.CmsHomepageResponse;
-import com.qlvmb.airticket.service.DemoDataService;
+import com.qlvmb.airticket.service.CmsHomepageService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/cms")
 public class CmsController {
 
-  private final DemoDataService demoDataService;
+  private final CmsHomepageService cmsHomepageService;
 
-  public CmsController(DemoDataService demoDataService) {
-    this.demoDataService = demoDataService;
+  public CmsController(CmsHomepageService cmsHomepageService) {
+    this.cmsHomepageService = cmsHomepageService;
   }
 
   @GetMapping("/homepage")
   public CmsHomepageResponse getHomepageContent() {
-    return demoDataService.getCmsHomepage();
+    return cmsHomepageService.getHomepageContent();
   }
 }

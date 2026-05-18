@@ -37,6 +37,21 @@ public class FlightFareInventoryEntity {
   protected FlightFareInventoryEntity() {
   }
 
+  public static FlightFareInventoryEntity create(
+      FlightEntity flight,
+      String fareFamily,
+      int totalSeats,
+      long price
+  ) {
+    FlightFareInventoryEntity inventory = new FlightFareInventoryEntity();
+    inventory.flight = flight;
+    inventory.fareFamily = fareFamily;
+    inventory.totalSeats = totalSeats;
+    inventory.availableSeats = totalSeats;
+    inventory.price = price;
+    return inventory;
+  }
+
   public Long getId() {
     return id;
   }

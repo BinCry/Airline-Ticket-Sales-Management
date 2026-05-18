@@ -16,6 +16,7 @@ public record AuthSessionResponse(
       String email,
       String displayName,
       String phone,
+      String avatarUrl,
       boolean emailVerified,
       List<String> roles,
       List<String> permissions

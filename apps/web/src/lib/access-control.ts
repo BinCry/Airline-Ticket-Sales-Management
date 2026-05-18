@@ -29,38 +29,37 @@ export const BACKOFFICE_PERMISSION_BY_MODULE = {
 export type BackofficeModuleKey = keyof typeof BACKOFFICE_ROLE_BY_MODULE;
 
 export function canAccessBackofficeModule(
-  permissionsOrRoles: string[],
+  permissions: string[],
   moduleKey: BackofficeModuleKey
 ): boolean {
-  if (!Array.isArray(permissionsOrRoles) || permissionsOrRoles.length === 0) {
+  if (!Array.isArray(permissions) || permissions.length === 0) {
     return false;
   }
 
-  const requiredRole = BACKOFFICE_ROLE_BY_MODULE[moduleKey];
   const requiredPermission = BACKOFFICE_PERMISSION_BY_MODULE[moduleKey];
-  return (
-    permissionsOrRoles.includes(requiredRole) ||
-    permissionsOrRoles.includes(requiredPermission)
-  );
+  return permissions.includes(requiredPermission);
 }
 
 export function canAccessBackofficeModuleByRoles(
   roles: string[],
   moduleKey: BackofficeModuleKey
 ): boolean {
-  return canAccessBackofficeModule(roles, moduleKey);
+  const requiredRole = BACKOFFICE_ROLE_BY_MODULE[moduleKey];
+  return Array.isArray(roles) && roles.includes(requiredRole);
 }
 
 export function getAllowedBackofficeModulesByRoles(
   roles: string[]
 ): BackofficeModuleKey[] {
   return (Object.keys(BACKOFFICE_ROLE_BY_MODULE) as BackofficeModuleKey[]).filter(
-    (moduleKey) => canAccessBackofficeModule(roles, moduleKey)
+    (moduleKey) => canAccessBackofficeModuleByRoles(roles, moduleKey)
   );
 }
 
-export function hasAnyBackofficeAccess(roles: string[]): boolean {
-  return getAllowedBackofficeModulesByRoles(roles).length > 0;
+export function hasAnyBackofficeAccess(permissions: string[]): boolean {
+  return (Object.keys(BACKOFFICE_ROLE_BY_MODULE) as BackofficeModuleKey[]).some(
+    (moduleKey) => canAccessBackofficeModule(permissions, moduleKey)
+  );
 }
 
 export function sanitizeUserRoles(roles: unknown): string[] {
@@ -79,11 +78,7 @@ export function canAccessBackofficeModuleByPermissions(
   permissions: string[],
   moduleKey: BackofficeModuleKey
 ): boolean {
-  if (!Array.isArray(permissions) || permissions.length === 0) {
-    return false;
-  }
-
-  return permissions.includes(BACKOFFICE_PERMISSION_BY_MODULE[moduleKey]);
+  return canAccessBackofficeModule(permissions, moduleKey);
 }
 
 export function getAllowedBackofficeModulesByPermissions(

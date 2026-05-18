@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  fetchMyLoyalty,
   createMyPassenger,
   deleteMyPassenger,
   fetchMyPassengers,
   fetchMyProfile,
+  fetchMyVouchers,
+  uploadMyAvatar,
+  changeMyPassword,
   updateMyPassenger,
   updateMyProfile
 } from "@/lib/my-account-api";
@@ -45,6 +49,7 @@ describe("my-account-api", () => {
       email: "khach@example.com",
       displayName: "Khach Hang",
       phone: "0909123456",
+      avatarUrl: null,
       emailVerified: true,
       status: "active",
       roles: ["customer"]
@@ -59,6 +64,7 @@ describe("my-account-api", () => {
           email: "khach@example.com",
           displayName: "Khach Hang Moi",
           phone: "0911222333",
+          avatarUrl: "/uploads/avatars/101-test.jpg",
           emailVerified: true,
           status: "active",
           roles: ["customer"]
@@ -81,13 +87,76 @@ describe("my-account-api", () => {
       })
     ).resolves.toMatchObject({
       displayName: "Khach Hang Moi",
-      phone: "0911222333"
+      phone: "0911222333",
+      avatarUrl: "/uploads/avatars/101-test.jpg"
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/me/profile",
       expect.objectContaining({
         method: "PATCH"
+      })
+    );
+  });
+
+  it("doi mat khau profile qua backend", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 204
+      })
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(
+      changeMyPassword("token-password", {
+        currentPassword: "MatkhauCu!1",
+        newPassword: "MatkhauMoi!2"
+      })
+    ).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/me/change-password",
+      expect.objectContaining({
+        method: "POST"
+      })
+    );
+  });
+
+  it("cap nhat avatar profile bang multipart", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 101,
+          email: "khach@example.com",
+          displayName: "Khach Hang",
+          phone: "0909123456",
+          avatarUrl: "/uploads/avatars/101-test.jpg",
+          emailVerified: true,
+          status: "active",
+          roles: ["customer"]
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const avatar = new File(["avatar"], "avatar.jpg", { type: "image/jpeg" });
+
+    await expect(uploadMyAvatar("token-avatar", avatar)).resolves.toMatchObject({
+      avatarUrl: "/uploads/avatars/101-test.jpg"
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/me/avatar",
+      expect.objectContaining({
+        method: "POST"
       })
     );
   });
@@ -143,6 +212,85 @@ describe("my-account-api", () => {
         documentType: "CCCD",
         documentNumber: "079123456789",
         isPrimary: true
+      }
+    ]);
+  });
+
+  it("tai du lieu loyalty cua member tu backend", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          membershipTier: "Vang",
+          pointBalance: 12500,
+          lifetimePoints: 43200,
+          availableVoucherCount: 2,
+          recentEntries: [
+            {
+              entryType: "accrual",
+              pointsDelta: 2500,
+              balanceAfter: 12500,
+              bookingCode: "QC5004",
+              description: "Cong diem sau chuyen bay",
+              createdAt: "2026-05-10T03:20:00Z"
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchMyLoyalty("token-member")).resolves.toMatchObject({
+      membershipTier: "Vang",
+      pointBalance: 12500,
+      availableVoucherCount: 2
+    });
+  });
+
+  it("tai danh sach voucher cua member tu backend", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            voucherCode: "MEM52026",
+            title: "Voucher hoi vien",
+            description: "Giam 180000 cho chang noi dia",
+            discountAmount: 180000,
+            currency: "VND",
+            status: "AVAILABLE",
+            expiresAt: "2026-05-31T16:59:59Z",
+            usedAt: null,
+            bookingCode: null
+          }
+        ]),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchMyVouchers("token-member")).resolves.toEqual([
+      {
+        voucherCode: "MEM52026",
+        title: "Voucher hoi vien",
+        description: "Giam 180000 cho chang noi dia",
+        discountAmount: 180000,
+        currency: "VND",
+        status: "AVAILABLE",
+        expiresAt: "2026-05-31T16:59:59Z",
+        usedAt: null,
+        bookingCode: null
       }
     ]);
   });

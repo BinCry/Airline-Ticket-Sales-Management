@@ -8,8 +8,8 @@ function CheckInFallback() {
       <div className="container">
         <article className="surface-card booking-empty-card">
           <span className="section-eyebrow">Đang tải</span>
-          <h1 className="page-title">Đang chuẩn bị làm thủ tục trực tuyến</h1>
-          <p>Hệ thống đang đọc tham số PNR và tải dữ liệu ticket từ backend.</p>
+          <h1 className="page-title">Đang mở làm thủ tục trực tuyến</h1>
+          <p>Vui lòng chờ trong giây lát để nạp danh sách vé đủ điều kiện làm thủ tục.</p>
         </article>
       </div>
     </section>

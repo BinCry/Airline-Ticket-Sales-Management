@@ -113,6 +113,27 @@ class FinanceServiceTest {
     assertThat(response.get(1).bookingCode()).isEqualTo("A6C2P1");
   }
 
+  @Test
+  void hideResolvedRefund_shouldHideWhenRefundAlreadyProcessed() {
+    Fixture fixture = pendingRefundFixture();
+    fixture.refundRequest.markApproved(OffsetDateTime.now());
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    financeService.hideResolvedRefund(55L);
+
+    assertThat(fixture.refundRequest.isHidden()).isTrue();
+  }
+
+  @Test
+  void hideResolvedRefund_shouldRejectWhenPending() {
+    Fixture fixture = pendingRefundFixture();
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    assertThatThrownBy(() -> financeService.hideResolvedRefund(55L))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Yêu cầu hoàn vé đang chờ duyệt, chưa thể xóa khỏi danh sách.");
+  }
+
   private Fixture pendingRefundFixture() {
     return pendingRefundFixture("A6C2P1", 55L, OffsetDateTime.parse("2026-05-10T10:00:00+07:00"));
   }

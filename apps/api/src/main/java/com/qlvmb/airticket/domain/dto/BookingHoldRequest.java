@@ -15,11 +15,13 @@ public record BookingHoldRequest(
     @NotNull @Valid ContactRequest contact,
     @NotEmpty @Size(max = 9) List<@Valid PassengerRequest> passengers,
     @NotEmpty @Size(max = 2) List<@Valid SegmentRequest> segments,
-    List<@Valid AncillaryRequest> ancillaries
+    List<@Valid AncillaryRequest> ancillaries,
+    List<@Valid SeatSelectionRequest> seatSelections
 ) {
 
   public BookingHoldRequest {
     ancillaries = ancillaries == null ? List.of() : List.copyOf(ancillaries);
+    seatSelections = seatSelections == null ? List.of() : List.copyOf(seatSelections);
   }
 
   public record ContactRequest(
@@ -46,6 +48,13 @@ public record BookingHoldRequest(
   public record AncillaryRequest(
       @NotBlank String code,
       Integer quantity
+  ) {
+  }
+
+  public record SeatSelectionRequest(
+      @NotNull Long inventoryId,
+      @NotNull Integer passengerIndex,
+      @NotBlank String seatNumber
   ) {
   }
 }

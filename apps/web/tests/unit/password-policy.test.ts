@@ -9,7 +9,7 @@ describe("password-policy", () => {
   it("chấp nhận mật khẩu đáp ứng đầy đủ tiêu chí", () => {
     expect(
       isPasswordPolicySatisfied("CanhSen#2026", [
-        "khachhang@vietnam-airlines.vn",
+        "khachhang@gmail.com",
         "0912345678"
       ])
     ).toBe(true);
@@ -17,7 +17,7 @@ describe("password-policy", () => {
 
   it("chặn mật khẩu thiếu ký tự đặc biệt", () => {
     const rules = getPasswordChecklist("CanhSen2026", [
-      "khachhang@vietnam-airlines.vn"
+      "khachhang@gmail.com"
     ]);
 
     expect(rules.find((rule) => rule.id === "special")?.passed).toBe(false);
@@ -26,7 +26,7 @@ describe("password-policy", () => {
   it("chặn mật khẩu chứa thông tin cá nhân", () => {
     expect(
       isPasswordPolicySatisfied("Khachhang#2026", [
-        "khachhang@vietnam-airlines.vn"
+        "khachhang@gmail.com"
       ])
     ).toBe(false);
   });

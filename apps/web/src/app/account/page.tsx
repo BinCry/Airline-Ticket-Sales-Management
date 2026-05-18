@@ -2,23 +2,46 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PasswordChecklist } from "@/components/password-checklist";
+import { PasswordField } from "@/components/password-field";
 import { SectionHeading } from "@/components/section-heading";
-import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import {
+  getAllowedBackofficeModulesByPermissions,
+  ROLE_LABELS,
+  type BackofficeModuleKey
+} from "@/lib/access-control";
+import { logoutAuthSession } from "@/lib/auth-api";
+import { getApiBaseUrl } from "@/lib/api-client";
+import {
+  clearStoredAuthSession,
+  loadActiveAuthSession,
+  persistAuthSession,
+  type AuthSession
+} from "@/lib/auth-session";
+import {
+  changeMyPassword,
   createMyPassenger,
+  deleteMyVoucherHistory,
   deleteMyPassenger,
+  fetchMyLoyalty,
   fetchMyPassengers,
   fetchMyProfile,
+  fetchMyVouchers,
   MyAccountApiError,
+  type MyLoyalty,
+  uploadMyAvatar,
   updateMyPassenger,
   updateMyProfile,
   type MyPassenger,
   type MyProfile,
+  type MyVoucher,
   type UpdateMyProfilePayload,
   type UpsertMyPassengerPayload
 } from "@/lib/my-account-api";
+import { pushToast } from "@/lib/toast";
 
 const EMPTY_PROFILE_FORM: UpdateMyProfilePayload = {
   displayName: "",
@@ -33,6 +56,37 @@ const EMPTY_PASSENGER_FORM: UpsertMyPassengerPayload = {
   documentNumber: "",
   isPrimary: false
 };
+
+const EMPTY_PASSWORD_FORM = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: ""
+};
+
+const STAFF_ROLE_CODES = ["customer_support", "operations_staff"] as const;
+const PASSENGER_SELF_SERVICE_ROLES = ["customer", "member"] as const;
+
+const BACKOFFICE_MODULE_LABELS: Record<BackofficeModuleKey, string> = {
+  sales: "Tra cứu đặt chỗ",
+  support: "Hỗ trợ sau bán",
+  finance: "Tài chính và hoàn tiền",
+  cms: "Nội dung công khai",
+  operations: "Điều hành chuyến bay và voucher",
+  admin: "Quản trị hệ thống"
+};
+
+const BACKOFFICE_MODULE_DESCRIPTIONS: Record<BackofficeModuleKey, string> = {
+  sales: "Rà soát hồ sơ đặt chỗ, trạng thái thanh toán và lịch sử xử lý.",
+  support: "Theo dõi email vé, hỗ trợ sau bán và các trường hợp cần phản hồi nhanh.",
+  finance: "Kiểm tra yêu cầu hoàn tiền và phối hợp xử lý các giao dịch liên quan.",
+  cms: "Cập nhật nội dung công khai, câu hỏi thường gặp và thông tin hỗ trợ.",
+  operations: "Cập nhật trạng thái chuyến bay, xử lý vận hành và quản lý voucher hội viên.",
+  admin: "Quản lý tài khoản, vai trò, trạng thái và nhật ký thay đổi hệ thống."
+};
+
+function hasAnyRole(roles: string[], targetRoles: readonly string[]) {
+  return targetRoles.some((targetRole) => roles.includes(targetRole));
+}
 
 function getPassengerTypeLabel(passengerType: string) {
   if (passengerType === "adult") {
@@ -86,10 +140,23 @@ function buildFallbackProfile(authSession: AuthSession | null): MyProfile | null
     email: sessionUser.email,
     displayName: sessionUser.displayName,
     phone: sessionUser.phone,
+    avatarUrl: sessionUser.avatarUrl,
     emailVerified: sessionUser.emailVerified,
     status: "local_session",
     roles: sessionUser.roles
   };
+}
+
+function resolveAvatarUrl(avatarUrl: string | null | undefined) {
+  if (!avatarUrl) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(avatarUrl)) {
+    return avatarUrl;
+  }
+
+  return `${getApiBaseUrl()}${avatarUrl.startsWith("/") ? avatarUrl : `/${avatarUrl}`}`;
 }
 
 function sortPassengers(passengers: MyPassenger[]) {
@@ -128,6 +195,63 @@ function buildProfileForm(profile: MyProfile | null): UpdateMyProfilePayload {
   };
 }
 
+function formatRoleSummary(roles: string[]) {
+  if (roles.length === 0) {
+    return "Khách hàng";
+  }
+
+  return roles.map((role) => ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role).join(", ");
+}
+
+function formatPoints(pointValue: number) {
+  return new Intl.NumberFormat("vi-VN").format(pointValue);
+}
+
+function formatVoucherAmount(amount: number, currency: string) {
+  if (currency === "VND") {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+
+  return `${formatPoints(amount)} ${currency}`;
+}
+
+function formatDateTime(value: string) {
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(parsedDate);
+}
+
+function formatVoucherStatus(status: string) {
+  if (status === "AVAILABLE") {
+    return "Sẵn sàng sử dụng";
+  }
+
+  if (status === "RESERVED") {
+    return "Đang giữ cho booking";
+  }
+
+  if (status === "USED") {
+    return "Đã sử dụng";
+  }
+
+  if (status === "EXPIRED") {
+    return "Đã hết hạn";
+  }
+
+  return status;
+}
+
 function resolveAccountError(error: unknown, fallbackMessage: string) {
   if (error instanceof MyAccountApiError) {
     const firstFieldError = Object.values(error.errors)[0];
@@ -142,24 +266,38 @@ function resolveAccountError(error: unknown, fallbackMessage: string) {
 }
 
 export default function AccountPage() {
+  const router = useRouter();
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [hasLoadedSession, setHasLoadedSession] = useState(false);
   const [customerProfile, setCustomerProfile] = useState<MyProfile | null>(null);
+  const [memberLoyalty, setMemberLoyalty] = useState<MyLoyalty | null>(null);
+  const [memberVouchers, setMemberVouchers] = useState<MyVoucher[]>([]);
   const [profileForm, setProfileForm] = useState<UpdateMyProfilePayload>(EMPTY_PROFILE_FORM);
   const [passengers, setPassengers] = useState<MyPassenger[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
   const [profileActionError, setProfileActionError] = useState<string | null>(null);
   const [profileActionSuccess, setProfileActionSuccess] = useState<string | null>(null);
   const [passengerError, setPassengerError] = useState<string | null>(null);
   const [passengerForm, setPassengerForm] = useState<UpsertMyPassengerPayload>(EMPTY_PASSENGER_FORM);
+  const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
   const [editingPassengerId, setEditingPassengerId] = useState<number | null>(null);
   const [passengerActionError, setPassengerActionError] = useState<string | null>(null);
   const [passengerActionSuccess, setPassengerActionSuccess] = useState<string | null>(null);
+  const [passwordActionError, setPasswordActionError] = useState<string | null>(null);
+  const [passwordActionSuccess, setPasswordActionSuccess] = useState<string | null>(null);
+  const [avatarActionError, setAvatarActionError] = useState<string | null>(null);
+  const [avatarActionSuccess, setAvatarActionSuccess] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingPassengers, setIsLoadingPassengers] = useState(false);
+  const [isLoadingLoyalty, setIsLoadingLoyalty] = useState(false);
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
   const [isSubmittingPassenger, setIsSubmittingPassenger] = useState(false);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deletingPassengerId, setDeletingPassengerId] = useState<number | null>(null);
+  const [hidingVoucherCode, setHidingVoucherCode] = useState<string | null>(null);
 
   useEffect(() => {
     setAuthSession(loadActiveAuthSession());
@@ -169,18 +307,28 @@ export default function AccountPage() {
   useEffect(() => {
     if (!authSession?.accessToken) {
       setCustomerProfile(null);
+      setMemberLoyalty(null);
+      setMemberVouchers([]);
       setProfileForm(EMPTY_PROFILE_FORM);
       setPassengers([]);
       setProfileError(null);
+      setLoyaltyError(null);
       setProfileActionError(null);
       setProfileActionSuccess(null);
       setPassengerError(null);
       setPassengerActionError(null);
       setPassengerActionSuccess(null);
+      setPasswordActionError(null);
+      setPasswordActionSuccess(null);
+      setAvatarActionError(null);
+      setAvatarActionSuccess(null);
       setEditingPassengerId(null);
       setPassengerForm(EMPTY_PASSENGER_FORM);
+      setPasswordForm(EMPTY_PASSWORD_FORM);
       setIsLoadingProfile(false);
       setIsLoadingPassengers(false);
+      setIsLoadingLoyalty(false);
+      setHidingVoucherCode(null);
       return;
     }
 
@@ -189,20 +337,78 @@ export default function AccountPage() {
 
     async function loadCustomerData() {
       setIsLoadingProfile(true);
-      setIsLoadingPassengers(true);
+      setIsLoadingPassengers(false);
+      setIsLoadingLoyalty(false);
       setProfileError(null);
       setPassengerError(null);
+      setLoyaltyError(null);
 
       try {
-        const [nextCustomerProfile, nextPassengers] = await Promise.all([
-          fetchMyProfile(accessToken),
-          fetchMyPassengers(accessToken)
-        ]);
+        const nextCustomerProfile = await fetchMyProfile(accessToken);
 
         if (!isCancelled) {
           setCustomerProfile(nextCustomerProfile);
           setProfileForm(buildProfileForm(nextCustomerProfile));
-          setPassengers(sortPassengers(nextPassengers));
+        }
+
+        if (hasAnyRole(nextCustomerProfile.roles, PASSENGER_SELF_SERVICE_ROLES)) {
+          setIsLoadingPassengers(true);
+
+          try {
+            const nextPassengers = await fetchMyPassengers(accessToken);
+
+            if (!isCancelled) {
+              setPassengers(sortPassengers(nextPassengers));
+            }
+          } catch (error) {
+            if (!isCancelled) {
+              setPassengers([]);
+              setPassengerError(
+                resolveAccountError(error, "Không thể tải danh sách hành khách lúc này.")
+              );
+            }
+          } finally {
+            if (!isCancelled) {
+              setIsLoadingPassengers(false);
+            }
+          }
+        } else if (!isCancelled) {
+          setPassengers([]);
+          setPassengerError(null);
+          setPassengerForm(EMPTY_PASSENGER_FORM);
+          setEditingPassengerId(null);
+        }
+
+        if (nextCustomerProfile.roles.includes("member")) {
+          setIsLoadingLoyalty(true);
+
+          try {
+            const [nextLoyalty, nextVouchers] = await Promise.all([
+              fetchMyLoyalty(accessToken),
+              fetchMyVouchers(accessToken)
+            ]);
+
+            if (!isCancelled) {
+              setMemberLoyalty(nextLoyalty);
+              setMemberVouchers(nextVouchers);
+            }
+          } catch (error) {
+            if (!isCancelled) {
+              setMemberLoyalty(null);
+              setMemberVouchers([]);
+              setLoyaltyError(
+                resolveAccountError(error, "Không thể tải dữ liệu hội viên lúc này.")
+              );
+            }
+          } finally {
+            if (!isCancelled) {
+              setIsLoadingLoyalty(false);
+            }
+          }
+        } else if (!isCancelled) {
+          setMemberLoyalty(null);
+          setMemberVouchers([]);
+          setLoyaltyError(null);
         }
       } catch (error) {
         if (isCancelled) {
@@ -211,14 +417,13 @@ export default function AccountPage() {
 
         const message = resolveAccountError(
           error,
-          "Không thể đồng bộ dữ liệu tài khoản lúc này."
+          "Không thể tải dữ liệu tài khoản lúc này."
         );
         setProfileError(message);
         setPassengerError(message);
       } finally {
         if (!isCancelled) {
           setIsLoadingProfile(false);
-          setIsLoadingPassengers(false);
         }
       }
     }
@@ -231,50 +436,165 @@ export default function AccountPage() {
   }, [authSession]);
 
   const activeProfile = customerProfile ?? buildFallbackProfile(authSession);
-  const roleSummary = activeProfile?.roles.join(", ") ?? "khách";
+  const activeRoles = activeProfile?.roles ?? authSession?.user.roles ?? [];
+  const activePermissions = authSession?.user.permissions ?? [];
   const phoneSummary = activeProfile?.phone?.trim() ? activeProfile.phone : "Chưa cập nhật";
-  const isEditingPassenger = editingPassengerId !== null;
-  const accountStats = [
-    {
-      label: "Hành khách thường dùng",
-      value: String(passengers.length)
-    },
-    {
-      label: "Vai trò hiện tại",
-      value: roleSummary
-    },
-    {
-      label: "Trạng thái hồ sơ",
-      value: activeProfile
-        ? (isLoadingProfile ? "Đang đồng bộ" : "Sẵn sàng")
-        : "Chưa đăng nhập"
-    }
-  ];
-  const activityFeed = activeProfile
+  const avatarUrl = resolveAvatarUrl(activeProfile?.avatarUrl);
+  const localizedRoleSummary = activeProfile ? formatRoleSummary(activeRoles) : "Khách hàng";
+  const isMemberProfile = activeRoles.includes("member");
+  const isStaffProfile = hasAnyRole(activeRoles, STAFF_ROLE_CODES);
+  const canUsePassengerSelfService = hasAnyRole(activeRoles, PASSENGER_SELF_SERVICE_ROLES);
+  const allowedBackofficeModules = getAllowedBackofficeModulesByPermissions(activePermissions);
+  const loyaltyStats = memberLoyalty
     ? [
         {
-          title: "Hồ sơ tài khoản",
-          time: isLoadingProfile ? "Đang đồng bộ" : "Đã sẵn sàng",
-          summary: `Email đăng nhập: ${activeProfile.email}. Số điện thoại: ${phoneSummary}.`
+          label: "Hạng hội viên",
+          value: memberLoyalty.membershipTier
         },
         {
-          title: "Danh sách hành khách",
-          time: isLoadingPassengers ? "Đang cập nhật" : "Đã cập nhật",
-          summary: `Đã lưu ${passengers.length} hành khách thường dùng.`
+          label: "Điểm hiện có",
+          value: `${formatPoints(memberLoyalty.pointBalance)} điểm`
         },
         {
-          title: "Quyền truy cập",
-          time: "Theo role hiện tại",
-          summary: `Vai trò đang dùng: ${roleSummary}.`
+          label: "Voucher sẵn sàng",
+          value: `${memberLoyalty.availableVoucherCount} ưu đãi`
         }
       ]
     : [
         {
-          title: "Chưa có phiên đăng nhập",
-          time: "Yêu cầu đăng nhập",
-          summary: "Đăng nhập để đồng bộ hồ sơ tài khoản và hành khách thường dùng."
+          label: "Hạng hội viên",
+          value: "Chưa có dữ liệu"
+        },
+        {
+          label: "Điểm hiện có",
+          value: "0 điểm"
+        },
+        {
+          label: "Voucher sẵn sàng",
+          value: "0 ưu đãi"
         }
       ];
+  const passwordBlockedFragments = [
+    activeProfile?.displayName ?? "",
+    activeProfile?.email ?? "",
+    activeProfile?.phone ?? ""
+  ];
+  const isPasswordFormValid =
+    passwordForm.currentPassword.length > 0 &&
+    passwordForm.newPassword.length > 0 &&
+    passwordForm.confirmPassword === passwordForm.newPassword;
+  const isEditingPassenger = editingPassengerId !== null;
+  const accountStats = isStaffProfile
+    ? [
+        {
+          label: "Vai trò nội bộ",
+          value: localizedRoleSummary
+        },
+        {
+          label: "Module backoffice",
+          value: `${allowedBackofficeModules.length} khu vực`
+        },
+        {
+          label: "Trạng thái tài khoản",
+          value: activeProfile
+            ? (isLoadingProfile ? "Đang tải" : "Sẵn sàng")
+            : "Chưa đăng nhập"
+        }
+      ]
+    : [
+        {
+          label: "Hành khách thường dùng",
+          value: String(passengers.length)
+        },
+        {
+          label: "Vai trò hiện tại",
+          value: localizedRoleSummary
+        },
+        {
+          label: "Trạng thái hồ sơ",
+          value: activeProfile
+            ? (isLoadingProfile ? "Đang tải" : "Sẵn sàng")
+            : "Chưa đăng nhập"
+        }
+      ];
+  const activityFeed = activeProfile
+    ? isStaffProfile
+      ? [
+          {
+            title: "Hồ sơ cá nhân",
+            time: isLoadingProfile ? "Đang tải" : "Đã sẵn sàng",
+            summary: `Email đăng nhập: ${activeProfile.email}. Số điện thoại: ${phoneSummary}.`
+          },
+          {
+            title: "Phạm vi công việc",
+            time: "Theo vai trò hiện tại",
+            summary: `Bạn đang dùng quyền ${localizedRoleSummary.toLowerCase()} với ${allowedBackofficeModules.length} khu vực backoffice khả dụng.`
+          },
+          {
+            title: "Lối tắt xử lý",
+            time: "Truy cập nhanh",
+            summary: allowedBackofficeModules.length
+              ? `Có thể mở nhanh: ${allowedBackofficeModules.map((module) => BACKOFFICE_MODULE_LABELS[module]).join(", ")}.`
+              : "Không có module backoffice nào khả dụng trong phiên hiện tại."
+          }
+        ]
+      : [
+          {
+            title: "Hồ sơ tài khoản",
+            time: isLoadingProfile ? "Đang tải" : "Đã sẵn sàng",
+            summary: `Email đăng nhập: ${activeProfile.email}. Số điện thoại: ${phoneSummary}.`
+          },
+          {
+            title: "Danh sách hành khách",
+            time: isLoadingPassengers ? "Đang cập nhật" : "Đã cập nhật",
+            summary: `Đã lưu ${passengers.length} hành khách thường dùng.`
+          },
+          {
+            title: "Quyền truy cập",
+            time: "Theo role hiện tại",
+            summary: `Vai trò đang dùng: ${localizedRoleSummary}.`
+          }
+        ]
+    : [
+        {
+          title: "Chưa đăng nhập",
+          time: "Yêu cầu đăng nhập",
+          summary: "Đăng nhập để xem hồ sơ tài khoản và danh sách hành khách thường dùng."
+        }
+      ];
+  const heroEyebrow = activeProfile
+    ? isStaffProfile
+      ? `Xin chào, ${localizedRoleSummary}`
+      : `Xin chào, ${activeProfile.displayName}`
+    : "Tài khoản khách hàng";
+  const heroTitle = activeProfile
+    ? isStaffProfile
+      ? "Trang nội bộ để cập nhật hồ sơ cá nhân và mở nhanh các công cụ được cấp quyền."
+      : "Bạn có thể tiếp tục theo dõi hành trình, hồ sơ và các thông báo quan trọng ngay trên thiết bị này."
+    : "Theo dõi hành trình sắp bay và thông báo quan trọng tại một nơi.";
+  const heroDescription = activeProfile
+    ? isStaffProfile
+      ? `Email đang dùng là ${activeProfile.email}. Số điện thoại: ${phoneSummary}. Vai trò hiện tại: ${localizedRoleSummary}. Bạn có thể cập nhật thông tin đăng nhập cá nhân và truy cập nhanh các module backoffice đã được cấp quyền.`
+      : `Email đang dùng là ${activeProfile.email}. Số điện thoại: ${phoneSummary}. Vai trò hiện tại: ${localizedRoleSummary}. Bạn có thể tiếp tục quản lý hồ sơ thường dùng và các cập nhật mới nhất liên quan đến chuyến bay đã đặt.`
+    : "Tài khoản giúp hành khách xem lại hồ sơ thường dùng, email vé và những cập nhật mới nhất liên quan đến chuyến bay đã đặt.";
+  const heroTag = isStaffProfile ? "Tài khoản nội bộ" : "Tài khoản hành khách";
+  const heroMediaTitle = isStaffProfile ? "Bảng điều phối cá nhân" : "Hồ sơ chuyến đi";
+  const heroMediaDescription = isStaffProfile
+    ? "Giữ hồ sơ cá nhân gọn gàng và đi nhanh vào đúng khu vực backoffice cần xử lý."
+    : "Đồng bộ đặt chỗ, hành khách thường dùng và thông báo quan trọng theo từng hành trình.";
+  const accountPills = activeProfile
+    ? [
+        activeProfile.email,
+        activeProfile.emailVerified ? "Email đã xác minh" : "Email chưa xác minh",
+        `Vai trò: ${localizedRoleSummary}`,
+        `Số điện thoại: ${phoneSummary}`,
+        isStaffProfile
+          ? `${allowedBackofficeModules.length} module backoffice khả dụng`
+          : isLoadingProfile
+            ? "Đang tải hồ sơ"
+            : "Hồ sơ tài khoản đã sẵn sàng"
+      ]
+    : [];
 
   function handleProfileFieldChange<Key extends keyof UpdateMyProfilePayload>(
     fieldName: Key,
@@ -309,6 +629,29 @@ export default function AccountPage() {
     setProfileActionSuccess(null);
   }
 
+  function syncProfile(nextProfile: MyProfile) {
+    setCustomerProfile(nextProfile);
+    setProfileForm(buildProfileForm(nextProfile));
+
+    if (!authSession) {
+      return;
+    }
+
+    const nextAuthSession: AuthSession = {
+      ...authSession,
+      user: {
+        ...authSession.user,
+        displayName: nextProfile.displayName,
+        phone: nextProfile.phone,
+        avatarUrl: nextProfile.avatarUrl,
+        emailVerified: nextProfile.emailVerified,
+        roles: nextProfile.roles
+      }
+    };
+    persistAuthSession(nextAuthSession);
+    setAuthSession(nextAuthSession);
+  }
+
   async function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -327,8 +670,7 @@ export default function AccountPage() {
 
     try {
       const nextProfile = await updateMyProfile(authSession.accessToken, payload);
-      setCustomerProfile(nextProfile);
-      setProfileForm(buildProfileForm(nextProfile));
+      syncProfile(nextProfile);
       setProfileError(null);
       setProfileActionSuccess("Đã cập nhật hồ sơ tài khoản.");
     } catch (error) {
@@ -337,6 +679,91 @@ export default function AccountPage() {
       );
     } finally {
       setIsSubmittingProfile(false);
+    }
+  }
+
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const avatar = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!avatar || !authSession?.accessToken || isUploadingAvatar) {
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    setAvatarActionError(null);
+    setAvatarActionSuccess(null);
+
+    try {
+      const nextProfile = await uploadMyAvatar(authSession.accessToken, avatar);
+      syncProfile(nextProfile);
+      setAvatarActionSuccess("Đã cập nhật ảnh đại diện.");
+    } catch (error) {
+      setAvatarActionError(
+        resolveAccountError(error, "Không thể cập nhật ảnh đại diện lúc này.")
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
+  function handlePasswordFieldChange(fieldName: keyof typeof EMPTY_PASSWORD_FORM, value: string) {
+    setPasswordForm((currentPasswordForm) => ({
+      ...currentPasswordForm,
+      [fieldName]: value
+    }));
+  }
+
+  async function handlePasswordSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!authSession?.accessToken || isSubmittingPassword) {
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordActionError("Mật khẩu nhập lại chưa trùng khớp.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+    setPasswordActionError(null);
+    setPasswordActionSuccess(null);
+
+    try {
+      await changeMyPassword(authSession.accessToken, {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      setPasswordForm(EMPTY_PASSWORD_FORM);
+      setPasswordActionSuccess("Đã đổi mật khẩu. Vui lòng đăng nhập lại bằng mật khẩu mới.");
+      clearStoredAuthSession();
+      setAuthSession(null);
+      router.push("/login");
+    } catch (error) {
+      setPasswordActionError(
+        resolveAccountError(error, "Không thể đổi mật khẩu lúc này.")
+      );
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  }
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      if (authSession?.refreshToken) {
+        await logoutAuthSession(authSession.refreshToken);
+      }
+    } finally {
+      clearStoredAuthSession();
+      setAuthSession(null);
+      router.push("/login");
+      setIsLoggingOut(false);
     }
   }
 
@@ -433,42 +860,67 @@ export default function AccountPage() {
     }
   }
 
+  async function handleHideUsedVoucher(voucher: MyVoucher) {
+    if (!authSession?.accessToken || hidingVoucherCode !== null) {
+      return;
+    }
+
+    const shouldHideVoucher = window.confirm(
+      `Ẩn lịch sử voucher ${voucher.voucherCode} khỏi tài khoản này?`
+    );
+
+    if (!shouldHideVoucher) {
+      return;
+    }
+
+    setHidingVoucherCode(voucher.voucherCode);
+    setLoyaltyError(null);
+
+    try {
+      await deleteMyVoucherHistory(authSession.accessToken, voucher.voucherCode);
+      setMemberVouchers((currentVouchers) =>
+        currentVouchers.filter((currentVoucher) => currentVoucher.voucherCode !== voucher.voucherCode)
+      );
+      pushToast({
+        title: "Đã ẩn lịch sử voucher",
+        message: "Voucher đã dùng đã được ẩn khỏi tài khoản hội viên.",
+        tone: "success"
+      });
+    } catch (error) {
+      const message = resolveAccountError(error, "Không thể ẩn lịch sử voucher lúc này.");
+      setLoyaltyError(message);
+      pushToast({
+        title: "Không thể xử lý yêu cầu",
+        message,
+        tone: "warning"
+      });
+    } finally {
+      setHidingVoucherCode(null);
+    }
+  }
+
   return (
     <section className="section">
       <div className="container">
         <div className="page-hero-card">
           <div>
-            <span className="section-eyebrow">
-              {activeProfile ? `Xin chào, ${activeProfile.displayName}` : "Tài khoản khách hàng"}
-            </span>
-            <h1 className="page-title">
-              {activeProfile
-                ? "Phiên của bạn đang được lưu cục bộ để tiếp tục theo dõi hành trình, hồ sơ và các thông báo quan trọng."
-                : "Theo dõi điểm thưởng, hành trình sắp bay và thông báo quan trọng tại một nơi."}
-            </h1>
-            <p className="page-hero-copy">
-              {activeProfile
-                ? `Email đang dùng là ${activeProfile.email}. Số điện thoại: ${phoneSummary}. Vai trò hiện tại: ${roleSummary}. Bạn có thể tiếp tục quản lý hồ sơ thường dùng và các cập nhật mới nhất liên quan đến chuyến bay đã đặt.`
-                : "Tài khoản giúp hành khách xem lại điểm hội viên, voucher khả dụng, hồ sơ thường dùng và những cập nhật mới nhất liên quan đến chuyến bay đã đặt."}
-            </p>
-            {activeProfile ? (
-              <div className="auth-helper-row">
-                <span className="pill">{activeProfile.email}</span>
-                <span className="pill">
-                  {activeProfile.emailVerified ? "Email đã xác minh" : "Email chưa xác minh"}
-                </span>
-                <span className="pill">Vai trò: {roleSummary}</span>
-                <span className="pill">Số điện thoại: {phoneSummary}</span>
-                <span className="pill">
-                  {isLoadingProfile ? "Đang đồng bộ hồ sơ" : "Hồ sơ tài khoản đã sẵn sàng"}
-                </span>
+            <span className="section-eyebrow">{heroEyebrow}</span>
+            <h1 className="page-title">{heroTitle}</h1>
+            <p className="page-hero-copy">{heroDescription}</p>
+            {accountPills.length > 0 ? (
+              <div className="role-chip-cloud account-pill-cloud">
+                {accountPills.map((pill) => (
+                  <span key={pill} className="pill">
+                    {pill}
+                  </span>
+                ))}
               </div>
             ) : null}
             {profileError && activeProfile ? (
               <div className="auth-note-card">
                 <div className="auth-note-head">
-                  <h3>Chưa đồng bộ được hồ sơ mới nhất</h3>
-                  <span className="pill">Đang dùng dữ liệu phiên cục bộ</span>
+                  <h3>Chưa tải được hồ sơ mới nhất</h3>
+                  <span className="pill">Đang hiển thị thông tin hiện có</span>
                 </div>
                 <p>{profileError}</p>
               </div>
@@ -476,12 +928,12 @@ export default function AccountPage() {
             {hasLoadedSession && !activeProfile ? (
               <div className="auth-note-card">
                 <div className="auth-note-head">
-                  <h3>Chưa có phiên đăng nhập cục bộ</h3>
+                  <h3>Bạn chưa đăng nhập trên thiết bị này</h3>
                   <span className="pill">Có thể đăng nhập bất cứ lúc nào</span>
                 </div>
                 <p>
-                  Bạn vẫn có thể xem nội dung tham khảo trên website, nhưng cần đăng nhập
-                  để đồng bộ hồ sơ hành khách và lưu phiên làm việc trên trình duyệt này.
+                  Bạn vẫn có thể xem thông tin chuyến bay trên website, nhưng cần đăng nhập
+                  để lưu hồ sơ hành khách và tiếp tục theo dõi tài khoản trên trình duyệt này.
                 </p>
                 <div className="auth-action-row">
                   <Link href="/login" className="button button-primary">
@@ -502,9 +954,9 @@ export default function AccountPage() {
               sizes="(max-width: 1180px) 100vw, 360px"
             />
             <div className="profile-media-overlay">
-              <span className="pill">Hội viên Vietnam Airlines</span>
-              <h3>Hạng Vàng</h3>
-              <p>Đồng bộ đặt chỗ, thông báo, điểm thưởng và quyền lợi theo tuyến.</p>
+              <span className="pill">{heroTag}</span>
+              <h3>{heroMediaTitle}</h3>
+              <p>{heroMediaDescription}</p>
             </div>
           </div>
         </div>
@@ -523,16 +975,78 @@ export default function AccountPage() {
         <div className="section-split">
           <div>
             <SectionHeading
-              eyebrow="Hồ sơ tài khoản"
-              title="Cập nhật nhanh tên hiển thị và số điện thoại đang dùng"
-              description="Thông tin này được dùng để đồng bộ hồ sơ khách hàng trên phiên hiện tại và các lần đăng nhập sau."
+              eyebrow={isStaffProfile ? "Hồ sơ cá nhân" : "Hồ sơ tài khoản"}
+              title={
+                isStaffProfile
+                  ? "Cập nhật nhanh thông tin cá nhân dùng trong phiên nội bộ hiện tại"
+                  : "Cập nhật nhanh tên hiển thị và số điện thoại đang dùng"
+              }
+              description={
+                isStaffProfile
+                  ? "Thông tin này giúp đồng bộ hồ sơ đăng nhập, ảnh đại diện và kênh liên hệ nội bộ của bạn."
+                  : "Thông tin này sẽ được lưu cho tài khoản của bạn và dùng lại ở những lần đăng nhập sau."
+              }
             />
             {activeProfile ? (
               <form className="surface-card" onSubmit={handleProfileSubmit}>
                 <div className="auth-note-head">
                   <h3>Cập nhật hồ sơ tài khoản</h3>
-                  <span className="pill">Đồng bộ hồ sơ</span>
+                  <span className="pill auth-sync-pill">Đồng bộ hồ sơ</span>
                 </div>
+                <div className="profile-avatar-row">
+                  <div className="profile-avatar-preview">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={`Ảnh đại diện của ${activeProfile.displayName}`}
+                      />
+                    ) : (
+                      <span>{activeProfile.displayName.slice(0, 1).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="profile-avatar-actions">
+                    <strong>Ảnh đại diện</strong>
+                    <p>Hỗ trợ JPG, PNG hoặc WEBP, tối đa 2 MB.</p>
+                    <div className="auth-action-row">
+                      <label className="button button-secondary">
+                        {isUploadingAvatar ? "Đang tải ảnh..." : "Đổi ảnh đại diện"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleAvatarChange}
+                          disabled={isUploadingAvatar}
+                          hidden
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                      >
+                        {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {avatarActionError ? (
+                  <div className="auth-note-card">
+                    <div className="auth-note-head">
+                      <h3>Không thể cập nhật ảnh đại diện</h3>
+                      <span className="pill">Cần kiểm tra lại</span>
+                    </div>
+                    <p>{avatarActionError}</p>
+                  </div>
+                ) : null}
+                {avatarActionSuccess ? (
+                  <div className="auth-note-card">
+                    <div className="auth-note-head">
+                      <h3>Đã cập nhật ảnh đại diện</h3>
+                      <span className="pill">Đã lưu</span>
+                    </div>
+                    <p>{avatarActionSuccess}</p>
+                  </div>
+                ) : null}
                 <div className="auth-field-grid auth-field-grid-double">
                   <label className="field auth-field">
                     <span>Tên hiển thị</span>
@@ -569,7 +1083,7 @@ export default function AccountPage() {
                   <div className="auth-note-card">
                     <div className="auth-note-head">
                       <h3>Cập nhật hồ sơ thành công</h3>
-                      <span className="pill">Đã đồng bộ</span>
+                      <span className="pill">Đã lưu</span>
                     </div>
                     <p>{profileActionSuccess}</p>
                   </div>
@@ -594,203 +1108,437 @@ export default function AccountPage() {
               </form>
             ) : null}
 
-            <div className="section-gap" />
-            <SectionHeading
-              eyebrow="Hồ sơ & hành khách"
-              title="Lưu sẵn hồ sơ hành khách để đặt vé nhanh hơn cho các chuyến tiếp theo"
-              description="Thông tin giấy tờ, tùy chọn chỗ ngồi và ghi chú cần thiết được lưu gọn gàng để giảm thao tác nhập lại."
-            />
-            {passengerError && activeProfile ? (
-              <div className="auth-note-card">
-                <div className="auth-note-head">
-                  <h3>Chưa đồng bộ được danh sách hành khách</h3>
-                  <span className="pill">Đang dùng dữ liệu hiện có</span>
-                </div>
-                <p>{passengerError}</p>
-              </div>
-            ) : null}
             {activeProfile ? (
-              <form className="surface-card" onSubmit={handlePassengerSubmit}>
+              <form className="surface-card" onSubmit={handlePasswordSubmit}>
                 <div className="auth-note-head">
-                  <h3>
-                    {isEditingPassenger
-                      ? "Cập nhật hành khách thường dùng"
-                      : "Thêm hành khách thường dùng"}
-                  </h3>
-                  <span className="pill">
-                    {isEditingPassenger ? "Chế độ chỉnh sửa" : "Chế độ thêm mới"}
-                  </span>
+                  <h3>Đổi mật khẩu</h3>
+                  <span className="pill">Yêu cầu đăng nhập lại sau khi đổi</span>
                 </div>
-                <div className="auth-field-grid auth-field-grid-double">
-                  <label className="field auth-field">
-                    <span>Họ tên hành khách</span>
-                    <input
-                      value={passengerForm.fullName}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("fullName", event.target.value)
-                      }
-                      placeholder="Nguyễn Văn A"
-                      required
-                    />
-                  </label>
-                  <label className="field auth-field">
-                    <span>Loại hành khách</span>
-                    <select
-                      value={passengerForm.passengerType}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("passengerType", event.target.value)
-                      }
-                    >
-                      <option value="adult">Người lớn</option>
-                      <option value="child">Trẻ em</option>
-                      <option value="infant">Em bé</option>
-                    </select>
-                  </label>
-                  <label className="field auth-field">
-                    <span>Ngày sinh</span>
-                    <input
-                      type="date"
-                      value={passengerForm.dateOfBirth}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("dateOfBirth", event.target.value)
-                      }
-                      required
-                    />
-                  </label>
-                  <label className="field auth-field">
-                    <span>Loại giấy tờ</span>
-                    <input
-                      value={passengerForm.documentType}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("documentType", event.target.value)
-                      }
-                      placeholder="CCCD hoặc PASSPORT"
-                      required
-                    />
-                  </label>
-                  <label className="field auth-field">
-                    <span>Số giấy tờ</span>
-                    <input
-                      value={passengerForm.documentNumber}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("documentNumber", event.target.value)
-                      }
-                      placeholder="012345678901"
-                      required
-                    />
-                  </label>
+                <div className="auth-field-grid">
+                  <PasswordField
+                    label="Mật khẩu hiện tại"
+                    placeholder="Nhập mật khẩu đang dùng"
+                    autoComplete="current-password"
+                    value={passwordForm.currentPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("currentPassword", event.target.value)
+                    }
+                    required
+                  />
+                  <PasswordField
+                    label="Mật khẩu mới"
+                    placeholder="Tối thiểu 10 ký tự và đủ mạnh"
+                    autoComplete="new-password"
+                    value={passwordForm.newPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("newPassword", event.target.value)
+                    }
+                    required
+                  />
+                  <PasswordField
+                    label="Nhập lại mật khẩu mới"
+                    placeholder="Nhập lại để xác nhận"
+                    autoComplete="new-password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) =>
+                      handlePasswordFieldChange("confirmPassword", event.target.value)
+                    }
+                    required
+                  />
                 </div>
-                <div className="auth-helper-row">
-                  <label className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={passengerForm.isPrimary}
-                      onChange={(event) =>
-                        handlePassengerFieldChange("isPrimary", event.target.checked)
-                      }
-                    />
-                    <span>Đặt làm hành khách chính</span>
-                  </label>
-                </div>
-                {passengerActionError ? (
+                <PasswordChecklist
+                  password={passwordForm.newPassword}
+                  blockedFragments={passwordBlockedFragments}
+                  confirmPassword={passwordForm.confirmPassword}
+                />
+                {passwordActionError ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
-                      <h3>Không thể lưu hành khách</h3>
+                      <h3>Không thể đổi mật khẩu</h3>
                       <span className="pill">Cần kiểm tra lại</span>
                     </div>
-                    <p>{passengerActionError}</p>
+                    <p>{passwordActionError}</p>
                   </div>
                 ) : null}
-                {passengerActionSuccess ? (
+                {passwordActionSuccess ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
-                      <h3>Cập nhật hành khách thành công</h3>
-                      <span className="pill">Đã đồng bộ</span>
+                      <h3>Đã đổi mật khẩu</h3>
+                      <span className="pill">Đăng nhập lại</span>
                     </div>
-                    <p>{passengerActionSuccess}</p>
+                    <p>{passwordActionSuccess}</p>
                   </div>
                 ) : null}
                 <div className="auth-action-row">
                   <button
                     type="submit"
                     className="button button-primary"
-                    disabled={isSubmittingPassenger}
+                    disabled={!isPasswordFormValid || isSubmittingPassword}
                   >
-                    {isSubmittingPassenger
-                      ? "Đang lưu..."
-                      : isEditingPassenger
-                        ? "Lưu cập nhật"
-                        : "Thêm hành khách"}
+                    {isSubmittingPassword ? "Đang đổi mật khẩu..." : "Đổi mật khẩu"}
                   </button>
                   <button
                     type="button"
                     className="button button-secondary"
-                    onClick={resetPassengerForm}
-                    disabled={isSubmittingPassenger}
+                    onClick={() => {
+                      setPasswordForm(EMPTY_PASSWORD_FORM);
+                      setPasswordActionError(null);
+                      setPasswordActionSuccess(null);
+                    }}
+                    disabled={isSubmittingPassword}
                   >
-                    {isEditingPassenger ? "Hủy chỉnh sửa" : "Làm trống biểu mẫu"}
+                    Làm trống
                   </button>
                 </div>
               </form>
             ) : null}
-            <div className="stack-list">
-              {passengers.length > 0 ? (
-                passengers.map((passenger) => (
-                  <article key={passenger.id} className="surface-card traveler-card">
-                    <div>
-                      <h3>{passenger.fullName}</h3>
-                      <small>{buildPassengerMeta(passenger)}</small>
+
+            {canUsePassengerSelfService ? (
+              <>
+                <div className="section-gap" />
+                <SectionHeading
+                  eyebrow="Hồ sơ & hành khách"
+                  title="Lưu sẵn hồ sơ hành khách để đặt vé nhanh hơn cho các chuyến tiếp theo"
+                  description="Thông tin giấy tờ, tùy chọn chỗ ngồi và ghi chú cần thiết được lưu gọn gàng để giảm thao tác nhập lại."
+                />
+                {passengerError && activeProfile ? (
+                  <div className="auth-note-card">
+                    <div className="auth-note-head">
+                      <h3>Chưa tải được danh sách hành khách</h3>
+                      <span className="pill">Đang dùng dữ liệu hiện có</span>
                     </div>
-                    <p>{buildPassengerNote(passenger)}</p>
+                    <p>{passengerError}</p>
+                  </div>
+                ) : null}
+                {activeProfile ? (
+                  <form className="surface-card" onSubmit={handlePassengerSubmit}>
+                    <div className="auth-note-head">
+                      <h3>
+                        {isEditingPassenger
+                          ? "Cập nhật hành khách thường dùng"
+                          : "Thêm hành khách thường dùng"}
+                      </h3>
+                      <span className="pill">
+                        {isEditingPassenger ? "Chế độ chỉnh sửa" : "Chế độ thêm mới"}
+                      </span>
+                    </div>
+                    <div className="auth-field-grid auth-field-grid-double">
+                      <label className="field auth-field">
+                        <span>Họ tên hành khách</span>
+                        <input
+                          value={passengerForm.fullName}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("fullName", event.target.value)
+                          }
+                          placeholder="Nguyễn Văn A"
+                          required
+                        />
+                      </label>
+                      <label className="field auth-field">
+                        <span>Loại hành khách</span>
+                        <select
+                          value={passengerForm.passengerType}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("passengerType", event.target.value)
+                          }
+                        >
+                          <option value="adult">Người lớn</option>
+                          <option value="child">Trẻ em</option>
+                          <option value="infant">Em bé</option>
+                        </select>
+                      </label>
+                      <label className="field auth-field">
+                        <span>Ngày sinh</span>
+                        <input
+                          type="date"
+                          value={passengerForm.dateOfBirth}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("dateOfBirth", event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="field auth-field">
+                        <span>Loại giấy tờ</span>
+                        <input
+                          value={passengerForm.documentType}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("documentType", event.target.value)
+                          }
+                          placeholder="CCCD hoặc PASSPORT"
+                          required
+                        />
+                      </label>
+                      <label className="field auth-field">
+                        <span>Số giấy tờ</span>
+                        <input
+                          value={passengerForm.documentNumber}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("documentNumber", event.target.value)
+                          }
+                          placeholder="012345678901"
+                          required
+                        />
+                      </label>
+                    </div>
+                    <div className="auth-helper-row">
+                      <label className="checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={passengerForm.isPrimary}
+                          onChange={(event) =>
+                            handlePassengerFieldChange("isPrimary", event.target.checked)
+                          }
+                        />
+                        <span>Đặt làm hành khách chính</span>
+                      </label>
+                    </div>
+                    {passengerActionError ? (
+                      <div className="auth-note-card">
+                        <div className="auth-note-head">
+                          <h3>Không thể lưu hành khách</h3>
+                          <span className="pill">Cần kiểm tra lại</span>
+                        </div>
+                        <p>{passengerActionError}</p>
+                      </div>
+                    ) : null}
+                    {passengerActionSuccess ? (
+                      <div className="auth-note-card">
+                        <div className="auth-note-head">
+                          <h3>Cập nhật hành khách thành công</h3>
+                          <span className="pill">Đã lưu</span>
+                        </div>
+                        <p>{passengerActionSuccess}</p>
+                      </div>
+                    ) : null}
                     <div className="auth-action-row">
+                      <button
+                        type="submit"
+                        className="button button-primary"
+                        disabled={isSubmittingPassenger}
+                      >
+                        {isSubmittingPassenger
+                          ? "Đang lưu..."
+                          : isEditingPassenger
+                            ? "Lưu cập nhật"
+                            : "Thêm hành khách"}
+                      </button>
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => handleEditPassenger(passenger)}
-                        disabled={isSubmittingPassenger || deletingPassengerId === passenger.id}
+                        onClick={resetPassengerForm}
+                        disabled={isSubmittingPassenger}
                       >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        onClick={() => handleDeletePassenger(passenger)}
-                        disabled={deletingPassengerId === passenger.id}
-                      >
-                        {deletingPassengerId === passenger.id ? "Đang xóa..." : "Xóa"}
+                        {isEditingPassenger ? "Hủy chỉnh sửa" : "Làm trống biểu mẫu"}
                       </button>
                     </div>
-                  </article>
-                ))
-              ) : (
-                <article className="surface-card traveler-card">
-                  <div>
-                    <h3>Chưa có hành khách thường dùng</h3>
-                    <small>Dữ liệu passenger chưa sẵn sàng trên tài khoản này</small>
+                  </form>
+                ) : null}
+                <div className="stack-list">
+                  {passengers.length > 0 ? (
+                    passengers.map((passenger) => (
+                      <article key={passenger.id} className="surface-card traveler-card">
+                        <div>
+                          <h3>{passenger.fullName}</h3>
+                          <small>{buildPassengerMeta(passenger)}</small>
+                        </div>
+                        <p>{buildPassengerNote(passenger)}</p>
+                        <div className="auth-action-row">
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => handleEditPassenger(passenger)}
+                            disabled={isSubmittingPassenger || deletingPassengerId === passenger.id}
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            onClick={() => handleDeletePassenger(passenger)}
+                            disabled={deletingPassengerId === passenger.id}
+                          >
+                            {deletingPassengerId === passenger.id ? "Đang xóa..." : "Xóa"}
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <article className="surface-card traveler-card">
+                      <div>
+                        <h3>Chưa có hành khách thường dùng</h3>
+                        <small>Dữ liệu hành khách chưa sẵn sàng trên tài khoản này.</small>
+                      </div>
+                      <p>
+                        {activeProfile
+                          ? "Bạn có thể thêm hành khách đầu tiên ngay tại biểu mẫu bên trên."
+                          : "Đăng nhập để xem và quản lý danh sách hành khách thường dùng của bạn."}
+                      </p>
+                    </article>
+                  )}
+                </div>
+                {activeProfile ? (
+                  <div className="role-chip-cloud account-pill-cloud">
+                    <span className="pill">
+                      {isLoadingPassengers
+                        ? "Đang tải danh sách hành khách"
+                        : `Đã tải ${passengers.length} hành khách`}
+                    </span>
                   </div>
-                  <p>
-                    {activeProfile
-                      ? "Bạn có thể thêm hành khách đầu tiên ngay tại biểu mẫu bên trên."
-                      : "Đăng nhập để xem và quản lý danh sách hành khách thường dùng của bạn."}
-                  </p>
-                </article>
-              )}
-            </div>
-            {activeProfile ? (
-              <div className="auth-helper-row">
-                <span className="pill">
-                  {isLoadingPassengers
-                    ? "Đang đồng bộ hành khách"
-                    : `Đã tải ${passengers.length} hành khách`}
-                </span>
-              </div>
+                ) : null}
+              </>
             ) : null}
           </div>
           <div>
+            {isMemberProfile ? (
+              <>
+                <SectionHeading
+                  eyebrow="Quyền lợi hội viên"
+                  title="Điểm thưởng và voucher được gom lại để bạn theo dõi nhanh trên cùng tài khoản"
+                  description="Thông tin hội viên chỉ hiển thị khi tài khoản đang ở vai trò member và đã có dữ liệu loyalty thực tế."
+                />
+                {loyaltyError ? (
+                  <div className="auth-note-card">
+                    <div className="auth-note-head">
+                      <h3>Chưa tải được dữ liệu hội viên</h3>
+                      <span className="pill">Thử lại sau</span>
+                    </div>
+                    <p>{loyaltyError}</p>
+                  </div>
+                ) : null}
+                <div className="metric-grid">
+                  {loyaltyStats.map((item) => (
+                    <article key={item.label} className="metric-card">
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </article>
+                  ))}
+                </div>
+                <div className="section-gap" />
+                <article className="surface-card">
+                  <div className="auth-note-head">
+                    <h3>Biến động điểm gần đây</h3>
+                    <span className="pill">
+                      {isLoadingLoyalty ? "Đang tải" : `${memberLoyalty?.recentEntries.length ?? 0} mục`}
+                    </span>
+                  </div>
+                  <div className="stack-list">
+                    {memberLoyalty?.recentEntries.length ? (
+                      memberLoyalty.recentEntries.map((entry) => (
+                        <div key={`${entry.entryType}-${entry.createdAt}`} className="support-compact-item">
+                          <strong>
+                            {entry.pointsDelta > 0 ? "+" : ""}
+                            {formatPoints(entry.pointsDelta)} điểm
+                          </strong>
+                          <p>{entry.description}</p>
+                          <small>
+                            Số dư sau cập nhật: {formatPoints(entry.balanceAfter)} điểm • {formatDateTime(entry.createdAt)}
+                          </small>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="support-compact-item">
+                        <strong>Chưa có biến động điểm</strong>
+                        <p>Dữ liệu điểm thưởng sẽ xuất hiện khi tài khoản có lịch sử tích lũy hoặc điều chỉnh quyền lợi.</p>
+                      </div>
+                    )}
+                  </div>
+                </article>
+                <div className="section-gap" />
+                <article className="surface-card">
+                  <div className="auth-note-head">
+                    <h3>Voucher hiện có</h3>
+                    <span className="pill">{memberVouchers.length} voucher</span>
+                  </div>
+                  <div className="stack-list">
+                    {memberVouchers.length ? (
+                      memberVouchers.map((voucher) => (
+                        <div key={voucher.voucherCode} className="support-compact-item">
+                          <strong>{voucher.title}</strong>
+                          <p>{voucher.description}</p>
+                          <small>
+                            {formatVoucherAmount(voucher.discountAmount, voucher.currency)} • {formatVoucherStatus(voucher.status)} • Hết hạn {formatDateTime(voucher.expiresAt)}
+                            {voucher.status === "RESERVED" && voucher.bookingCode ? ` • Giữ cho ${voucher.bookingCode}` : ""}
+                            {voucher.status === "USED" && voucher.usedAt ? ` • Đã dùng lúc ${formatDateTime(voucher.usedAt)}` : ""}
+                          </small>
+                          {voucher.status === "USED" ? (
+                            <div className="auth-action-row">
+                              <button
+                                type="button"
+                                className="button button-secondary"
+                                onClick={() => void handleHideUsedVoucher(voucher)}
+                                disabled={hidingVoucherCode !== null}
+                              >
+                                {hidingVoucherCode === voucher.voucherCode
+                                  ? "Đang ẩn lịch sử..."
+                                  : "Ẩn lịch sử voucher"}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="support-compact-item">
+                        <strong>Chưa có voucher khả dụng</strong>
+                        <p>Voucher mới sẽ xuất hiện tại đây khi tài khoản được cấp ưu đãi hoặc hoàn tất điều kiện tích lũy.</p>
+                      </div>
+                    )}
+                  </div>
+                </article>
+                <div className="section-gap" />
+              </>
+            ) : null}
+            {isStaffProfile ? (
+              <>
+                <SectionHeading
+                  eyebrow="Lối tắt nội bộ"
+                  title="Mở nhanh các khu vực backoffice đã được cấp quyền"
+                  description="Các lối tắt này giúp bạn đi thẳng vào đúng khu vực cần xử lý mà không phải tìm lại từ đầu."
+                />
+                <div className="card-grid">
+                  {allowedBackofficeModules.length > 0 ? (
+                    allowedBackofficeModules.map((module) => (
+                      <article key={module} className="surface-card action-card">
+                        <div className="auth-note-head">
+                          <h3>{BACKOFFICE_MODULE_LABELS[module]}</h3>
+                          <span className="pill">Sẵn sàng</span>
+                        </div>
+                        <p>{BACKOFFICE_MODULE_DESCRIPTIONS[module]}</p>
+                        <div className="auth-action-row">
+                          <Link href={`/backoffice/${module}`} className="button button-primary">
+                            Mở khu vực
+                          </Link>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <article className="surface-card action-card">
+                      <div className="auth-note-head">
+                        <h3>Chưa có khu vực nào được cấp</h3>
+                        <span className="pill">Cần kiểm tra lại quyền</span>
+                      </div>
+                      <p>
+                        Phiên hiện tại chưa có module backoffice khả dụng. Hãy đăng xuất và đăng
+                        nhập lại sau khi quản trị viên cập nhật quyền.
+                      </p>
+                    </article>
+                  )}
+                </div>
+                <div className="section-gap" />
+              </>
+            ) : null}
             <SectionHeading
-              eyebrow="Trung tâm thông báo"
-              title="Mọi cập nhật quan trọng được gom về một dòng thời gian dễ theo dõi"
-              description="Hành khách có thể xem lại trạng thái thanh toán, mở làm thủ tục, thay đổi chuyến bay và phản hồi từ bộ phận hỗ trợ."
+              eyebrow={isStaffProfile ? "Nhịp công việc" : "Trung tâm thông báo"}
+              title={
+                isStaffProfile
+                  ? "Tóm tắt nhanh hồ sơ cá nhân và phạm vi công việc của phiên hiện tại"
+                  : "Mọi cập nhật quan trọng được gom về một dòng thời gian dễ theo dõi"
+              }
+              description={
+                isStaffProfile
+                  ? "Các ghi chú bên dưới giúp bạn kiểm tra nhanh hồ sơ đăng nhập, vai trò hiện có và những khu vực có thể xử lý ngay."
+                  : "Hành khách có thể xem lại trạng thái thanh toán, mở làm thủ tục, thay đổi chuyến bay và phản hồi từ bộ phận hỗ trợ."
+              }
             />
             <div className="stack-list">
               {activityFeed.map((item) => (

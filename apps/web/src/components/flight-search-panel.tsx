@@ -1,12 +1,16 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState, type FormEvent } from "react";
+import { startTransition, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { TRIP_TYPES, type AirportOption, type FareFamily, type TripType } from "@qlvmb/shared-types";
 
 import { fetchAirportOptions } from "@/lib/airport-api";
-import { laGoiGiaHopLe, taoDuongDanTimChuyenBay } from "@/lib/flight-search-api";
+import {
+  TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH,
+  laGoiGiaHopLe,
+  taoDuongDanTimChuyenBay
+} from "@/lib/flight-search-api";
 
 const tripLabels: Record<TripType, string> = {
   one_way: "Một chiều",
@@ -14,38 +18,19 @@ const tripLabels: Record<TripType, string> = {
   multi_city: "Nhiều chặng"
 };
 
-function toDateInputValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function buildDefaultDates() {
-  const today = new Date();
-  const departure = new Date(today);
-  departure.setDate(today.getDate() + 7);
-  const returnDate = new Date(departure);
-  returnDate.setDate(departure.getDate() + 3);
-
-  return {
-    departureDate: toDateInputValue(departure),
-    returnDate: toDateInputValue(returnDate)
-  };
-}
-
 export function FlightSearchPanel() {
   const router = useRouter();
-  const defaultDates = useMemo(buildDefaultDates, []);
-  const [tripType, setTripType] = useState<TripType>("round_trip");
-  const [from, setFrom] = useState("SGN");
-  const [to, setTo] = useState("HAN");
-  const [departureDate, setDepartureDate] = useState(defaultDates.departureDate);
-  const [returnDate, setReturnDate] = useState(defaultDates.returnDate);
-  const [fareFamily, setFareFamily] = useState<FareFamily>("pho_thong_linh_hoat");
-  const [adultCount, setAdultCount] = useState(1);
-  const [childCount, setChildCount] = useState(0);
-  const [infantCount, setInfantCount] = useState(0);
+  const [tripType, setTripType] = useState<TripType>(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.tripType);
+  const [from, setFrom] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from);
+  const [to, setTo] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to);
+  const [departureDate, setDepartureDate] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate);
+  const [returnDate, setReturnDate] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate ?? "");
+  const [fareFamily, setFareFamily] = useState<FareFamily>(
+    TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.fareFamily ?? "pho_thong_linh_hoat"
+  );
+  const [adultCount, setAdultCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.adultCount);
+  const [childCount, setChildCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.childCount);
+  const [infantCount, setInfantCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.infantCount);
   const [dangChuyenTrang, setDangChuyenTrang] = useState(false);
   const [goiYSanBayDi, setGoiYSanBayDi] = useState<AirportOption[]>([]);
   const [goiYSanBayDen, setGoiYSanBayDen] = useState<AirportOption[]>([]);
@@ -53,9 +38,7 @@ export function FlightSearchPanel() {
   const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
   const [loiGoiGia, setLoiGoiGia] = useState("");
 
-  const passengerSummary = useMemo(() => {
-    return `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
-  }, [adultCount, childCount, infantCount]);
+  const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
 
   useEffect(() => {
     const tuKhoa = from.trim();
@@ -206,8 +189,8 @@ export function FlightSearchPanel() {
         ))}
       </div>
       <div className="search-note">
-        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hệ thống hiện hỗ trợ tìm vé thật cho một chiều và
-        khứ hồi, còn nhiều chặng mới dừng ở mức giao diện.
+        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hiện có thể tìm vé cho một chiều và khứ
+        hồi; hành trình nhiều chặng sẽ được bổ sung sau.
       </div>
       <div className="route-pair">
         <label className="field route-field">
@@ -257,7 +240,7 @@ export function FlightSearchPanel() {
           <small>
             {dangTaiSanBayDen
               ? "Đang tải gợi ý sân bay..."
-              : "Gợi ý được lấy trực tiếp từ API sân bay backend."}
+              : "Gợi ý sân bay sẽ hiển thị khi bạn nhập mã hoặc tên thành phố."}
           </small>
         </label>
       </div>
@@ -340,8 +323,8 @@ export function FlightSearchPanel() {
         <div className="multi-city-card">
           <strong>Lộ trình gợi ý</strong>
           <p>
-            Chặng 1: Thành phố Hồ Chí Minh đến Hà Nội · Chặng 2: Hà Nội đến Đà Nẵng · Chặng 3: Đà Nẵng về Thành phố
-            Hồ Chí Minh
+            Chặng 1: Thành phố Hồ Chí Minh đến Hà Nội · Chặng 2: Hà Nội đến Đà Nẵng · Chặng 3:
+            Đà Nẵng về Thành phố Hồ Chí Minh
           </p>
         </div>
       ) : null}

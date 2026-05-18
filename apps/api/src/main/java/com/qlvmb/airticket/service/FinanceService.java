@@ -22,6 +22,8 @@ public class FinanceService {
       "Yêu cầu hoàn vé này không còn ở trạng thái chờ duyệt.";
   private static final String REFUND_REJECT_INVALID_MESSAGE =
       "Yêu cầu hoàn vé này không còn ở trạng thái có thể từ chối.";
+  private static final String REFUND_HIDE_INVALID_MESSAGE =
+      "Yêu cầu hoàn vé đang chờ duyệt, chưa thể xóa khỏi danh sách.";
 
   private final RefundRequestRepository refundRequestRepository;
 
@@ -68,6 +70,15 @@ public class FinanceService {
     booking.markTicketedAgain(currentTime);
 
     return mapRefundItem(refundRequest);
+  }
+
+  @Transactional
+  public void hideResolvedRefund(long refundRequestId) {
+    RefundRequestEntity refundRequest = lockRefundRequest(refundRequestId);
+    if (refundRequest.isPending()) {
+      throw new BadRequestException(REFUND_HIDE_INVALID_MESSAGE);
+    }
+    refundRequest.hideFromUi(OffsetDateTime.now());
   }
 
   private RefundRequestEntity lockRefundRequest(long refundRequestId) {

@@ -8,8 +8,8 @@ function ManageBookingFallback() {
       <div className="container">
         <article className="surface-card booking-empty-card">
           <span className="section-eyebrow">Đang tải</span>
-          <h1 className="page-title">Đang chuẩn bị tra cứu đặt chỗ</h1>
-          <p>Hệ thống đang đọc tham số PNR và đồng bộ dữ liệu cần hiển thị.</p>
+          <h1 className="page-title">Đang mở tra cứu đặt chỗ</h1>
+          <p>Vui lòng chờ trong giây lát để nạp thông tin PNR cần hiển thị.</p>
         </article>
       </div>
     </section>

@@ -111,7 +111,7 @@ public class JwtTokenService {
   private void requireTokenType(Claims claims, String expectedType) {
     String tokenType = claims.get("type", String.class);
     if (!expectedType.equals(tokenType)) {
-      throw new JwtException("Loai token khong hop le.");
+      throw new JwtException("Loại token không hợp lệ.");
     }
   }
 

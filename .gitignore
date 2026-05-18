@@ -28,3 +28,11 @@ coverage/
 
 # Logs
 *.log
+
+# AI workflow
+.mcp.json
+.gemini/
+.claude/skills/.venv/
+.claude/skills/.install-state.json
+.claude/skills/.install-error-summary.json
+.codex-tmp/

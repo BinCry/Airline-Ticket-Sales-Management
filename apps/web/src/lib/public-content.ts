@@ -51,7 +51,7 @@ export const utilityLinks: SiteLink[] = [
 
 export const mainNavigation: SiteLink[] = [
   { label: "Tìm chuyến bay", href: "/search" },
-  { label: "Đặt vé", href: "/booking" },
+  { label: "Đặt vé", href: "/search#dat-ve" },
   { label: "Quản lý đặt chỗ", href: "/manage-booking" },
   { label: "Cẩm nang", href: "/blog" },
   { label: "Hỗ trợ", href: "/support" }
@@ -70,25 +70,25 @@ export const footerSections: FooterSection[] = [
   {
     title: "Hỗ trợ và chính sách",
     links: [
-      { label: "Trung tâm hỗ trợ", href: "/support" },
-      { label: "Câu hỏi thường gặp", href: "/support" },
-      { label: "Điều kiện vé", href: "/support" },
-      { label: "Hành lý", href: "/support" }
+      { label: "Trung tâm hỗ trợ", href: "/support#lien-he" },
+      { label: "Câu hỏi thường gặp", href: "/support#faq" },
+      { label: "Điều kiện vé", href: "/support#dieu-kien-ve" },
+      { label: "Hành lý", href: "/support#hanh-ly" }
     ]
   },
   {
     title: "Cẩm nang hành trình",
     links: [
-      { label: "Bài viết du lịch", href: "/blog" },
-      { label: "Gợi ý điểm đến", href: "/blog" },
-      { label: "Thông tin sân bay", href: "/support" },
-      { label: "Kênh liên hệ", href: "/support" }
+      { label: "Bài viết du lịch", href: "/blog#bai-viet" },
+      { label: "Gợi ý điểm đến", href: "/#diem-den" },
+      { label: "Thông tin sân bay", href: "/support#san-bay" },
+      { label: "Kênh liên hệ", href: "/support#lien-he" }
     ]
   }
 ];
 
 export const heroHighlights = [
-  "Tra cứu chuyến bay theo dữ liệu API thật ở luồng tìm kiếm.",
+  "Tra cứu chuyến bay theo lịch bay và số chỗ còn lại.",
   "Đồng bộ đăng nhập, hồ sơ tài khoản và quên mật khẩu qua OTP email.",
   "Tách rõ khu công khai, tự phục vụ và backoffice theo vai trò."
 ];
@@ -128,7 +128,7 @@ export const promotions: PromotionCard[] = [
     tag: "Tự phục vụ",
     title: "Rút ngắn thao tác sau đặt vé với hồ sơ hành khách và thông báo tập trung",
     summary:
-      "Hành khách có thể cập nhật hồ sơ, theo dõi thông báo và xem lại trạng thái phiên ngay trên website.",
+      "Hành khách có thể cập nhật hồ sơ, theo dõi thông báo và xem lại hoạt động tài khoản ngay trên website.",
     cta: "Mở tài khoản"
   },
   {
@@ -276,16 +276,16 @@ export const manageActions: ManageAction[] = [
   {
     title: "Tra cứu tình trạng booking",
     description: "Xem lại mã đặt chỗ, trạng thái giữ chỗ và các bước cần xử lý tiếp theo.",
-    rule: "Chức năng hiện dùng dữ liệu trả về từ API tra cứu booking theo mã đặt chỗ."
+    rule: "Tra cứu theo mã đặt chỗ để xem trạng thái giữ chỗ, thanh toán và vé."
   },
   {
     title: "Kiểm tra dịch vụ đã chọn",
     description: "Xem lại các dịch vụ bổ trợ đã có trong booking như hành lý hoặc chỗ ngồi.",
-    rule: "Chỉ hiển thị những thông tin đã có trong phản hồi hiện tại của backend."
+    rule: "Chỉ hiển thị dịch vụ đã được ghi nhận trong mã đặt chỗ."
   },
   {
     title: "Theo dõi phương thức thanh toán",
-    description: "Xem các hình thức thanh toán backend hiện đang hỗ trợ cho booking đó.",
-    rule: "Những bước đổi chuyến hoặc hoàn vé sẽ được nối tiếp khi API chuyên biệt sẵn sàng."
+    description: "Xem trạng thái thanh toán và các bước cần xử lý tiếp theo.",
+    rule: "Yêu cầu hoàn vé được ghi nhận để nhân sự kiểm tra và phản hồi."
   }
 ];

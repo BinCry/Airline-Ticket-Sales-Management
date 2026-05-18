@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+.codex
+.playwright-mcp
+.runlogs
+node_modules
+apps/web/node_modules
+apps/web/.next
+apps/api/target
+apps/api/.mvn/wrapper/maven-wrapper.jar
+*.log
+.env
+.env.local
+apps/web/.env.local
+apps/api/local-mail.properties

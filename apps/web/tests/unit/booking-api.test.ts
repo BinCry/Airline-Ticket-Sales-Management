@@ -36,8 +36,10 @@ describe("booking-api", () => {
           priceSummary: {
             baseAmount: 1490000,
             ancillaryAmount: 0,
+            discountAmount: 0,
             totalAmount: 1490000,
-            currency: "VND"
+            currency: "VND",
+            appliedVoucherCode: null
           }
         }),
         {
@@ -66,6 +68,7 @@ describe("booking-api", () => {
             passengerType: "adult"
           }
         ],
+        seatSelections: [],
         segments: [{ inventoryId: 20101 }],
         tripType: "one_way"
       })
@@ -75,14 +78,25 @@ describe("booking-api", () => {
     });
   });
 
-  it("goi api khoi tao phien thanh toan sandbox", async () => {
+  it("goi api khoi tao phien thanh toan SePay", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           bookingCode: "A6C2P1",
-          paymentUrl: "/payment-sandbox?pnr=A6C2P1",
+          provider: "sepay",
+          sessionMode: "local",
+          paymentUrl: null,
           paymentStatus: "pending",
-          expiresAt: "2026-03-11T14:15:00+07:00"
+          expiresAt: "2026-03-11T14:15:00+07:00",
+          referenceCode: "SEPAY-000000000001",
+          amount: 1490000,
+          discountAmount: 0,
+          appliedVoucherCode: null,
+          bankName: "BIDV",
+          accountNumber: "1234567890",
+          accountHolderName: "VIETNAM AIRLINES",
+          qrCodeUrl: null,
+          qrCodeDataUrl: null
         }),
         {
           status: 200,
@@ -99,7 +113,7 @@ describe("booking-api", () => {
     });
   });
 
-  it("goi callback thanh toan sandbox", async () => {
+  it("goi xac nhan thanh toan cuc bo", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -114,15 +128,18 @@ describe("booking-api", () => {
           contact: null,
           passengers: [],
           ancillaries: [],
+          seatSelections: [],
           tickets: [],
           boardingPasses: [],
           refundRequest: null,
-          paymentMethods: ["Thanh toán (Sandbox)"],
+          paymentMethods: ["Chuyển khoản SePay"],
           priceSummary: {
             baseAmount: 1490000,
             ancillaryAmount: 0,
+            discountAmount: 0,
             totalAmount: 1490000,
-            currency: "VND"
+            currency: "VND",
+            appliedVoucherCode: null
           }
         }),
         {
@@ -198,6 +215,7 @@ describe("booking-api", () => {
           contact: null,
           passengers: [],
           ancillaries: [],
+          seatSelections: [],
           tickets: [
             {
               ticketNumber: "7380000000001",
@@ -213,12 +231,14 @@ describe("booking-api", () => {
             status: "pending",
             createdAt: "2026-03-11T14:20:00+07:00"
           },
-          paymentMethods: ["Thanh toán (Sandbox)"],
+          paymentMethods: ["Chuyển khoản SePay"],
           priceSummary: {
             baseAmount: 1490000,
             ancillaryAmount: 0,
+            discountAmount: 0,
             totalAmount: 1490000,
-            currency: "VND"
+            currency: "VND",
+            appliedVoucherCode: null
           }
         }),
         {

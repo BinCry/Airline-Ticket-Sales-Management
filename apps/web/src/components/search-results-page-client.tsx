@@ -1,0 +1,1187 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { startTransition, useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+
+import {
+  TRIP_TYPES,
+  type ApiFlightCard,
+  type ApiFlightSearchCriteria,
+  type ApiFlightSearchResponse,
+  type AirportOption,
+  type FareFamily,
+  type TripType
+} from "@qlvmb/shared-types";
+
+import { SectionHeading } from "@/components/section-heading";
+import { StatusChip } from "@/components/status-chip";
+import { fetchAirportOptions } from "@/lib/airport-api";
+import {
+  createBookingHandoffUrl,
+  createHandoffSegmentFromFlight
+} from "@/lib/booking-flow";
+import { hienThiHanhTrinh, hienThiTenGoiGia } from "@/lib/display";
+import {
+  DEFAULT_FLIGHT_SEARCH_FILTER_STATE,
+  type FlightSearchFilterState,
+  type SearchTimeSlot,
+  layNhanKhungGio,
+  locDanhSachChuyenBay,
+  taoKhoangGiaDong
+} from "@/lib/flight-search-filters";
+import {
+  TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH,
+  laGoiGiaHopLe,
+  taoDuongDanTimChuyenBay
+} from "@/lib/flight-search-api";
+import { formatCurrency } from "@/lib/format";
+
+const toneMap = {
+  scheduled: "neutral",
+  on_time: "success",
+  boarding: "info",
+  delayed: "warning",
+  departed: "neutral",
+  landed: "success",
+  cancelled: "danger"
+} as const;
+
+const labelMap = {
+  scheduled: "Lên lịch",
+  on_time: "Đúng giờ",
+  boarding: "Đang lên máy bay",
+  delayed: "Trễ",
+  departed: "Đã khởi hành",
+  landed: "Đã hạ cánh",
+  cancelled: "Hủy"
+} as const;
+
+const fareImageMap = {
+  pho_thong_tiet_kiem: {
+    src: "/images/pho-thong-tiet-kiem-vietnam-airline-3.jpg",
+    alt: "Hình minh họa cho gói phổ thông tiết kiệm"
+  },
+  pho_thong_linh_hoat: {
+    src: "/images/phothonglinhhoat-classess.jpg",
+    alt: "Hình minh họa cho gói phổ thông linh hoạt"
+  },
+  thuong_gia: {
+    src: "/images/thuonggia-classess.jpg",
+    alt: "Hình minh họa cho gói thương gia"
+  }
+} as const;
+
+const tripLabels: Record<TripType, string> = {
+  one_way: "Một chiều",
+  round_trip: "Khứ hồi",
+  multi_city: "Nhiều chặng"
+};
+
+const timeSlotOptions: SearchTimeSlot[] = ["khuya", "sang", "chieu", "toi"];
+const minimumSeatOptions: Array<0 | 1 | 5 | 10> = [0, 1, 5, 10];
+const fareFamilyOptions: FareFamily[] = [
+  "pho_thong_tiet_kiem",
+  "pho_thong_linh_hoat",
+  "thuong_gia"
+];
+const airportDisplayOrder = ["SGN", "HAN", "DAD", "PQC", "CXR", "HUI", "VCA", "HPH", "VII"];
+const routePresets = [
+  { from: "SGN", to: "HAN", label: "TP. Hồ Chí Minh → Hà Nội" },
+  { from: "SGN", to: "DAD", label: "TP. Hồ Chí Minh → Đà Nẵng" },
+  { from: "HAN", to: "PQC", label: "Hà Nội → Phú Quốc" },
+  { from: "DAD", to: "CXR", label: "Đà Nẵng → Nha Trang" },
+  { from: "SGN", to: "VCA", label: "TP. Hồ Chí Minh → Cần Thơ" },
+  { from: "HAN", to: "HUI", label: "Hà Nội → Huế" }
+] as const;
+
+type NhomHanhKhach = "adult" | "child" | "infant";
+
+interface SearchResultsPageClientProps {
+  criteria: ApiFlightSearchCriteria;
+  notice: string | null;
+  searchData: ApiFlightSearchResponse | null;
+  searchError: string | null;
+  selectedOutboundInventoryId: number | null;
+}
+
+interface PassengerCounterCardProps {
+  disabledIncrease: boolean;
+  disabledDecrease: boolean;
+  label: string;
+  note: string;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  value: number;
+}
+
+function PassengerCounterCard({
+  disabledDecrease,
+  disabledIncrease,
+  label,
+  note,
+  onDecrease,
+  onIncrease,
+  value
+}: PassengerCounterCardProps) {
+  return (
+    <article className="passenger-counter-card">
+      <div className="passenger-counter-copy">
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{note}</small>
+      </div>
+      <div className="passenger-stepper">
+        <button
+          type="button"
+          className="passenger-stepper-button"
+          onClick={onDecrease}
+          disabled={disabledDecrease}
+          aria-label={`Giảm số lượng ${label.toLowerCase()}`}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          className="passenger-stepper-button"
+          onClick={onIncrease}
+          disabled={disabledIncrease}
+          aria-label={`Tăng số lượng ${label.toLowerCase()}`}
+        >
+          +
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function tongHanhKhach(adultCount: number, childCount: number, infantCount: number): number {
+  return adultCount + childCount + infantCount;
+}
+
+function dinhDangNgay(value: string): string {
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  return `${day}/${month}/${year}`;
+}
+
+function hienThiKhungNgay(criteria: ApiFlightSearchCriteria): string {
+  if (criteria.tripType === "one_way" || !criteria.returnDate) {
+    return dinhDangNgay(criteria.departureDate);
+  }
+
+  return `${dinhDangNgay(criteria.departureDate)} → ${dinhDangNgay(criteria.returnDate)}`;
+}
+
+function hienThiTrangThaiLocGoiGia(criteria: ApiFlightSearchCriteria): string {
+  if (!criteria.fareFamily) {
+    return "Tất cả hạng vé";
+  }
+
+  return hienThiTenGoiGia(criteria.fareFamily);
+}
+
+function hienThiThongBaoDieuHuong(notice: string | null): string | null {
+  if (notice === "chon-chuyen-bay-truoc") {
+    return "Hãy chọn hành trình trước khi chuyển sang bước nhập thông tin đặt vé.";
+  }
+
+  return null;
+}
+
+function capNhatDanhSachDaChon<T extends string>(values: T[], nextValue: T): T[] {
+  if (values.includes(nextValue)) {
+    return values.filter((value) => value !== nextValue);
+  }
+
+  return [...values, nextValue];
+}
+
+function taoDuongDanChonChieuDi(
+  criteria: ApiFlightSearchCriteria,
+  flight: ApiFlightCard
+) {
+  const basePath = taoDuongDanTimChuyenBay(criteria);
+  const [pathname, queryString] = basePath.split("?");
+  const nextSearchParams = new URLSearchParams(queryString ?? "");
+  nextSearchParams.set("selectedOutbound", String(flight.inventoryId));
+  return `${pathname}?${nextSearchParams.toString()}`;
+}
+
+function taoDuongDanDatVe(
+  criteria: ApiFlightSearchCriteria,
+  flights: ApiFlightCard[]
+) {
+  return createBookingHandoffUrl(
+    criteria,
+    flights.map((flight) => createHandoffSegmentFromFlight(flight))
+  );
+}
+
+function taoNhanSoGheToiThieu(value: 0 | 1 | 5 | 10): string {
+  if (value === 0) {
+    return "Mọi mức";
+  }
+
+  return `Từ ${value} ghế`;
+}
+
+function taoLopDanhSachChipBoLoc(soLuongLuaChon: number): string {
+  if (soLuongLuaChon <= 1) {
+    return "filter-chip-list filter-chip-list-balanced is-single-column";
+  }
+
+  if (soLuongLuaChon % 2 === 0) {
+    return "filter-chip-list filter-chip-list-balanced is-two-columns";
+  }
+
+  return "filter-chip-list filter-chip-list-balanced is-three-columns";
+}
+
+function sapXepSanBayPhoBien(airports: AirportOption[]): AirportOption[] {
+  return [...airports].sort((firstAirport, secondAirport) => {
+    const firstIndex = airportDisplayOrder.indexOf(firstAirport.code);
+    const secondIndex = airportDisplayOrder.indexOf(secondAirport.code);
+
+    if (firstIndex === -1 && secondIndex === -1) {
+      return firstAirport.code.localeCompare(secondAirport.code);
+    }
+
+    if (firstIndex === -1) {
+      return 1;
+    }
+
+    if (secondIndex === -1) {
+      return -1;
+    }
+
+    return firstIndex - secondIndex;
+  });
+}
+
+function taoNhanSanBay(sanBay: AirportOption): string {
+  return `${sanBay.cityName} (${sanBay.code})`;
+}
+
+function taoMoTaSanBay(sanBay: AirportOption): string {
+  return `${sanBay.airportName} • ${sanBay.terminalLabel}`;
+}
+
+function taoTheKetQua(
+  tieuDe: string,
+  flights: ApiFlightCard[],
+  criteria: ApiFlightSearchCriteria,
+  selectedOutboundFlight: ApiFlightCard | null
+) {
+  const selectedNotice =
+    criteria.tripType === "round_trip" && tieuDe === "Chặng về" && selectedOutboundFlight
+      ? `Chiều đi đã chọn: ${selectedOutboundFlight.code} • ${selectedOutboundFlight.departureTime} - ${selectedOutboundFlight.arrivalTime}`
+      : null;
+
+  if (flights.length === 0) {
+    return (
+      <article className="surface-card result-card">
+        <div className="result-top">
+          <div>
+            <span className="section-eyebrow">{tieuDe}</span>
+            <h3>Không tìm thấy chuyến bay phù hợp</h3>
+            <p>
+              {selectedNotice ??
+                "Hãy đổi ngày bay, tuyến hoặc nới bộ lọc để xem thêm lựa chọn phù hợp."}
+            </p>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <div className="stack-list">
+      <div className="surface-card result-card">
+        <div className="result-top">
+          <div>
+            <span className="section-eyebrow">{tieuDe}</span>
+            <h3>{flights.length} chuyến bay phù hợp</h3>
+            <p>
+              {selectedNotice ??
+                "Các lựa chọn đang còn chỗ và phù hợp với tiêu chí tìm kiếm hiện tại của bạn."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {flights.map((flight) => (
+        <article key={`${tieuDe}-${flight.inventoryId}`} className="surface-card result-card">
+          <div className="result-top">
+            <div>
+              <span className="section-eyebrow">Chuyến bay {flight.code}</span>
+              <h3>{hienThiHanhTrinh(flight.from, flight.to)}</h3>
+              <p>{flight.duration}</p>
+            </div>
+            <StatusChip tone={toneMap[flight.status]} label={labelMap[flight.status]} />
+          </div>
+
+          <div className="result-timeline">
+            <div className="timeline-stop">
+              <span>Khởi hành</span>
+              <strong>{flight.departureTime}</strong>
+            </div>
+            <div className="timeline-line" />
+            <div className="timeline-stop">
+              <span>Hạ cánh</span>
+              <strong>{flight.arrivalTime}</strong>
+            </div>
+          </div>
+
+          <div className="result-grid result-grid-rich">
+            <div>
+              <span>Gói giá</span>
+              <strong>{hienThiTenGoiGia(flight.fareFamily)}</strong>
+            </div>
+            <div>
+              <span>Còn lại</span>
+              <strong>{flight.seatsLeft} ghế</strong>
+            </div>
+            <div>
+              <span>Giá từ</span>
+              <strong>{formatCurrency(flight.price)}</strong>
+            </div>
+          </div>
+
+          <div className="result-actions">
+            <div className="assurance-row">
+              <span className="assurance-chip">Giữ chỗ 15 phút</span>
+              <span className="assurance-chip">Hiển thị điều kiện đổi hoặc hoàn</span>
+            </div>
+            {criteria.tripType === "one_way" ? (
+              <Link href={taoDuongDanDatVe(criteria, [flight])} className="button button-primary">
+                Chọn chuyến này
+              </Link>
+            ) : tieuDe === "Chặng đi" ? (
+              <Link
+                href={taoDuongDanChonChieuDi(criteria, flight)}
+                className={`button ${
+                  selectedOutboundFlight?.inventoryId === flight.inventoryId
+                    ? "button-secondary"
+                    : "button-primary"
+                }`}
+              >
+                {selectedOutboundFlight?.inventoryId === flight.inventoryId
+                  ? "Đã chọn chiều đi"
+                  : "Chọn chiều đi"}
+              </Link>
+            ) : !selectedOutboundFlight ? (
+              <button type="button" className="button button-secondary" disabled>
+                Chọn chiều đi trước
+              </button>
+            ) : (
+              <Link
+                href={taoDuongDanDatVe(criteria, [selectedOutboundFlight, flight])}
+                className="button button-primary"
+              >
+                Chọn chiều về
+              </Link>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function SearchResultsPageClient({
+  criteria,
+  notice,
+  searchData,
+  searchError,
+  selectedOutboundInventoryId
+}: SearchResultsPageClientProps) {
+  const router = useRouter();
+  const [tripType, setTripType] = useState<TripType>(criteria.tripType);
+  const [from, setFrom] = useState(criteria.from);
+  const [to, setTo] = useState(criteria.to);
+  const [departureDate, setDepartureDate] = useState(criteria.departureDate);
+  const [returnDate, setReturnDate] = useState(criteria.returnDate ?? "");
+  const [fareFamily, setFareFamily] = useState<FareFamily | "all">(criteria.fareFamily ?? "all");
+  const [adultCount, setAdultCount] = useState(criteria.adultCount);
+  const [childCount, setChildCount] = useState(criteria.childCount);
+  const [infantCount, setInfantCount] = useState(criteria.infantCount);
+  const [dangTaiKetQua, setDangTaiKetQua] = useState(false);
+  const [loiGoiGia, setLoiGoiGia] = useState("");
+  const [goiYSanBayDi, setGoiYSanBayDi] = useState<AirportOption[]>([]);
+  const [goiYSanBayDen, setGoiYSanBayDen] = useState<AirportOption[]>([]);
+  const [sanBayPhoBien, setSanBayPhoBien] = useState<AirportOption[]>([]);
+  const [dangTaiSanBayDi, setDangTaiSanBayDi] = useState(false);
+  const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
+  const [filterState, setFilterState] = useState<FlightSearchFilterState>(
+    DEFAULT_FLIGHT_SEARCH_FILTER_STATE
+  );
+
+  useEffect(() => {
+    setTripType(criteria.tripType);
+    setFrom(criteria.from);
+    setTo(criteria.to);
+    setDepartureDate(criteria.departureDate);
+    setReturnDate(criteria.returnDate ?? "");
+    setFareFamily(criteria.fareFamily ?? "all");
+    setAdultCount(criteria.adultCount);
+    setChildCount(criteria.childCount);
+    setInfantCount(criteria.infantCount);
+    setDangTaiKetQua(false);
+    setLoiGoiGia("");
+    setFilterState(DEFAULT_FLIGHT_SEARCH_FILTER_STATE);
+  }, [criteria]);
+
+  useEffect(() => {
+    const boDieuKhien = new AbortController();
+
+    async function taiSanBayPhoBien() {
+      try {
+        const danhSach = await fetchAirportOptions("", boDieuKhien.signal);
+        setSanBayPhoBien(sapXepSanBayPhoBien(danhSach));
+      } catch {
+        if (!boDieuKhien.signal.aborted) {
+          setSanBayPhoBien([]);
+        }
+      }
+    }
+
+    void taiSanBayPhoBien();
+
+    return () => {
+      boDieuKhien.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const tuKhoa = from.trim();
+
+    if (!tuKhoa) {
+      setGoiYSanBayDi([]);
+      setDangTaiSanBayDi(false);
+      return;
+    }
+
+    const boDieuKhien = new AbortController();
+    const boDem = setTimeout(async () => {
+      setDangTaiSanBayDi(true);
+
+      try {
+        const danhSach = await fetchAirportOptions(tuKhoa, boDieuKhien.signal);
+        setGoiYSanBayDi(danhSach);
+      } catch {
+        if (!boDieuKhien.signal.aborted) {
+          setGoiYSanBayDi([]);
+        }
+      } finally {
+        if (!boDieuKhien.signal.aborted) {
+          setDangTaiSanBayDi(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(boDem);
+      boDieuKhien.abort();
+    };
+  }, [from]);
+
+  useEffect(() => {
+    const tuKhoa = to.trim();
+
+    if (!tuKhoa) {
+      setGoiYSanBayDen([]);
+      setDangTaiSanBayDen(false);
+      return;
+    }
+
+    const boDieuKhien = new AbortController();
+    const boDem = setTimeout(async () => {
+      setDangTaiSanBayDen(true);
+
+      try {
+        const danhSach = await fetchAirportOptions(tuKhoa, boDieuKhien.signal);
+        setGoiYSanBayDen(danhSach);
+      } catch {
+        if (!boDieuKhien.signal.aborted) {
+          setGoiYSanBayDen([]);
+        }
+      } finally {
+        if (!boDieuKhien.signal.aborted) {
+          setDangTaiSanBayDen(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(boDem);
+      boDieuKhien.abort();
+    };
+  }, [to]);
+
+  const outboundFlightsRaw = searchData?.outboundFlights ?? [];
+  const returnFlightsRaw = searchData?.returnFlights ?? [];
+  const allFlights = [...outboundFlightsRaw, ...returnFlightsRaw];
+  const budgetOptions = taoKhoangGiaDong(allFlights);
+  const outboundFlights = locDanhSachChuyenBay(outboundFlightsRaw, filterState, budgetOptions);
+  const returnFlights = locDanhSachChuyenBay(returnFlightsRaw, filterState, budgetOptions);
+  const selectedOutboundFlight =
+    selectedOutboundInventoryId === null
+      ? null
+      : outboundFlightsRaw.find((flight) => flight.inventoryId === selectedOutboundInventoryId) ?? null;
+  const thongBaoDieuHuong = hienThiThongBaoDieuHuong(notice);
+  const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
+  const bestPrice =
+    allFlights.length > 0 ? formatCurrency(Math.min(...allFlights.map((flight) => flight.price))) : "Chưa có";
+  const tongKhach = tongHanhKhach(adultCount, childCount, infantCount);
+  const sanBayDiPhoBien = sanBayPhoBien.slice(0, 6);
+  const sanBayDenPhoBien = sanBayPhoBien.filter((sanBay) => sanBay.code !== from).slice(0, 6);
+
+  const insights = [
+    {
+      label: "Tuyến đang xem",
+      value: hienThiHanhTrinh(criteria.from, criteria.to),
+      compact: true,
+      kind: "text" as const
+    },
+    {
+      label: "Khung ngày",
+      value: hienThiKhungNgay(criteria),
+      compact: true,
+      kind: "date" as const
+    },
+    {
+      label: "Mức giá tốt nhất",
+      value: bestPrice,
+      compact: false,
+      kind: "text" as const
+    }
+  ];
+
+  function coTheTangHanhKhach(nhom: NhomHanhKhach): boolean {
+    if (tongKhach >= 9) {
+      return false;
+    }
+
+    if (nhom === "adult") {
+      return adultCount < 9;
+    }
+
+    if (nhom === "child") {
+      return childCount < 8;
+    }
+
+    return infantCount < 8 && infantCount + 1 <= adultCount;
+  }
+
+  function coTheGiamHanhKhach(nhom: NhomHanhKhach): boolean {
+    if (nhom === "adult") {
+      return adultCount > 1 && adultCount - 1 >= infantCount;
+    }
+
+    if (nhom === "child") {
+      return childCount > 0;
+    }
+
+    return infantCount > 0;
+  }
+
+  function capNhatHanhKhach(nhom: NhomHanhKhach, delta: 1 | -1) {
+    let nextAdultCount = adultCount;
+    let nextChildCount = childCount;
+    let nextInfantCount = infantCount;
+
+    if (nhom === "adult") {
+      if (delta === 1 && !coTheTangHanhKhach("adult")) {
+        return;
+      }
+
+      if (delta === -1 && !coTheGiamHanhKhach("adult")) {
+        return;
+      }
+
+      nextAdultCount += delta;
+    }
+
+    if (nhom === "child") {
+      if (delta === 1 && !coTheTangHanhKhach("child")) {
+        return;
+      }
+
+      if (delta === -1 && !coTheGiamHanhKhach("child")) {
+        return;
+      }
+
+      nextChildCount += delta;
+    }
+
+    if (nhom === "infant") {
+      if (delta === 1 && !coTheTangHanhKhach("infant")) {
+        return;
+      }
+
+      if (delta === -1 && !coTheGiamHanhKhach("infant")) {
+        return;
+      }
+
+      nextInfantCount += delta;
+    }
+
+    setAdultCount(nextAdultCount);
+    setChildCount(nextChildCount);
+    setInfantCount(nextInfantCount);
+  }
+
+  function chonSanBay(nhom: "from" | "to", airportCode: string) {
+    const maSanBay = airportCode.toUpperCase();
+
+    if (nhom === "from") {
+      setFrom(maSanBay);
+      return;
+    }
+
+    setTo(maSanBay);
+  }
+
+  function xuLyDoiChieu() {
+    setFrom(to);
+    setTo(from);
+  }
+
+  function xuLyChonTuyenNhanh(route: (typeof routePresets)[number]) {
+    setFrom(route.from);
+    setTo(route.to);
+  }
+
+  function xuLyTimChuyenBay(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (tripType === "multi_city") {
+      return;
+    }
+
+    const goiGiaDuocChon = fareFamily === "all" ? null : String(fareFamily);
+
+    if (goiGiaDuocChon && !laGoiGiaHopLe(goiGiaDuocChon)) {
+      setLoiGoiGia("Hạng vé không hợp lệ. Vui lòng chọn lại.");
+      return;
+    }
+
+    setLoiGoiGia("");
+    setDangTaiKetQua(true);
+
+    startTransition(() => {
+      router.push(
+        taoDuongDanTimChuyenBay({
+          from: from.trim().toUpperCase() || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from,
+          to: to.trim().toUpperCase() || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to,
+          departureDate: departureDate || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate,
+          returnDate:
+            tripType === "round_trip"
+              ? returnDate || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate
+              : null,
+          tripType,
+          fareFamily: goiGiaDuocChon as FareFamily | null,
+          adultCount,
+          childCount,
+          infantCount
+        })
+      );
+    });
+  }
+
+  function xuLyBatTatKhungGio(slot: SearchTimeSlot) {
+    setFilterState((currentState) => ({
+      ...currentState,
+      timeSlots: capNhatDanhSachDaChon(currentState.timeSlots, slot)
+    }));
+  }
+
+  function xuLyBatTatGoiGia(nextFareFamily: FareFamily) {
+    setFilterState((currentState) => ({
+      ...currentState,
+      fareFamilies: capNhatDanhSachDaChon(currentState.fareFamilies, nextFareFamily)
+    }));
+  }
+
+  return (
+    <section className="section">
+      <div className="container">
+        <div className="page-hero-card search-page-hero">
+          <div>
+            <span className="section-eyebrow">Tìm chuyến bay</span>
+            <h1 className="page-title">Chọn chuyến bay phù hợp theo giờ khởi hành, gói giá và ngân sách.</h1>
+            <p className="page-hero-copy">
+              So sánh nhanh giờ bay, thời lượng, số ghế còn lại và điều kiện gói giá để chốt hành
+              trình phù hợp.
+            </p>
+          </div>
+          <div className="page-hero-stat-grid">
+            {insights.map((item) => (
+              <article
+                key={item.label}
+                className={item.kind === "date" ? "page-hero-stat page-hero-stat-date" : "page-hero-stat"}
+              >
+                <span>{item.label}</span>
+                {item.kind === "date" && criteria.tripType === "round_trip" && criteria.returnDate ? (
+                  <strong className="stat-value-compact date-range-stack">
+                    <span className="date-range-line">{dinhDangNgay(criteria.departureDate)}</span>
+                    <span className="date-range-arrow" aria-hidden="true">
+                      ↓
+                    </span>
+                    <span className="date-range-line">{dinhDangNgay(criteria.returnDate)}</span>
+                  </strong>
+                ) : (
+                  <strong className={item.compact ? "stat-value-compact" : undefined}>{item.value}</strong>
+                )}
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="section-gap" />
+        {thongBaoDieuHuong ? (
+          <>
+            <article className="surface-card booking-inline-info">
+              <strong>Bạn cần chọn chuyến bay trước</strong>
+              <p>{thongBaoDieuHuong}</p>
+            </article>
+            <div className="section-gap" />
+          </>
+        ) : null}
+
+        <form id="dat-ve" className="surface-card search-toolbar-card" onSubmit={xuLyTimChuyenBay}>
+          <div className="search-toolbar-head">
+            <div>
+              <span className="section-eyebrow">Cập nhật hành trình</span>
+              <h2>Tìm lại chuyến bay ngay trên trang kết quả</h2>
+            </div>
+            <p>{passengerSummary}</p>
+          </div>
+
+          <div className="toggle-group search-toolbar-trip-type">
+            {TRIP_TYPES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={tripType === item ? "toggle active" : "toggle"}
+                onClick={() => setTripType(item)}
+              >
+                {tripLabels[item]}
+              </button>
+            ))}
+          </div>
+
+          <div className="search-toolbar-grid">
+            <div className="search-toolbar-main-fields">
+              <div className="route-pair search-toolbar-route-pair">
+                <label className="field route-field">
+                  <span>Điểm đi</span>
+                  <input
+                    value={from}
+                    onChange={(event) => setFrom(event.target.value)}
+                    placeholder="VD: SGN hoặc Hà Nội"
+                    list="toolbar-goi-y-san-bay-di"
+                  />
+                  <datalist id="toolbar-goi-y-san-bay-di">
+                    {goiYSanBayDi.map((sanBay) => (
+                      <option key={sanBay.code} value={sanBay.code}>
+                        {`${sanBay.cityName} (${sanBay.code}) - ${sanBay.airportName}`}
+                      </option>
+                    ))}
+                  </datalist>
+                  <small>
+                    {dangTaiSanBayDi
+                      ? "Đang tải gợi ý sân bay..."
+                      : "Nhập mã hoặc tên thành phố để nhận gợi ý nhanh."}
+                  </small>
+                </label>
+
+                <button
+                  type="button"
+                  className="swap-button search-toolbar-swap"
+                  aria-label="Đảo chiều hành trình"
+                  onClick={xuLyDoiChieu}
+                >
+                  ⇄
+                </button>
+
+                <label className="field route-field">
+                  <span>Điểm đến</span>
+                  <input
+                    value={to}
+                    onChange={(event) => setTo(event.target.value)}
+                    placeholder="VD: HAN hoặc Đà Nẵng"
+                    list="toolbar-goi-y-san-bay-den"
+                  />
+                  <datalist id="toolbar-goi-y-san-bay-den">
+                    {goiYSanBayDen.map((sanBay) => (
+                      <option key={sanBay.code} value={sanBay.code}>
+                        {`${sanBay.cityName} (${sanBay.code}) - ${sanBay.airportName}`}
+                      </option>
+                    ))}
+                  </datalist>
+                  <small>
+                    {dangTaiSanBayDen
+                      ? "Đang tải gợi ý sân bay..."
+                      : "Có thể nhập mã sân bay hoặc tên thành phố."}
+                  </small>
+                </label>
+              </div>
+
+              <div className="search-toolbar-detail-grid">
+                <label className="field">
+                  <span>Ngày đi</span>
+                  <input
+                    type="date"
+                    value={departureDate}
+                    onChange={(event) => setDepartureDate(event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Ngày về</span>
+                  <input
+                    type="date"
+                    value={tripType === "one_way" ? "" : returnDate}
+                    disabled={tripType === "one_way"}
+                    onChange={(event) => setReturnDate(event.target.value)}
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Hạng vé</span>
+                  <select
+                    value={fareFamily}
+                    onChange={(event) => {
+                      setFareFamily(event.target.value as FareFamily | "all");
+                      setLoiGoiGia("");
+                    }}
+                  >
+                    <option value="all">Tất cả hạng vé</option>
+                    <option value="pho_thong_tiet_kiem">Phổ thông tiết kiệm</option>
+                    <option value="pho_thong_linh_hoat">Phổ thông linh hoạt</option>
+                    <option value="thuong_gia">Thương gia</option>
+                  </select>
+                  {loiGoiGia ? <small>{loiGoiGia}</small> : null}
+                </label>
+              </div>
+
+              <div className="search-toolbar-support-grid">
+                <div className="search-toolbar-support-card">
+                  <span className="search-toolbar-support-title">Điểm đi phổ biến</span>
+                  <div className="filter-chip-list">
+                    {sanBayDiPhoBien.map((sanBay) => (
+                      <button
+                        key={`from-${sanBay.code}`}
+                        type="button"
+                        className={
+                          from === sanBay.code
+                            ? "assurance-chip filter-chip-button active"
+                            : "assurance-chip filter-chip-button"
+                        }
+                        onClick={() => chonSanBay("from", sanBay.code)}
+                        title={taoMoTaSanBay(sanBay)}
+                      >
+                        {taoNhanSanBay(sanBay)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="search-toolbar-support-card">
+                  <span className="search-toolbar-support-title">Điểm đến phổ biến</span>
+                  <div className="filter-chip-list">
+                    {sanBayDenPhoBien.map((sanBay) => (
+                      <button
+                        key={`to-${sanBay.code}`}
+                        type="button"
+                        className={
+                          to === sanBay.code
+                            ? "assurance-chip filter-chip-button active"
+                            : "assurance-chip filter-chip-button"
+                        }
+                        onClick={() => chonSanBay("to", sanBay.code)}
+                        title={taoMoTaSanBay(sanBay)}
+                      >
+                        {taoNhanSanBay(sanBay)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="search-toolbar-route-presets">
+                <span className="search-toolbar-support-title">Tuyến phổ biến</span>
+                <div className="route-preset-grid">
+                  {routePresets.map((route) => (
+                    <button
+                      key={`${route.from}-${route.to}`}
+                      type="button"
+                      className={
+                        from === route.from && to === route.to
+                          ? "route-preset-button route-preset-button-active"
+                          : "route-preset-button"
+                      }
+                      onClick={() => xuLyChonTuyenNhanh(route)}
+                    >
+                      <strong>{route.label}</strong>
+                      <span>{route.from} → {route.to}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="search-toolbar-passenger-panel">
+              <div className="search-toolbar-passenger-head">
+                <div>
+                  <span className="search-toolbar-support-title">Hành khách</span>
+                  <strong>{tongKhach} khách</strong>
+                </div>
+                <p>Tối đa 9 khách, số em bé không vượt quá số người lớn.</p>
+              </div>
+
+              <div className="passenger-counter-grid">
+                <PassengerCounterCard
+                  label="Người lớn"
+                  note="Từ 12 tuổi"
+                  value={adultCount}
+                  disabledDecrease={!coTheGiamHanhKhach("adult")}
+                  disabledIncrease={!coTheTangHanhKhach("adult")}
+                  onDecrease={() => capNhatHanhKhach("adult", -1)}
+                  onIncrease={() => capNhatHanhKhach("adult", 1)}
+                />
+                <PassengerCounterCard
+                  label="Trẻ em"
+                  note="Từ 2 đến dưới 12 tuổi"
+                  value={childCount}
+                  disabledDecrease={!coTheGiamHanhKhach("child")}
+                  disabledIncrease={!coTheTangHanhKhach("child")}
+                  onDecrease={() => capNhatHanhKhach("child", -1)}
+                  onIncrease={() => capNhatHanhKhach("child", 1)}
+                />
+                <PassengerCounterCard
+                  label="Em bé"
+                  note="Dưới 2 tuổi"
+                  value={infantCount}
+                  disabledDecrease={!coTheGiamHanhKhach("infant")}
+                  disabledIncrease={!coTheTangHanhKhach("infant")}
+                  onDecrease={() => capNhatHanhKhach("infant", -1)}
+                  onIncrease={() => capNhatHanhKhach("infant", 1)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="search-toolbar-action-row">
+            <div className="search-toolbar-action-copy">
+              <strong>{tripType === "multi_city" ? "Nhiều chặng đang được chuẩn bị" : passengerSummary}</strong>
+              <p>
+                {tripType === "multi_city"
+                  ? "Màn này đang phục vụ đầy đủ cho hành trình một chiều và khứ hồi."
+                  : "Bạn có thể đổi nhanh tuyến, ngày bay và nhóm hành khách để xem thêm lựa chọn phù hợp."}
+              </p>
+            </div>
+            <button
+              className="button button-primary search-toolbar-submit"
+              type="submit"
+              disabled={tripType === "multi_city" || dangTaiKetQua}
+            >
+              {tripType === "multi_city"
+                ? "Tạm thời chưa khả dụng"
+                : dangTaiKetQua
+                  ? "Đang cập nhật"
+                  : "Cập nhật kết quả"}
+            </button>
+          </div>
+        </form>
+
+        <div className="section-gap" />
+        <div className="search-layout">
+          <section className="surface-card filter-card">
+            <div className="filter-head">
+              <div>
+                <h3>Bộ lọc kết quả</h3>
+                <p>Lọc ngay trên danh sách chuyến bay để rút ngắn thời gian so sánh và chọn vé.</p>
+              </div>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setFilterState(DEFAULT_FLIGHT_SEARCH_FILTER_STATE)}
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+
+            <div className="filter-toolbar-grid">
+              <div className="search-filter-section">
+                <span className="search-filter-title">Giờ bay</span>
+                <div className={taoLopDanhSachChipBoLoc(timeSlotOptions.length)}>
+                  {timeSlotOptions.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      className={
+                        filterState.timeSlots.includes(slot)
+                          ? "assurance-chip filter-chip-button active"
+                          : "assurance-chip filter-chip-button"
+                      }
+                      onClick={() => xuLyBatTatKhungGio(slot)}
+                    >
+                      {layNhanKhungGio(slot)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="search-filter-section">
+                <span className="search-filter-title">Gói giá</span>
+                <div className={taoLopDanhSachChipBoLoc(fareFamilyOptions.length)}>
+                  {fareFamilyOptions.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={
+                        filterState.fareFamilies.includes(item)
+                          ? "assurance-chip filter-chip-button active"
+                          : "assurance-chip filter-chip-button"
+                      }
+                      onClick={() => xuLyBatTatGoiGia(item)}
+                    >
+                      {hienThiTenGoiGia(item)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="search-filter-section">
+                <span className="search-filter-title">Ngân sách</span>
+                <div className={taoLopDanhSachChipBoLoc(Math.max(budgetOptions.length, 1))}>
+                  {budgetOptions.length > 0 ? (
+                    budgetOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={
+                          filterState.budgetId === option.id
+                            ? "assurance-chip filter-chip-button active"
+                            : "assurance-chip filter-chip-button"
+                        }
+                        onClick={() =>
+                          setFilterState((currentState) => ({
+                            ...currentState,
+                            budgetId: currentState.budgetId === option.id ? null : option.id
+                          }))
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="filter-note">Bộ giá sẽ hiện khi có chuyến bay phù hợp.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="search-filter-section">
+                <span className="search-filter-title">Còn ghế</span>
+                <div className={taoLopDanhSachChipBoLoc(minimumSeatOptions.length)}>
+                  {minimumSeatOptions.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={
+                        filterState.minimumSeats === value
+                          ? "assurance-chip filter-chip-button active"
+                          : "assurance-chip filter-chip-button"
+                      }
+                      onClick={() =>
+                        setFilterState((currentState) => ({
+                          ...currentState,
+                          minimumSeats: value
+                        }))
+                      }
+                    >
+                      {taoNhanSoGheToiThieu(value)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="filter-summary-row">
+              <div className="filter-note">
+                Đang áp dụng hạng vé trên form tìm kiếm: <strong>{hienThiTrangThaiLocGoiGia(criteria)}</strong>
+              </div>
+              {criteria.tripType === "round_trip" ? (
+                <div className="filter-note">
+                  {selectedOutboundFlight
+                    ? `Đã chọn chiều đi: ${selectedOutboundFlight.code} • ${selectedOutboundFlight.departureTime}`
+                    : "Hãy chọn chiều đi trước khi chốt chiều về."}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <div className="stack-list">
+            {searchError ? (
+              <article className="surface-card result-card">
+                <div className="result-top">
+                  <div>
+                    <span className="section-eyebrow">Không thể tải dữ liệu</span>
+                    <h3>Không thể lấy kết quả tìm chuyến bay</h3>
+                    <p>{searchError}</p>
+                  </div>
+                </div>
+              </article>
+            ) : (
+              <>
+                {taoTheKetQua("Chặng đi", outboundFlights, criteria, selectedOutboundFlight)}
+                {criteria.tripType === "round_trip"
+                  ? taoTheKetQua("Chặng về", returnFlights, criteria, selectedOutboundFlight)
+                  : null}
+              </>
+            )}
+          </div>
+        </div>
+
+        {searchData?.fares.length ? (
+          <>
+            <div className="section-gap" />
+            <SectionHeading
+              eyebrow="So sánh gói giá"
+              title="So sánh gói giá để chọn đúng nhu cầu của từng hành trình"
+              description="Mỗi gói vé làm rõ quyền lợi về hành lý, đổi hoặc hoàn và lựa chọn chỗ ngồi để hành khách đưa ra quyết định ngay tại bước tìm chuyến."
+            />
+            <div className="card-grid card-grid-3">
+              {searchData.fares.map((fare) => (
+                <article key={fare.title} className="surface-card fare-card">
+                  <div className="fare-card-image">
+                    <Image
+                      src={fareImageMap[fare.fareFamily].src}
+                      alt={fareImageMap[fare.fareFamily].alt}
+                      fill
+                      sizes="(max-width: 820px) 100vw, 360px"
+                    />
+                  </div>
+                  <span className="pill">{fare.title}</span>
+                  <strong className="fare-price">{formatCurrency(fare.price)}</strong>
+                  <ul className="list-clean">
+                    {fare.perks.map((perk) => (
+                      <li key={perk}>{perk}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </section>
+  );
+}

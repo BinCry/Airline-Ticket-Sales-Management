@@ -75,3 +75,14 @@ export function rejectBackofficeRefund(
 ): Promise<BackofficeRefundItem> {
   return mutateRefund(refundRequestId, "reject", accessToken);
 }
+
+export async function hideBackofficeRefund(
+  refundRequestId: number,
+  accessToken: string
+): Promise<void> {
+  await requestApi<void>(`/api/backoffice/finance/refunds/${refundRequestId}`, {
+    accessToken,
+    fallbackMessage: "Không thể xóa yêu cầu hoàn vé khỏi danh sách lúc này.",
+    method: "DELETE"
+  });
+}

@@ -20,10 +20,10 @@ public class FlightSearchService {
 
   private static final ZoneId ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final List<String> SEARCH_FILTERS = List.of(
-      "Gio bay",
-      "Goi gia",
-      "Ngan sach",
-      "Con ghe"
+      "Giờ bay",
+      "Gói giá",
+      "Ngân sách",
+      "Còn ghế"
   );
 
   private final AirportRepository airportRepository;
@@ -78,6 +78,7 @@ public class FlightSearchService {
     List<FlightSearchResponse.FlightCard> returnFlights = "round_trip".equals(normalizedTripType)
         ? searchDirection(normalizedTo, normalizedFrom, returnDate, normalizedFareFamily)
         : List.of();
+    List<FlightSearchResponse.FlightCard> allFlights = concatFlights(outboundFlights, returnFlights);
 
     FlightSearchResponse.SearchCriteria criteria = flightSearchMapper.toCriteria(
         normalizedFrom,
@@ -96,8 +97,8 @@ public class FlightSearchService {
         normalizedFrom,
         normalizedTo,
         SEARCH_FILTERS,
-        outboundFlights,
-        productCatalogService.buildFareCards(concatFlights(outboundFlights, returnFlights)),
+        allFlights,
+        productCatalogService.buildFareCards(allFlights),
         criteria,
         outboundFlights,
         returnFlights
@@ -121,6 +122,8 @@ public class FlightSearchService {
     OffsetDateTime end = date.plusDays(1).atStartOfDay(ZONE_ID).toOffsetDateTime();
     List<FlightEntity> flights = flightRepository.searchRoute(from, to, start, end);
     List<FlightFareInventoryEntity> inventories = flights.stream()
+        .filter(FlightEntity::isSalesOpen)
+        .filter(flight -> !"cancelled".equals(flight.getStatus()))
         .flatMap(flight -> flight.getFareInventories().stream())
         .filter(inventory -> fareFamily == null || Objects.equals(inventory.getFareFamily(), fareFamily))
         .toList();

@@ -53,6 +53,7 @@ describe("manage-booking-api", () => {
             }
           ],
           ancillaries: [],
+          seatSelections: [],
           tickets: [
             {
               ticketNumber: "7380000000001",
@@ -63,12 +64,14 @@ describe("manage-booking-api", () => {
           ],
           boardingPasses: [],
           refundRequest: null,
-          paymentMethods: ["Thanh toán (Sandbox)"],
+          paymentMethods: ["Chuyển khoản SePay"],
           priceSummary: {
             baseAmount: 1490000,
             ancillaryAmount: 0,
+            discountAmount: 0,
             totalAmount: 1490000,
-            currency: "VND"
+            currency: "VND",
+            appliedVoucherCode: null
           }
         }),
         {

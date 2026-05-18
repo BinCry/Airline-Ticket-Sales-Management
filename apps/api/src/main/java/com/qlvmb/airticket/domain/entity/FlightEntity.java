@@ -41,12 +41,52 @@ public class FlightEntity {
   private OffsetDateTime arrivalAt;
 
   @Column(nullable = false, length = 32)
-  private String status;
+  private String status = "scheduled";
+
+  @Column(length = 12)
+  private String gate;
+
+  @Column(name = "operations_note", length = 255)
+  private String operationsNote;
+
+  @Column(name = "sales_open", nullable = false)
+  private boolean salesOpen = true;
+
+  @Column(name = "hidden_at")
+  private OffsetDateTime hiddenAt;
+
+  @Column(name = "cancelled_at")
+  private OffsetDateTime cancelledAt;
 
   @OneToMany(mappedBy = "flight", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<FlightFareInventoryEntity> fareInventories = new ArrayList<>();
 
   protected FlightEntity() {
+  }
+
+  public static FlightEntity create(
+      String code,
+      AirportEntity originAirport,
+      AirportEntity destinationAirport,
+      OffsetDateTime departureAt,
+      OffsetDateTime arrivalAt,
+      String gate,
+      String operationsNote,
+      boolean salesOpen
+  ) {
+    FlightEntity flight = new FlightEntity();
+    flight.code = code;
+    flight.originAirport = originAirport;
+    flight.destinationAirport = destinationAirport;
+    flight.departureAt = departureAt;
+    flight.arrivalAt = arrivalAt;
+    flight.status = "scheduled";
+    flight.gate = gate;
+    flight.operationsNote = operationsNote;
+    flight.salesOpen = salesOpen;
+    flight.hiddenAt = null;
+    flight.cancelledAt = null;
+    return flight;
   }
 
   public Long getId() {
@@ -77,7 +117,62 @@ public class FlightEntity {
     return status;
   }
 
+  public String getGate() {
+    return gate;
+  }
+
+  public String getOperationsNote() {
+    return operationsNote;
+  }
+
+  public boolean isSalesOpen() {
+    return salesOpen;
+  }
+
+  public OffsetDateTime getHiddenAt() {
+    return hiddenAt;
+  }
+
+  public OffsetDateTime getCancelledAt() {
+    return cancelledAt;
+  }
+
   public List<FlightFareInventoryEntity> getFareInventories() {
     return fareInventories;
+  }
+
+  public boolean isCancelled() {
+    return "cancelled".equals(status);
+  }
+
+  public boolean isHiddenFromUi() {
+    return hiddenAt != null;
+  }
+
+  public void addFareInventory(FlightFareInventoryEntity fareInventory) {
+    fareInventories.add(fareInventory);
+  }
+
+  public void updateOperations(
+      String status,
+      String gate,
+      String operationsNote,
+      boolean salesOpen
+  ) {
+    this.status = status;
+    this.gate = gate;
+    this.operationsNote = operationsNote;
+    this.salesOpen = salesOpen;
+  }
+
+  public void markCancelled(String operationsNote, OffsetDateTime cancelledAt) {
+    status = "cancelled";
+    this.operationsNote = operationsNote;
+    salesOpen = false;
+    this.cancelledAt = cancelledAt;
+  }
+
+  public void hideFromUi(OffsetDateTime hiddenAt) {
+    this.hiddenAt = hiddenAt;
   }
 }

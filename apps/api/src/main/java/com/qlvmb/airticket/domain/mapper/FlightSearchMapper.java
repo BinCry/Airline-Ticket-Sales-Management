@@ -5,12 +5,14 @@ import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FlightSearchMapper {
 
+  private static final ZoneId DISPLAY_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
   public FlightSearchResponse.SearchCriteria toCriteria(
@@ -39,6 +41,9 @@ public class FlightSearchMapper {
 
   public FlightSearchResponse.FlightCard toFlightCard(FlightFareInventoryEntity inventory, long seatsLeft) {
     FlightEntity flight = inventory.getFlight();
+    OffsetDateTime departureAt = chuyenVeMuiGioHienThi(flight.getDepartureAt());
+    OffsetDateTime arrivalAt = chuyenVeMuiGioHienThi(flight.getArrivalAt());
+
     return new FlightSearchResponse.FlightCard(
         inventory.getId(),
         flight.getId(),
@@ -47,16 +52,20 @@ public class FlightSearchMapper {
         flight.getDestinationAirport().getCityName(),
         flight.getOriginAirport().getCode(),
         flight.getDestinationAirport().getCode(),
-        flight.getDepartureAt().toString(),
-        flight.getArrivalAt().toString(),
-        formatTime(flight.getDepartureAt()),
-        formatTime(flight.getArrivalAt()),
-        buildDuration(flight.getDepartureAt(), flight.getArrivalAt()),
+        departureAt.toString(),
+        arrivalAt.toString(),
+        formatTime(departureAt),
+        formatTime(arrivalAt),
+        buildDuration(departureAt, arrivalAt),
         flight.getStatus(),
         inventory.getFareFamily(),
         inventory.getPrice(),
         seatsLeft
     );
+  }
+
+  private OffsetDateTime chuyenVeMuiGioHienThi(OffsetDateTime dateTime) {
+    return dateTime.atZoneSameInstant(DISPLAY_ZONE_ID).toOffsetDateTime();
   }
 
   private String formatTime(OffsetDateTime dateTime) {
@@ -67,6 +76,6 @@ public class FlightSearchMapper {
     Duration duration = Duration.between(departureAt, arrivalAt);
     long hours = duration.toHours();
     long minutes = duration.toMinutesPart();
-    return hours + " gio " + minutes + " phut";
+    return hours + " giờ " + minutes + " phút";
   }
 }

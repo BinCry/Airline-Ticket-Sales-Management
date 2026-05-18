@@ -8,6 +8,7 @@ import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   approveBackofficeRefund,
   fetchBackofficeRefunds,
+  hideBackofficeRefund,
   rejectBackofficeRefund,
   type BackofficeRefundItem
 } from "@/lib/backoffice-finance-api";
@@ -83,7 +84,9 @@ export function BackofficeFinancePageClient() {
       setState("success");
     } catch (error) {
       setRefunds([]);
-      setErrorMessage(resolveApiClientErrorMessage(error, "Không thể tải danh sách yêu cầu hoàn vé lúc này."));
+      setErrorMessage(
+        resolveApiClientErrorMessage(error, "Không thể tải danh sách yêu cầu hoàn vé lúc này.")
+      );
       setState("error");
     }
   }
@@ -120,6 +123,33 @@ export function BackofficeFinancePageClient() {
     }
   }
 
+  async function handleHideRefund(refundRequestId: number) {
+    if (!accessToken || pendingActionId !== null) {
+      return;
+    }
+
+    const shouldHide = window.confirm("Xóa yêu cầu hoàn vé đã xử lý khỏi danh sách hiển thị?");
+    if (!shouldHide) {
+      return;
+    }
+
+    setPendingActionId(refundRequestId);
+
+    try {
+      await hideBackofficeRefund(refundRequestId, accessToken);
+      await loadRefunds(accessToken);
+      pushToast({
+        title: "Đã xóa khỏi danh sách",
+        message: "Yêu cầu hoàn vé đã xử lý đã được ẩn khỏi giao diện vận hành.",
+        tone: "success"
+      });
+    } catch (error) {
+      setErrorMessage(resolveApiClientErrorMessage(error, "Không thể xóa yêu cầu hoàn vé khỏi danh sách."));
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+
   return (
     <section className="section">
       <div className="container">
@@ -133,8 +163,8 @@ export function BackofficeFinancePageClient() {
           <div className="finance-table-head">
             <div>
               <span className="section-eyebrow">Danh sách hoàn vé</span>
-              <h3>Tất cả yêu cầu đang có trên hệ thống</h3>
-              <p>Dữ liệu được tải trực tiếp từ refund_request và booking trên backend.</p>
+              <h3>Tất cả yêu cầu đang chờ xử lý</h3>
+              <p>Danh sách hiển thị các yêu cầu hoàn vé cần kiểm tra và phê duyệt.</p>
             </div>
             <button
               type="button"
@@ -209,7 +239,16 @@ export function BackofficeFinancePageClient() {
                               </button>
                             </div>
                           ) : (
-                            <span className="finance-muted-action">Không còn thao tác khả dụng</span>
+                            <div className="finance-action-row">
+                              <button
+                                type="button"
+                                className="button button-secondary"
+                                disabled={isWorking || pendingActionId !== null}
+                                onClick={() => void handleHideRefund(refund.id)}
+                              >
+                                {isWorking ? "Đang xóa..." : "Xóa sau xử lý"}
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -219,12 +258,10 @@ export function BackofficeFinancePageClient() {
                   <tr>
                     <td colSpan={6}>
                       <article className="booking-inline-info">
-                        <strong>
-                          {state === "loading" ? "Đang tải..." : "Không tìm thấy dữ liệu"}
-                        </strong>
+                        <strong>{state === "loading" ? "Đang tải..." : "Không tìm thấy dữ liệu"}</strong>
                         <p>
                           {state === "loading"
-                            ? "Đang đồng bộ danh sách yêu cầu hoàn vé từ backend."
+                            ? "Đang tải danh sách yêu cầu hoàn vé."
                             : "Hiện chưa có yêu cầu hoàn vé nào cần xử lý."}
                         </p>
                       </article>
@@ -240,7 +277,7 @@ export function BackofficeFinancePageClient() {
               <div className="surface-card finance-processing-card">
                 <span className="section-eyebrow">Đang xử lý</span>
                 <h3>Vui lòng chờ trong giây lát</h3>
-                <p>Hệ thống đang cập nhật trạng thái yêu cầu hoàn vé và đồng bộ lại bảng dữ liệu.</p>
+                <p>Đang cập nhật trạng thái yêu cầu hoàn vé và làm mới bảng dữ liệu.</p>
               </div>
             </div>
           ) : null}

@@ -6,9 +6,9 @@ import com.qlvmb.airticket.domain.dto.AuthOtpRequestResponse;
 import com.qlvmb.airticket.domain.dto.AuthOtpVerifyResponse;
 import com.qlvmb.airticket.domain.dto.AuthPasswordResetRequest;
 import com.qlvmb.airticket.domain.dto.AuthPasswordResetVerifyRequest;
-import com.qlvmb.airticket.domain.dto.AuthResetPasswordRequest;
 import com.qlvmb.airticket.domain.dto.AuthRefreshRequest;
 import com.qlvmb.airticket.domain.dto.AuthRegisterRequest;
+import com.qlvmb.airticket.domain.dto.AuthResetPasswordRequest;
 import com.qlvmb.airticket.domain.dto.AuthSessionResponse;
 import com.qlvmb.airticket.domain.dto.MyProfileResponse;
 import com.qlvmb.airticket.domain.entity.OtpChallengeEntity;
@@ -49,6 +49,7 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenService jwtTokenService;
   private final OtpDeliveryService otpDeliveryService;
+  private final PasswordPolicyService passwordPolicyService;
   private final long passwordResetOtpTtlSeconds;
   private final int otpMaxAttempts;
   private final SecureRandom secureRandom;
@@ -61,6 +62,7 @@ public class AuthService {
       PasswordEncoder passwordEncoder,
       JwtTokenService jwtTokenService,
       OtpDeliveryService otpDeliveryService,
+      PasswordPolicyService passwordPolicyService,
       @Value("${app.auth.otp.password-reset-ttl-seconds}") long passwordResetOtpTtlSeconds,
       @Value("${app.auth.otp.max-attempts}") int otpMaxAttempts
   ) {
@@ -71,6 +73,7 @@ public class AuthService {
     this.passwordEncoder = passwordEncoder;
     this.jwtTokenService = jwtTokenService;
     this.otpDeliveryService = otpDeliveryService;
+    this.passwordPolicyService = passwordPolicyService;
     this.passwordResetOtpTtlSeconds = passwordResetOtpTtlSeconds;
     this.otpMaxAttempts = otpMaxAttempts;
     this.secureRandom = new SecureRandom();
@@ -80,8 +83,12 @@ public class AuthService {
   public AuthSessionResponse register(AuthRegisterRequest request, String userAgent, String ipAddress) {
     String normalizedEmail = normalizeEmail(request.email());
     if (userAccountRepository.existsByEmailIgnoreCase(normalizedEmail)) {
-      throw new ConflictException("Email đã được sử dụng.");
+      throw new ConflictException("Email đã tồn tại. Vui lòng đăng nhập hoặc dùng email khác.");
     }
+
+    String displayName = normalizeDisplayName(request.displayName());
+    String phone = normalizePhone(request.phone());
+    passwordPolicyService.validate(request.password(), normalizedEmail, displayName, phone);
 
     RoleEntity customerRole = roleRepository.findByCode(RoleCode.CUSTOMER)
         .orElseThrow(() -> new IllegalStateException("Thiếu dữ liệu vai trò khách hàng."));
@@ -89,8 +96,8 @@ public class AuthService {
     UserAccountEntity userAccount = UserAccountEntity.register(
         normalizedEmail,
         passwordEncoder.encode(request.password()),
-        normalizeDisplayName(request.displayName()),
-        normalizePhone(request.phone()),
+        displayName,
+        phone,
         "active",
         now
     );
@@ -101,10 +108,11 @@ public class AuthService {
 
   @Transactional
   public AuthSessionResponse login(AuthLoginRequest request, String userAgent, String ipAddress) {
-    UserAccountEntity userAccount = userAccountRepository.findOneWithRolesByEmailIgnoreCase(normalizeEmail(request.email()))
-        .orElseThrow(() -> new UnauthorizedException("Thông tin đăng nhập không chính xác."));
+    String normalizedEmail = normalizeEmail(request.email());
+    UserAccountEntity userAccount = userAccountRepository.findOneWithRolesByEmailIgnoreCase(normalizedEmail)
+        .orElseThrow(() -> new UnauthorizedException("Email chưa được đăng ký."));
     if (!passwordEncoder.matches(request.password(), userAccount.getPasswordHash())) {
-      throw new UnauthorizedException("Thông tin đăng nhập không chính xác.");
+      throw new UnauthorizedException("Mật khẩu không đúng.");
     }
     validateUserState(userAccount);
     userAccount.markLoggedIn(OffsetDateTime.now(ZoneOffset.UTC));
@@ -141,32 +149,33 @@ public class AuthService {
           .filter(refreshSession -> refreshSession.getUserAccount().getId().equals(payload.userId()))
           .ifPresent(refreshSession -> refreshSession.revoke(OffsetDateTime.now(ZoneOffset.UTC)));
     } catch (UnauthorizedException exception) {
-      // Giu dang xuat o dang idempotent.
+      // Giữ đăng xuất ở dạng idempotent.
     }
   }
 
   @Transactional
   public AuthOtpRequestResponse requestForgotPasswordOtp(AuthPasswordResetRequest request) {
     String normalizedEmail = normalizeEmail(request.email());
-    userAccountRepository.findByEmailIgnoreCase(normalizedEmail).ifPresent(userAccount -> {
-      OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-      String otp = generateOtp();
-      OtpChallengeEntity otpChallenge = OtpChallengeEntity.issue(
-          userAccount,
-          OtpChannelCode.EMAIL,
-          OtpPurposeCode.FORGOT_PASSWORD,
-          normalizedEmail,
-          passwordEncoder.encode(otp),
-          now.plusSeconds(passwordResetOtpTtlSeconds),
-          now
-      );
-      otpChallengeRepository.save(otpChallenge);
-      otpDeliveryService.sendForgotPasswordOtp(normalizedEmail, otp);
-    });
+    UserAccountEntity userAccount = userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
+        .orElseThrow(() -> new BadRequestException("Email này chưa được đăng ký."));
+
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    String otp = generateOtp();
+    OtpChallengeEntity otpChallenge = OtpChallengeEntity.issue(
+        userAccount,
+        OtpChannelCode.EMAIL,
+        OtpPurposeCode.FORGOT_PASSWORD,
+        normalizedEmail,
+        passwordEncoder.encode(otp),
+        now.plusSeconds(passwordResetOtpTtlSeconds),
+        now
+    );
+    otpChallengeRepository.save(otpChallenge);
+    otpDeliveryService.sendForgotPasswordOtp(normalizedEmail, otp);
 
     return new AuthOtpRequestResponse(
         "accepted",
-        "Nếu email tồn tại, mã OTP đã được gửi."
+        "Mã OTP đã được gửi đến email đã đăng ký."
     );
   }
 
@@ -187,6 +196,12 @@ public class AuthService {
         .orElseThrow(() -> new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn."));
     OtpChallengeEntity otpChallenge = requireActivePasswordResetChallenge(normalizedEmail);
     validateOtpValue(otpChallenge, request.otp());
+    passwordPolicyService.validate(
+        request.newPassword(),
+        userAccount.getEmail(),
+        userAccount.getDisplayName(),
+        userAccount.getPhone()
+    );
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     userAccount.updatePassword(passwordEncoder.encode(request.newPassword()), now);
@@ -203,8 +218,9 @@ public class AuthService {
     return new MyProfileResponse(
         userAccount.getId(),
         userAccount.getEmail(),
-        userAccount.getDisplayName(),
+        DisplayNamePresentationSupport.present(userAccount.getDisplayName()),
         userAccount.getPhone(),
+        userAccount.getAvatarUrl(),
         userAccount.isEmailVerified(),
         userAccount.getStatus(),
         extractRoleCodes(userAccount)
@@ -231,8 +247,9 @@ public class AuthService {
         new AuthSessionResponse.UserSummary(
             userAccount.getId(),
             userAccount.getEmail(),
-            userAccount.getDisplayName(),
+            DisplayNamePresentationSupport.present(userAccount.getDisplayName()),
             userAccount.getPhone(),
+            userAccount.getAvatarUrl(),
             userAccount.isEmailVerified(),
             extractRoleCodes(userAccount),
             extractPermissionCodes(userAccount)

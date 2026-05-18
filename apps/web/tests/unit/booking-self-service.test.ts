@@ -34,8 +34,10 @@ const bookingMau: ApiManageBookingOverview = {
   priceSummary: {
     baseAmount: 1490000,
     ancillaryAmount: 0,
+    discountAmount: 0,
     totalAmount: 1490000,
-    currency: "VND"
+    currency: "VND",
+    appliedVoucherCode: null
   }
 };
 

@@ -29,7 +29,7 @@ public class OtpDeliveryService {
 
   public void sendForgotPasswordOtp(String email, String otp) {
     if (!mailEnabled) {
-      LOGGER.info("Da tao OTP dat lai mat khau cho {}", maskEmail(email));
+      LOGGER.info("Đã tạo OTP đặt lại mật khẩu cho {}", maskEmail(email));
       return;
     }
 
@@ -44,10 +44,33 @@ public class OtpDeliveryService {
     SimpleMailMessage message = new SimpleMailMessage();
     message.setTo(email);
     message.setFrom(fromEmail);
-    message.setSubject("Ma OTP dat lai mat khau");
+    message.setSubject("Mã OTP đặt lại mật khẩu");
     message.setText(buildForgotPasswordMessage(otp));
     mailSender.send(message);
-    LOGGER.info("Da gui OTP dat lai mat khau den {}", maskEmail(email));
+    LOGGER.info("Đã gửi OTP đặt lại mật khẩu đến {}", maskEmail(email));
+  }
+
+  public void sendBookingLookupOtp(String email, String otp, String bookingCode) {
+    if (!mailEnabled) {
+      LOGGER.info("Đã tạo OTP tra cứu booking {} cho {}", bookingCode, maskEmail(email));
+      return;
+    }
+
+    if (mailSender == null) {
+      throw new IllegalStateException("Chưa cấu hình dịch vụ gửi email.");
+    }
+
+    if (fromEmail == null || fromEmail.isBlank()) {
+      throw new IllegalStateException("Chưa cấu hình email gửi OTP.");
+    }
+
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setTo(email);
+    message.setFrom(fromEmail);
+    message.setSubject("Mã OTP tra cứu đặt chỗ " + bookingCode);
+    message.setText(buildBookingLookupMessage(otp, bookingCode));
+    mailSender.send(message);
+    LOGGER.info("Đã gửi OTP tra cứu booking {} đến {}", bookingCode, maskEmail(email));
   }
 
   private String maskEmail(String email) {
@@ -60,10 +83,19 @@ public class OtpDeliveryService {
 
   private String buildForgotPasswordMessage(String otp) {
     return """
-        Ma OTP dat lai mat khau cua ban la: %s
+        Mã OTP đặt lại mật khẩu của bạn là: %s
 
-        Ma nay co hieu luc trong 5 phut.
-        Neu ban khong yeu cau dat lai mat khau, vui long bo qua email nay.
+        Mã này có hiệu lực trong 5 phút.
+        Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
         """.formatted(otp);
+  }
+
+  private String buildBookingLookupMessage(String otp, String bookingCode) {
+    return """
+        Mã OTP tra cứu cho đặt chỗ %s là: %s
+
+        Mã này có hiệu lực trong 5 phút.
+        Nếu bạn không yêu cầu tra cứu đặt chỗ, vui lòng bỏ qua email này.
+        """.formatted(bookingCode, otp);
   }
 }

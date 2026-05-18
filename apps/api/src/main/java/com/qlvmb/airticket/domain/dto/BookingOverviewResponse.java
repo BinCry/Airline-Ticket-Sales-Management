@@ -16,6 +16,7 @@ public record BookingOverviewResponse(
     ContactItem contact,
     List<PassengerItem> passengers,
     List<AncillaryItem> ancillaries,
+    List<SeatSelectionItem> seatSelections,
     List<TicketItem> tickets,
     List<BoardingPassItem> boardingPasses,
     RefundRequestItem refundRequest,
@@ -45,9 +46,10 @@ public record BookingOverviewResponse(
         ancillaries,
         List.of(),
         List.of(),
+        List.of(),
         null,
         paymentMethods,
-        new PriceSummaryItem(0L, 0L, 0L, "VND")
+        new PriceSummaryItem(0L, 0L, 0L, 0L, "VND", null)
     );
   }
 
@@ -64,7 +66,11 @@ public record BookingOverviewResponse(
       String fareTitle,
       long pricePerPassenger,
       int passengerCount,
-      long subtotalAmount
+      long subtotalAmount,
+      String status,
+      String statusLabel,
+      String gate,
+      String note
   ) {
   }
 
@@ -98,6 +104,15 @@ public record BookingOverviewResponse(
     }
   }
 
+  public record SeatSelectionItem(
+      long inventoryId,
+      String flightCode,
+      String passengerName,
+      String seatNumber,
+      long unitPrice
+  ) {
+  }
+
   public record TicketItem(
       String ticketNumber,
       String passengerName,
@@ -127,8 +142,10 @@ public record BookingOverviewResponse(
   public record PriceSummaryItem(
       long baseAmount,
       long ancillaryAmount,
+      long discountAmount,
       long totalAmount,
-      String currency
+      String currency,
+      String appliedVoucherCode
   ) {
   }
 }

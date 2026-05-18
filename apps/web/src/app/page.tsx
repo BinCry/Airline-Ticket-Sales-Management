@@ -74,8 +74,7 @@ const journeyDeck = [
 const travelServiceMetrics = [
   { label: "Mở làm thủ tục", value: "24 giờ", detail: "Trước giờ khởi hành với chặng nội địa" },
   { label: "Đóng làm thủ tục", value: "60 phút", detail: "Áp dụng cho hành khách khởi hành từ sân bay nội địa" },
-  { label: "Giữ chỗ", value: "15 phút", detail: "Sau khi chọn chuyến bay và trước khi hoàn tất thanh toán" },
-  { label: "Tổng đài hỗ trợ", value: "1900 6868", detail: "Tiếp nhận đổi vé, hỗ trợ sau bán và yêu cầu khẩn" }
+  { label: "Giữ chỗ", value: "15 phút", detail: "Sau khi chọn chuyến bay và trước khi hoàn tất thanh toán" }
 ];
 
 const travelerTopics = [
@@ -230,7 +229,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section section-soft home-destination-section">
+      <section id="diem-den" className="section section-soft home-destination-section">
         <div className="container">
           <SectionHeading
             eyebrow="Điểm đến & chiến dịch"
@@ -386,11 +385,12 @@ export default async function HomePage() {
               </article>
               <article className="glass-card command-panel">
                 <h3>Kênh hỗ trợ đa lớp</h3>
-                <div className="stack-list compact-stack">
+                <div className="support-channel-grid">
                   {supportChannels.map((channel) => (
                     <div key={channel.title} className="support-compact-item">
                       <strong>{channel.title}</strong>
                       <p>{channel.description}</p>
+                      <small className="support-compact-channel">{channel.channel}</small>
                     </div>
                   ))}
                 </div>
@@ -413,7 +413,23 @@ export default async function HomePage() {
         }
 
         .command-grid {
-          align-items: stretch;
+          display: grid;
+          grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+          align-items: start;
+        }
+
+        .command-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 18px;
+          align-content: start;
+          align-items: start;
+        }
+
+        .command-side {
+          display: grid;
+          gap: 18px;
+          align-content: start;
         }
 
         .quick-grid,
@@ -573,8 +589,12 @@ export default async function HomePage() {
         .metric-card-dark {
           display: grid;
           align-content: start;
-          gap: 12px;
-          min-height: 214px;
+          gap: 10px;
+          min-height: 192px;
+        }
+
+        .metric-card-dark:last-child {
+          grid-column: 1 / -1;
         }
 
         .metric-card-dark span {
@@ -600,6 +620,14 @@ export default async function HomePage() {
           color: rgba(247, 243, 234, 0.88);
         }
 
+        .command-panel {
+          display: grid;
+          align-content: start;
+          gap: 16px;
+          min-height: 0;
+          padding: 24px;
+        }
+
         .section-dark .command-panel h3 {
           color: rgba(255, 247, 232, 0.98);
         }
@@ -618,16 +646,39 @@ export default async function HomePage() {
           gap: 0;
         }
 
+        .support-channel-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+
         .support-compact-item {
-          padding: 14px 0;
+          display: grid;
+          gap: 6px;
+          min-height: 100%;
+          padding: 16px 18px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
         }
 
-        .support-compact-item:first-child {
-          padding-top: 0;
+        .support-compact-item strong {
+          color: rgba(255, 248, 239, 0.98);
+          font-size: 1.04rem;
+          line-height: 1.28;
         }
 
-        .support-compact-item:last-child {
-          padding-bottom: 0;
+        .support-compact-item p {
+          margin: 0;
+          color: rgba(247, 243, 234, 0.84);
+          line-height: 1.7;
+        }
+
+        .support-compact-channel {
+          color: rgba(255, 242, 220, 0.96);
+          font-size: 0.92rem;
+          font-weight: 700;
+          letter-spacing: 0.01em;
         }
 
         .home-hero-grid {
@@ -1265,6 +1316,18 @@ export default async function HomePage() {
             gap: 34px;
           }
 
+          .command-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .command-side {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .support-channel-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
           .home-hero-copy {
             padding-bottom: 0;
           }
@@ -1298,6 +1361,15 @@ export default async function HomePage() {
         }
 
         @media (max-width: 820px) {
+          .command-metrics,
+          .command-side {
+            grid-template-columns: 1fr;
+          }
+
+          .support-channel-grid {
+            grid-template-columns: 1fr;
+          }
+
           .section {
             padding: 64px 0;
           }

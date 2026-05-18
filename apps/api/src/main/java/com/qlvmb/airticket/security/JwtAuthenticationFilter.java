@@ -1,5 +1,7 @@
 package com.qlvmb.airticket.security;
 
+import com.qlvmb.airticket.domain.entity.UserAccountEntity;
+import com.qlvmb.airticket.repository.UserAccountRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,11 +23,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   public static final String JWT_AUTH_ERROR_ATTRIBUTE = "qlvmb.jwt_auth_error";
   private static final String INVALID_ACCESS_TOKEN_MESSAGE =
       "Phi\u00ean \u0111\u0103ng nh\u1eadp kh\u00f4ng h\u1ee3p l\u1ec7 ho\u1eb7c \u0111\u00e3 h\u1ebft h\u1ea1n.";
+  private static final String INACTIVE_ACCOUNT_MESSAGE =
+      "Tài khoản của bạn hiện không thể tiếp tục sử dụng.";
 
   private final JwtTokenService jwtTokenService;
+  private final UserAccountRepository userAccountRepository;
 
-  public JwtAuthenticationFilter(JwtTokenService jwtTokenService) {
+  public JwtAuthenticationFilter(
+      JwtTokenService jwtTokenService,
+      UserAccountRepository userAccountRepository
+  ) {
     this.jwtTokenService = jwtTokenService;
+    this.userAccountRepository = userAccountRepository;
   }
 
   @Override
@@ -49,19 +58,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     try {
       JwtTokenService.AccessTokenPayload payload = jwtTokenService.parseAccessToken(token);
+      UserAccountEntity userAccount = userAccountRepository.findOneWithRolesById(payload.userId())
+          .orElseThrow(() -> new JwtException(INVALID_ACCESS_TOKEN_MESSAGE));
+      if (userAccount.isLocked() || !"active".equalsIgnoreCase(userAccount.getStatus())) {
+        throw new JwtException(INACTIVE_ACCOUNT_MESSAGE);
+      }
+
+      List<String> roles = userAccount.getRoles().stream()
+          .map(role -> role.getCode())
+          .sorted()
+          .toList();
+      List<String> permissions = userAccount.getRoles().stream()
+          .flatMap(role -> role.getPermissions().stream())
+          .map(permission -> permission.getCode())
+          .distinct()
+          .sorted()
+          .toList();
       List<SimpleGrantedAuthority> authorities = Stream.concat(
-              payload.roles().stream().map(role -> "ROLE_" + role.toUpperCase(Locale.ROOT)),
-              payload.permissions().stream()
+              roles.stream().map(role -> "ROLE_" + role.toUpperCase(Locale.ROOT)),
+              permissions.stream()
           )
           .distinct()
           .map(SimpleGrantedAuthority::new)
           .toList();
       AuthenticatedUser authenticatedUser = new AuthenticatedUser(
-          payload.userId(),
-          payload.email(),
-          payload.displayName(),
-          payload.roles(),
-          payload.permissions()
+          userAccount.getId(),
+          userAccount.getEmail(),
+          userAccount.getDisplayName(),
+          roles,
+          permissions
       );
       UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
           authenticatedUser,
@@ -71,7 +96,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       SecurityContextHolder.getContext().setAuthentication(authentication);
     } catch (JwtException exception) {
       SecurityContextHolder.clearContext();
-      request.setAttribute(JWT_AUTH_ERROR_ATTRIBUTE, INVALID_ACCESS_TOKEN_MESSAGE);
+      String errorMessage = INACTIVE_ACCOUNT_MESSAGE.equals(exception.getMessage())
+          ? INACTIVE_ACCOUNT_MESSAGE
+          : INVALID_ACCESS_TOKEN_MESSAGE;
+      request.setAttribute(JWT_AUTH_ERROR_ATTRIBUTE, errorMessage);
     }
 
     filterChain.doFilter(request, response);

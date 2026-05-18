@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface RefundRequestRepository extends JpaRepository<RefundRequestEntity, Long> {
 
+  long countByStatus(String status);
+
   Optional<RefundRequestEntity> findFirstByBooking_BookingCodeIgnoreCaseOrderByCreatedAtDesc(String bookingCode);
 
   @Query("""
@@ -20,6 +22,7 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequestEnti
       left join fetch booking.tickets ticket
       left join fetch booking.segments segment
       left join fetch segment.inventory
+      where refundRequest.hiddenAt is null
       order by refundRequest.createdAt desc
       """)
   List<RefundRequestEntity> findAllDetailedOrderByCreatedAtDesc();
@@ -33,6 +36,7 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequestEnti
       left join fetch booking.segments segment
       left join fetch segment.inventory
       where refundRequest.id = :refundRequestId
+        and refundRequest.hiddenAt is null
       """)
   Optional<RefundRequestEntity> lockDetailedById(@Param("refundRequestId") Long refundRequestId);
 }

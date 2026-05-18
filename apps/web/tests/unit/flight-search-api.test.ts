@@ -16,6 +16,20 @@ afterEach(() => {
 });
 
 describe("flight-search-api", () => {
+  it("dung tieu chi mac dinh local khi mo trang search khong co query", () => {
+    expect(chuanHoaTieuChiTimChuyenBay({})).toEqual({
+      from: "SGN",
+      to: "HAN",
+      departureDate: "2026-05-23",
+      returnDate: "2026-05-26",
+      tripType: "round_trip",
+      fareFamily: null,
+      adultCount: 1,
+      childCount: 0,
+      infantCount: 0
+    });
+  });
+
   it("chuan hoa query tim chuyen bay cho mot chieu", () => {
     expect(
       chuanHoaTieuChiTimChuyenBay({
@@ -34,11 +48,11 @@ describe("flight-search-api", () => {
       to: "DAD",
       departureDate: "2026-04-20",
       returnDate: null,
-      tripType: "one_way",
-      fareFamily: "thuong_gia",
-      adultCount: 2,
-      childCount: 1,
-      infantCount: 0
+        tripType: "one_way",
+        fareFamily: "thuong_gia",
+        adultCount: 2,
+        childCount: 1,
+        infantCount: 0
     });
   });
 
@@ -47,8 +61,8 @@ describe("flight-search-api", () => {
       taoDuongDanTimChuyenBay({
         from: "SGN",
         to: "HAN",
-        departureDate: "2026-03-20",
-        returnDate: "2026-03-23",
+        departureDate: "2026-05-23",
+        returnDate: "2026-05-26",
         tripType: "round_trip",
         fareFamily: "pho_thong_linh_hoat",
         adultCount: 1,
@@ -56,7 +70,7 @@ describe("flight-search-api", () => {
         infantCount: 0
       })
     ).toBe(
-      "/search?from=SGN&to=HAN&departureDate=2026-03-20&tripType=round_trip&adultCount=1&childCount=0&infantCount=0&returnDate=2026-03-23&fareFamily=pho_thong_linh_hoat"
+      "/search?from=SGN&to=HAN&departureDate=2026-05-23&tripType=round_trip&adultCount=1&childCount=0&infantCount=0&returnDate=2026-05-26&fareFamily=pho_thong_linh_hoat"
     );
   });
 
@@ -78,7 +92,7 @@ describe("flight-search-api", () => {
           criteria: {
             from: "SGN",
             to: "HAN",
-            departureDate: "2026-03-20",
+            departureDate: "2026-05-23",
             returnDate: null,
             tripType: "one_way",
             fareFamily: null,
@@ -104,7 +118,7 @@ describe("flight-search-api", () => {
       fetchFlightSearch({
         from: "SGN",
         to: "HAN",
-        departureDate: "2026-03-20",
+        departureDate: "2026-05-23",
         returnDate: null,
         tripType: "one_way",
         fareFamily: null,
@@ -119,7 +133,7 @@ describe("flight-search-api", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/flights/search?from=SGN&to=HAN&departureDate=2026-03-20&tripType=one_way&adultCount=1&childCount=0&infantCount=0",
+      "http://localhost:8080/api/flights/search?from=SGN&to=HAN&departureDate=2026-05-23&tripType=one_way&adultCount=1&childCount=0&infantCount=0",
       expect.objectContaining({
         cache: "no-store"
       })
@@ -140,7 +154,7 @@ describe("flight-search-api", () => {
       fetchFlightSearch({
         from: "XXX",
         to: "HAN",
-        departureDate: "2026-03-20",
+        departureDate: "2026-05-23",
         returnDate: null,
         tripType: "one_way",
         fareFamily: null,

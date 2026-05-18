@@ -47,7 +47,7 @@ class CheckinServiceTest {
     when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     CheckinCompleteResponse response = checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"))
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
     );
 
     assertThat(response.bookingCode()).isEqualTo("A6C2P1");
@@ -64,7 +64,7 @@ class CheckinServiceTest {
     when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
 
     assertThatThrownBy(() -> checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"))
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
     )).isInstanceOf(BadRequestException.class);
   }
 
@@ -75,7 +75,7 @@ class CheckinServiceTest {
     when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
 
     assertThatThrownBy(() -> checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"))
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
     )).isInstanceOf(BadRequestException.class);
   }
 
@@ -86,7 +86,7 @@ class CheckinServiceTest {
     when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
 
     assertThatThrownBy(() -> checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"))
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
     )).isInstanceOf(BadRequestException.class);
   }
 

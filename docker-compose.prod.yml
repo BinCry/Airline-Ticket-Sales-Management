@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:15-alpine
+    profiles:
+      - local-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-airticket}
@@ -16,18 +18,47 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?Ban_can_cau_hinh_NEXT_PUBLIC_API_BASE_URL}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?Ban_can_cau_hinh_NEXT_PUBLIC_API_BASE_URL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY:-}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY:-}
+      NEWSDATAIO_API_KEY: ${NEWSDATAIO_API_KEY:-}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -qO- http://127.0.0.1:3000 >/dev/null || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3000:3000"
+
   api:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-airticket}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/airticket}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-postgres}
       SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-true}
       APP_AUTH_JWT_SECRET: ${APP_AUTH_JWT_SECRET:?Ban_can_cau_hinh_APP_AUTH_JWT_SECRET}
       APP_AUTH_JWT_ISSUER: ${APP_AUTH_JWT_ISSUER:-airticket-api}
@@ -45,6 +76,21 @@ services:
       SPRING_MAIL_WRITE_TIMEOUT: ${SPRING_MAIL_WRITE_TIMEOUT:-5000}
       APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
       APP_MAIL_FROM_EMAIL: ${APP_MAIL_FROM_EMAIL:-}
+      APP_PAYMENT_SEPAY_TOKEN: ${APP_PAYMENT_SEPAY_TOKEN:-}
+      APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID: ${APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID:-}
+      APP_PAYMENT_SEPAY_WEBHOOK_API_KEY: ${APP_PAYMENT_SEPAY_WEBHOOK_API_KEY:-}
+      APP_PAYMENT_SEPAY_BANK_NAME: ${APP_PAYMENT_SEPAY_BANK_NAME:-BIDV}
+      APP_PAYMENT_SEPAY_ACCOUNT_NUMBER: ${APP_PAYMENT_SEPAY_ACCOUNT_NUMBER:-}
+      APP_PAYMENT_SEPAY_ACCOUNT_HOLDER_NAME: ${APP_PAYMENT_SEPAY_ACCOUNT_HOLDER_NAME:-}
+      APP_PAYMENT_SEPAY_ORDER_DURATION_SECONDS: ${APP_PAYMENT_SEPAY_ORDER_DURATION_SECONDS:-900}
+      APP_UPLOAD_AVATAR_DIR: ${APP_UPLOAD_AVATAR_DIR:-uploads/avatars}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://127.0.0.1:8080/api/meta/health >/dev/null || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 10
     ports:
       - "8080:8080"
 

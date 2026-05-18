@@ -56,6 +56,31 @@ jobs:
         working-directory: apps/web
         run: npm exec vitest -- --configLoader runner --run
 
+  playwright-smoke:
+    name: playwright-smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+
+      - name: Thiet lap Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cai dependency
+        run: npm ci
+
+      - name: Cai trinh duyet Playwright
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Chay smoke test E2E
+        working-directory: apps/web
+        run: npm run test:e2e
+
   build-web:
     name: build-web
     runs-on: ubuntu-latest

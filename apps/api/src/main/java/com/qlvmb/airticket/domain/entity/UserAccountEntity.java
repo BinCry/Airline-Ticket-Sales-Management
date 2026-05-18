@@ -34,6 +34,9 @@ public class UserAccountEntity {
   @Column(length = 20)
   private String phone;
 
+  @Column(name = "avatar_url", length = 500)
+  private String avatarUrl;
+
   @Column(nullable = false, length = 32)
   private String status;
 
@@ -81,6 +84,10 @@ public class UserAccountEntity {
 
   public String getPhone() {
     return phone;
+  }
+
+  public String getAvatarUrl() {
+    return avatarUrl;
   }
 
   public String getStatus() {
@@ -141,9 +148,35 @@ public class UserAccountEntity {
     this.updatedAt = updatedAt;
   }
 
+  public void markEmailVerified(OffsetDateTime updatedAt) {
+    emailVerified = true;
+    this.updatedAt = updatedAt;
+  }
+
   public void updateProfile(String displayName, String phone, OffsetDateTime updatedAt) {
     this.displayName = displayName;
     this.phone = phone;
+    this.updatedAt = updatedAt;
+  }
+
+  public void updateAvatar(String avatarUrl, OffsetDateTime updatedAt) {
+    this.avatarUrl = avatarUrl;
+    this.updatedAt = updatedAt;
+  }
+
+  public void updateStatus(String status, OffsetDateTime updatedAt) {
+    this.status = status;
+    if ("locked".equalsIgnoreCase(status)) {
+      lockedAt = updatedAt;
+    } else {
+      lockedAt = null;
+    }
+    this.updatedAt = updatedAt;
+  }
+
+  public void replaceRoles(Set<RoleEntity> roles, OffsetDateTime updatedAt) {
+    this.roles.clear();
+    this.roles.addAll(roles);
     this.updatedAt = updatedAt;
   }
 

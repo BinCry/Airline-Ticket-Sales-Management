@@ -28,7 +28,7 @@ class OtpDeliveryServiceTest {
     SimpleMailMessage message = messageCaptor.getValue();
     assertThat(message.getTo()).containsExactly("khach@example.com");
     assertThat(message.getFrom()).isEqualTo(FROM_EMAIL);
-    assertThat(message.getSubject()).isEqualTo("Ma OTP dat lai mat khau");
+    assertThat(message.getSubject()).isEqualTo("Mã OTP đặt lại mật khẩu");
     assertThat(message.getText()).contains("123456");
   }
 

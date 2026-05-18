@@ -3,12 +3,14 @@ package com.qlvmb.airticket.service;
 import com.qlvmb.airticket.domain.dto.BookingHoldRequest;
 import com.qlvmb.airticket.domain.dto.BookingHoldResponse;
 import com.qlvmb.airticket.domain.dto.BookingOverviewResponse;
+import com.qlvmb.airticket.domain.dto.ApplyVoucherRequest;
 import com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest;
 import com.qlvmb.airticket.domain.entity.BoardingPassEntity;
 import com.qlvmb.airticket.domain.entity.BookingAncillaryEntity;
 import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
+import com.qlvmb.airticket.domain.entity.BookingSeatSelectionEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
@@ -19,6 +21,7 @@ import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.FlightFareInventoryRepository;
 import com.qlvmb.airticket.repository.TicketRepository;
+import com.qlvmb.airticket.security.AuthenticatedUser;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -46,10 +49,14 @@ public class BookingService {
   private static final String WAITING_PAYMENT_MESSAGE = "\u0110\u1eb7t ch\u1ed7 kh\u00f4ng \u1edf tr\u1ea1ng th\u00e1i ch\u1edd thanh to\u00e1n.";
   private static final String SOLD_OUT_MESSAGE = "Chuy\u1ebfn bay \u0111\u00e3 h\u1ebft gh\u1ebf tr\u1ed1ng cho h\u1ea1ng v\u00e9 n\u00e0y.";
   private static final String INVENTORY_NOT_FOUND_MESSAGE = "Kh\u00f4ng t\u00ecm th\u1ea5y th\u00f4ng tin gh\u1ebf cho l\u1ef1a ch\u1ecdn \u0111\u00e3 ch\u1ecdn.";
+  private static final String SEAT_SELECTION_INVALID_MESSAGE = "Th\u00f4ng tin gh\u1ebf \u0111\u00e3 ch\u1ecdn kh\u00f4ng h\u1ee3p l\u1ec7.";
+  private static final String SEAT_SELECTION_DUPLICATE_MESSAGE = "Kh\u00f4ng \u0111\u01b0\u1ee3c ch\u1ecdn tr\u00f9ng gh\u1ebf cho c\u00f9ng m\u1ed9t ch\u1eb7ng bay.";
+  private static final String SEAT_SELECTION_MISMATCH_MESSAGE = "S\u1ed1 l\u01b0\u1ee3ng gh\u1ebf \u0111\u00e3 ch\u1ecdn ch\u01b0a kh\u1edbp v\u1edbi d\u1ecbch v\u1ee5 gh\u1ebf \u01b0u ti\u00ean.";
   private static final String REFUND_NOT_AVAILABLE_MESSAGE = "\u0110\u1eb7t ch\u1ed7 hi\u1ec7n kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9.";
   private static final String REFUND_AFTER_CHECKIN_MESSAGE = "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 sau khi \u0111\u00e3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn.";
   private static final String REFUND_PENDING_MESSAGE = "Y\u00eau c\u1ea7u ho\u00e0n v\u00e9 cho m\u00e3 \u0111\u1eb7t ch\u1ed7 n\u00e0y \u0111ang ch\u1edd x\u1eed l\u00fd.";
-  private static final List<String> PAYMENT_METHODS = List.of("Thanh to\u00e1n (Sandbox)");
+  private static final String VOUCHER_NOT_AVAILABLE_MESSAGE = "Booking hiện không ở trạng thái phù hợp để áp voucher.";
+  private static final List<String> PAYMENT_METHODS = List.of("Chuy\u1ec3n kho\u1ea3n SePay");
   private static final Set<String> SUPPORTED_TRIP_TYPES = Set.of("one_way", "round_trip");
   private static final Set<String> SUPPORTED_PASSENGER_TYPES = Set.of("adult", "child", "infant");
   private static final char[] BOOKING_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
@@ -58,18 +65,21 @@ public class BookingService {
   private final BookingRepository bookingRepository;
   private final TicketRepository ticketRepository;
   private final ProductCatalogService productCatalogService;
+  private final MemberVoucherService memberVoucherService;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public BookingService(
       FlightFareInventoryRepository flightFareInventoryRepository,
       BookingRepository bookingRepository,
       TicketRepository ticketRepository,
-      ProductCatalogService productCatalogService
+      ProductCatalogService productCatalogService,
+      MemberVoucherService memberVoucherService
   ) {
     this.flightFareInventoryRepository = flightFareInventoryRepository;
     this.bookingRepository = bookingRepository;
     this.ticketRepository = ticketRepository;
     this.productCatalogService = productCatalogService;
+    this.memberVoucherService = memberVoucherService;
   }
 
   @Transactional
@@ -109,6 +119,11 @@ public class BookingService {
     List<PreparedAncillary> preparedAncillaries = request.ancillaries().stream()
         .map(this::buildPreparedAncillary)
         .toList();
+    List<PreparedSeatSelection> preparedSeatSelections = buildPreparedSeatSelections(
+        request.seatSelections(),
+        new LinkedHashSet<>(inventoryIds),
+        passengerCount
+    );
 
     long baseAmount = preparedSegments.stream().mapToLong(PreparedSegment::subtotalAmount).sum();
     long ancillaryAmount = preparedAncillaries.stream().mapToLong(PreparedAncillary::subtotalAmount).sum();
@@ -136,37 +151,43 @@ public class BookingService {
         )
     );
 
-    request.passengers().forEach(passengerRequest -> booking.addPassenger(
-        BookingPassengerEntity.create(
-            booking,
-            passengerRequest.fullName().trim(),
-            normalizePassengerType(passengerRequest.passengerType()),
-            passengerRequest.dateOfBirth(),
-            passengerRequest.documentType().trim().toUpperCase(),
-            passengerRequest.documentNumber().trim(),
-            currentTime
-        )
-    ));
+    List<BookingPassengerEntity> bookingPassengers = new ArrayList<>();
+    request.passengers().forEach(passengerRequest -> {
+      BookingPassengerEntity passenger = BookingPassengerEntity.create(
+          booking,
+          passengerRequest.fullName().trim(),
+          normalizePassengerType(passengerRequest.passengerType()),
+          passengerRequest.dateOfBirth(),
+          passengerRequest.documentType().trim().toUpperCase(),
+          passengerRequest.documentNumber().trim(),
+          currentTime
+      );
+      booking.addPassenger(passenger);
+      bookingPassengers.add(passenger);
+    });
 
-    preparedSegments.forEach(segment -> booking.addSegment(
-        BookingSegmentEntity.create(
-            booking,
-            segment.inventory(),
-            segment.code(),
-            segment.fromCity(),
-            segment.toCity(),
-            segment.originCode(),
-            segment.destinationCode(),
-            segment.departureAt(),
-            segment.arrivalAt(),
-            segment.fareFamily(),
-            segment.fareTitle(),
-            segment.pricePerPassenger(),
-            segment.passengerCount(),
-            segment.subtotalAmount(),
-            currentTime
-        )
-    ));
+    List<BookingSegmentEntity> bookingSegments = new ArrayList<>();
+    preparedSegments.forEach(segment -> {
+      BookingSegmentEntity bookingSegment = BookingSegmentEntity.create(
+          booking,
+          segment.inventory(),
+          segment.code(),
+          segment.fromCity(),
+          segment.toCity(),
+          segment.originCode(),
+          segment.destinationCode(),
+          segment.departureAt(),
+          segment.arrivalAt(),
+          segment.fareFamily(),
+          segment.fareTitle(),
+          segment.pricePerPassenger(),
+          segment.passengerCount(),
+          segment.subtotalAmount(),
+          currentTime
+      );
+      booking.addSegment(bookingSegment);
+      bookingSegments.add(bookingSegment);
+    });
 
     preparedAncillaries.forEach(ancillary -> booking.addAncillary(
         BookingAncillaryEntity.create(
@@ -177,6 +198,25 @@ public class BookingService {
             ancillary.unitPrice(),
             ancillary.quantity(),
             ancillary.subtotalAmount(),
+            currentTime
+        )
+    ));
+
+    Map<Long, BookingSegmentEntity> segmentByInventoryId = bookingSegments.stream()
+        .collect(Collectors.toMap(
+            segment -> segment.getInventory().getId(),
+            segment -> segment,
+            (left, right) -> left,
+            LinkedHashMap::new
+        ));
+
+    preparedSeatSelections.forEach(seatSelection -> booking.addSeatSelection(
+        BookingSeatSelectionEntity.create(
+            booking,
+            bookingPassengers.get(seatSelection.passengerIndex()),
+            segmentByInventoryId.get(seatSelection.inventoryId()),
+            seatSelection.seatNumber(),
+            seatSelection.unitPrice(),
             currentTime
         )
     ));
@@ -197,7 +237,9 @@ public class BookingService {
     BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
     OffsetDateTime currentTime = OffsetDateTime.now();
 
-    if (!booking.isTicketed()) {
+    boolean cancelledByOperations = booking.isCancelled()
+        && BookingEntity.PAYMENT_STATUS_PAID.equals(booking.getPaymentStatus());
+    if (!booking.isTicketed() && !cancelledByOperations) {
       throw new BadRequestException(REFUND_NOT_AVAILABLE_MESSAGE);
     }
 
@@ -219,8 +261,33 @@ public class BookingService {
         currentTime
     );
     booking.addRefundRequest(refundRequest);
-    booking.markRefundPending(currentTime);
+    if (!booking.isCancelled()) {
+      booking.markRefundPending(currentTime);
+    }
 
+    return mapOverviewResponse(booking);
+  }
+
+  @Transactional
+  public BookingOverviewResponse applyVoucher(
+      String bookingCode,
+      AuthenticatedUser authenticatedUser,
+      ApplyVoucherRequest request
+  ) {
+    BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
+    OffsetDateTime currentTime = OffsetDateTime.now();
+    reconcileBookingExpiration(booking, currentTime);
+
+    if (!booking.isHold()) {
+      throw new BadRequestException(VOUCHER_NOT_AVAILABLE_MESSAGE);
+    }
+
+    memberVoucherService.applyVoucherToBooking(
+        authenticatedUser,
+        booking,
+        request.voucherCode(),
+        currentTime
+    );
     return mapOverviewResponse(booking);
   }
 
@@ -247,21 +314,7 @@ public class BookingService {
 
   public BookingOverviewResponse mapOverviewResponse(BookingEntity booking) {
     List<BookingOverviewResponse.SegmentItem> segments = booking.getSegments().stream()
-        .map(segment -> new BookingOverviewResponse.SegmentItem(
-            segment.getInventory().getId(),
-            segment.getFlightCode(),
-            segment.getFromCity(),
-            segment.getToCity(),
-            segment.getOriginCode(),
-            segment.getDestinationCode(),
-            segment.getDepartureAt(),
-            segment.getArrivalAt(),
-            segment.getFareFamily(),
-            segment.getFareTitle(),
-            segment.getPricePerPassenger(),
-            segment.getPassengerCount(),
-            segment.getSubtotalAmount()
-        ))
+        .map(this::mapSegment)
         .toList();
 
     BookingContactEntity contact = booking.getContact();
@@ -291,6 +344,16 @@ public class BookingService {
             ancillary.getUnitPrice(),
             ancillary.getQuantity(),
             ancillary.getSubtotalAmount()
+        ))
+        .toList();
+
+    List<BookingOverviewResponse.SeatSelectionItem> seatSelections = booking.getSeatSelections().stream()
+        .map(seatSelection -> new BookingOverviewResponse.SeatSelectionItem(
+            seatSelection.getSegment().getInventory().getId(),
+            seatSelection.getSegment().getFlightCode(),
+            seatSelection.getPassenger().getFullName(),
+            seatSelection.getSeatNumber(),
+            seatSelection.getUnitPrice()
         ))
         .toList();
 
@@ -334,6 +397,7 @@ public class BookingService {
         contactItem,
         passengers,
         ancillaries,
+        seatSelections,
         tickets,
         boardingPasses,
         refundRequestItem,
@@ -341,8 +405,10 @@ public class BookingService {
         new BookingOverviewResponse.PriceSummaryItem(
             booking.getBaseAmount(),
             booking.getAncillaryAmount(),
+            booking.getDiscountAmount(),
             booking.getTotalAmount(),
-            booking.getCurrency()
+            booking.getCurrency(),
+            booking.getAppliedVoucherCode()
         )
     );
   }
@@ -428,7 +494,7 @@ public class BookingService {
     throw new IllegalStateException("Kh\u00f4ng th\u1ec3 ph\u00e1t h\u00e0nh v\u00e9 m\u1edbi v\u00e0o l\u00fac n\u00e0y.");
   }
   public String generatePaymentReference() {
-    return "SANDBOX-" + randomNumericCode(12);
+    return "SEPAY-" + randomNumericCode(12);
   }
 
   private Map<Long, FlightFareInventoryEntity> reconcileExpiredHolds(
@@ -484,6 +550,7 @@ public class BookingService {
         inventory.releaseSeats(segment.getPassengerCount());
       }
     });
+    memberVoucherService.releaseVoucherForBooking(booking, currentTime);
     booking.markExpired(currentTime);
   }
 
@@ -526,6 +593,50 @@ public class BookingService {
         ancillaryMeta.price() * quantity
     );
   }
+
+  private List<PreparedSeatSelection> buildPreparedSeatSelections(
+      List<BookingHoldRequest.SeatSelectionRequest> seatSelectionRequests,
+      Set<Long> inventoryIds,
+      int passengerCount
+  ) {
+    if (seatSelectionRequests.isEmpty()) {
+      return List.of();
+    }
+
+    long unitPrice = productCatalogService.requireAncillary("SEAT_PLUS").price();
+    Set<String> passengerSegmentKeys = new LinkedHashSet<>();
+    Set<String> seatSegmentKeys = new LinkedHashSet<>();
+    List<PreparedSeatSelection> preparedSeatSelections = new ArrayList<>();
+
+    for (BookingHoldRequest.SeatSelectionRequest seatSelectionRequest : seatSelectionRequests) {
+      if (!inventoryIds.contains(seatSelectionRequest.inventoryId())) {
+        throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
+      }
+
+      int passengerIndex = seatSelectionRequest.passengerIndex();
+      if (passengerIndex < 0 || passengerIndex >= passengerCount) {
+        throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
+      }
+
+      String seatNumber = normalizeSeatNumber(seatSelectionRequest.seatNumber());
+      String passengerSegmentKey = seatSelectionRequest.inventoryId() + ":" + passengerIndex;
+      String seatSegmentKey = seatSelectionRequest.inventoryId() + ":" + seatNumber;
+
+      if (!passengerSegmentKeys.add(passengerSegmentKey) || !seatSegmentKeys.add(seatSegmentKey)) {
+        throw new BadRequestException(SEAT_SELECTION_DUPLICATE_MESSAGE);
+      }
+
+      preparedSeatSelections.add(new PreparedSeatSelection(
+          seatSelectionRequest.inventoryId(),
+          passengerIndex,
+          seatNumber,
+          unitPrice
+      ));
+    }
+
+    return List.copyOf(preparedSeatSelections);
+  }
+
   private BookingHoldResponse mapHoldResponse(BookingEntity booking) {
     List<BookingHoldResponse.PassengerResponse> passengers = booking.getPassengers().stream()
         .map(passenger -> new BookingHoldResponse.PassengerResponse(
@@ -584,8 +695,10 @@ public class BookingService {
         new BookingHoldResponse.PriceSummaryResponse(
             booking.getBaseAmount(),
             booking.getAncillaryAmount(),
+            booking.getDiscountAmount(),
             booking.getTotalAmount(),
-            booking.getCurrency()
+            booking.getCurrency(),
+            booking.getAppliedVoucherCode()
         )
     );
   }
@@ -599,6 +712,77 @@ public class BookingService {
         boardingPass.getBoardingTime(),
         boardingPass.getBarcode()
     );
+  }
+
+  private BookingOverviewResponse.SegmentItem mapSegment(BookingSegmentEntity segment) {
+    FlightEntity flight = segment.getInventory().getFlight();
+    String status = normalizeFlightStatus(flight == null ? null : flight.getStatus());
+    return new BookingOverviewResponse.SegmentItem(
+        segment.getInventory().getId(),
+        segment.getFlightCode(),
+        segment.getFromCity(),
+        segment.getToCity(),
+        segment.getOriginCode(),
+        segment.getDestinationCode(),
+        segment.getDepartureAt(),
+        segment.getArrivalAt(),
+        segment.getFareFamily(),
+        segment.getFareTitle(),
+        segment.getPricePerPassenger(),
+        segment.getPassengerCount(),
+        segment.getSubtotalAmount(),
+        status,
+        mapFlightStatusLabel(status),
+        resolveFlightGate(flight),
+        resolveFlightNote(flight)
+    );
+  }
+
+  private String resolveFlightGate(FlightEntity flight) {
+    if (flight == null) {
+      return "Chờ cập nhật";
+    }
+    if (flight.getGate() != null && !flight.getGate().isBlank()) {
+      return flight.getGate().trim().toUpperCase();
+    }
+    long flightId = flight.getId() == null ? 1L : flight.getId();
+    return "G" + ((flightId % 8) + 1);
+  }
+
+  private String resolveFlightNote(FlightEntity flight) {
+    if (flight == null) {
+      return "Lịch bay đang được khai thác theo kế hoạch.";
+    }
+    if (flight.getOperationsNote() != null && !flight.getOperationsNote().isBlank()) {
+      return flight.getOperationsNote().trim();
+    }
+    return switch (normalizeFlightStatus(flight.getStatus())) {
+      case "boarding" -> "Hành khách nên có mặt tại cửa ra tàu.";
+      case "delayed" -> "Vui lòng theo dõi thông báo mới trước khi ra cửa tàu.";
+      case "cancelled" -> "Liên hệ hỗ trợ để được xử lý đổi hoặc hoàn vé.";
+      case "departed" -> "Chuyến bay đã rời sân bay.";
+      case "landed" -> "Chuyến bay đã hoàn tất.";
+      default -> "Lịch bay đang được khai thác theo kế hoạch.";
+    };
+  }
+
+  private String mapFlightStatusLabel(String status) {
+    return switch (normalizeFlightStatus(status)) {
+      case "on_time" -> "Đúng giờ";
+      case "boarding" -> "Đang lên máy bay";
+      case "delayed" -> "Trễ";
+      case "departed" -> "Đã khởi hành";
+      case "landed" -> "Đã hạ cánh";
+      case "cancelled" -> "Đã hủy";
+      default -> "Theo lịch";
+    };
+  }
+
+  private String normalizeFlightStatus(String status) {
+    if (status == null || status.isBlank()) {
+      return "scheduled";
+    }
+    return status;
   }
 
   private List<String> buildSteps(BookingEntity booking) {
@@ -673,6 +857,20 @@ public class BookingService {
         throw new BadRequestException("Ng\u00e0y sinh h\u00e0nh kh\u00e1ch kh\u00f4ng h\u1ee3p l\u1ec7.");
       }
     });
+
+    int seatSelectionCount = request.seatSelections().size();
+    int seatAncillaryQuantity = request.ancillaries().stream()
+        .filter(ancillary -> "SEAT_PLUS".equals(productCatalogService.normalizeAncillaryCode(ancillary.code())))
+        .mapToInt(ancillary -> ancillary.quantity() == null ? 1 : ancillary.quantity())
+        .sum();
+
+    if (seatSelectionCount == 0 && seatAncillaryQuantity > 0) {
+      throw new BadRequestException(SEAT_SELECTION_MISMATCH_MESSAGE);
+    }
+
+    if (seatSelectionCount > 0 && seatAncillaryQuantity != seatSelectionCount) {
+      throw new BadRequestException(SEAT_SELECTION_MISMATCH_MESSAGE);
+    }
   }
 
   private String normalizeTripType(String tripType) {
@@ -697,6 +895,18 @@ public class BookingService {
       throw new BadRequestException("Lo\u1ea1i h\u00e0nh kh\u00e1ch kh\u00f4ng h\u1ee3p l\u1ec7.");
     }
     return normalizedPassengerType;
+  }
+
+  private String normalizeSeatNumber(String seatNumber) {
+    if (seatNumber == null) {
+      throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
+    }
+
+    String normalizedSeatNumber = seatNumber.trim().toUpperCase();
+    if (!normalizedSeatNumber.matches("^[1-9][0-9]?[A-F]$")) {
+      throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
+    }
+    return normalizedSeatNumber;
   }
 
   private String generateUniqueBookingCode() {
@@ -748,6 +958,14 @@ public class BookingService {
       long unitPrice,
       int quantity,
       long subtotalAmount
+  ) {
+  }
+
+  private record PreparedSeatSelection(
+      long inventoryId,
+      int passengerIndex,
+      String seatNumber,
+      long unitPrice
   ) {
   }
 }

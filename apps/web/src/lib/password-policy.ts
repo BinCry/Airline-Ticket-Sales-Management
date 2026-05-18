@@ -6,26 +6,35 @@ export interface PasswordRuleResult {
 
 const commonUnsafeFragments = [
   "password",
+  "passw0rd",
   "123456",
   "123456789",
   "qwerty",
   "abc123",
   "matkhau",
+  "matkhau123",
   "vietnamairlines"
 ];
 
+function normalizeValue(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+}
+
 function normalizeFragments(blockedFragments: string[]) {
   return blockedFragments
-    .flatMap((item) => item.toLowerCase().split(/[^a-z0-9]+/))
+    .flatMap((item) => normalizeValue(item).split(/[^a-z0-9]+/))
     .map((item) => item.trim())
-    .filter((item) => item.length >= 3);
+    .filter((item) => item.length >= 4);
 }
 
 export function getPasswordChecklist(
   password: string,
   blockedFragments: string[] = []
 ): PasswordRuleResult[] {
-  const normalizedPassword = password.toLowerCase();
+  const normalizedPassword = normalizeValue(password);
   const sanitizedFragments = normalizeFragments(blockedFragments);
   const containsBlockedFragment = sanitizedFragments.some((fragment) =>
     normalizedPassword.includes(fragment)
@@ -43,12 +52,12 @@ export function getPasswordChecklist(
     {
       id: "uppercase",
       label: "Có ít nhất 1 chữ in hoa.",
-      passed: /[A-Z]/.test(password)
+      passed: /\p{Lu}/u.test(password)
     },
     {
       id: "lowercase",
       label: "Có ít nhất 1 chữ thường.",
-      passed: /[a-z]/.test(password)
+      passed: /\p{Ll}/u.test(password)
     },
     {
       id: "number",
@@ -58,7 +67,7 @@ export function getPasswordChecklist(
     {
       id: "special",
       label: "Có ít nhất 1 ký tự đặc biệt.",
-      passed: /[^A-Za-z0-9]/.test(password)
+      passed: /[^\p{L}\p{N}\s]/u.test(password)
     },
     {
       id: "spaces",

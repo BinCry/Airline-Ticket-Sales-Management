@@ -51,8 +51,14 @@ public class BookingEntity {
   @Column(name = "ancillary_amount", nullable = false)
   private long ancillaryAmount;
 
+  @Column(name = "discount_amount", nullable = false)
+  private long discountAmount;
+
   @Column(name = "total_amount", nullable = false)
   private long totalAmount;
+
+  @Column(name = "applied_voucher_code", length = 40)
+  private String appliedVoucherCode;
 
   @Column(nullable = false, length = 8)
   private String currency;
@@ -92,6 +98,10 @@ public class BookingEntity {
 
   @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("id asc")
+  private Set<BookingSeatSelectionEntity> seatSelections = new LinkedHashSet<>();
+
+  @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderBy("id asc")
   private Set<TicketEntity> tickets = new LinkedHashSet<>();
 
   @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -118,6 +128,7 @@ public class BookingEntity {
     booking.tripType = tripType;
     booking.baseAmount = baseAmount;
     booking.ancillaryAmount = ancillaryAmount;
+    booking.discountAmount = 0L;
     booking.totalAmount = totalAmount;
     booking.currency = currency;
     booking.expiresAt = expiresAt;
@@ -158,8 +169,16 @@ public class BookingEntity {
     return totalAmount;
   }
 
+  public long getDiscountAmount() {
+    return discountAmount;
+  }
+
   public String getCurrency() {
     return currency;
+  }
+
+  public String getAppliedVoucherCode() {
+    return appliedVoucherCode;
   }
 
   public OffsetDateTime getExpiresAt() {
@@ -202,6 +221,10 @@ public class BookingEntity {
     return ancillaries;
   }
 
+  public Set<BookingSeatSelectionEntity> getSeatSelections() {
+    return seatSelections;
+  }
+
   public Set<TicketEntity> getTickets() {
     return tickets;
   }
@@ -224,6 +247,10 @@ public class BookingEntity {
 
   public void addAncillary(BookingAncillaryEntity ancillary) {
     ancillaries.add(ancillary);
+  }
+
+  public void addSeatSelection(BookingSeatSelectionEntity seatSelection) {
+    seatSelections.add(seatSelection);
   }
 
   public void addTicket(TicketEntity ticket) {
@@ -250,6 +277,10 @@ public class BookingEntity {
     return STATUS_REFUND_PENDING.equals(status);
   }
 
+  public boolean isCancelled() {
+    return STATUS_CANCELLED.equals(status);
+  }
+
   public void markPaymentSessionPending(String paymentSessionUrl, OffsetDateTime updatedAt) {
     this.paymentSessionUrl = paymentSessionUrl;
     this.paymentStatus = PAYMENT_STATUS_PENDING;
@@ -258,6 +289,20 @@ public class BookingEntity {
 
   public void markPaymentFailed(OffsetDateTime updatedAt) {
     paymentStatus = PAYMENT_STATUS_FAILED;
+    this.updatedAt = updatedAt;
+  }
+
+  public void applyVoucher(String voucherCode, long discountAmount, OffsetDateTime updatedAt) {
+    appliedVoucherCode = voucherCode;
+    this.discountAmount = discountAmount;
+    totalAmount = Math.max(0L, baseAmount + ancillaryAmount - discountAmount);
+    this.updatedAt = updatedAt;
+  }
+
+  public void clearAppliedVoucher(OffsetDateTime updatedAt) {
+    appliedVoucherCode = null;
+    discountAmount = 0L;
+    totalAmount = baseAmount + ancillaryAmount;
     this.updatedAt = updatedAt;
   }
 

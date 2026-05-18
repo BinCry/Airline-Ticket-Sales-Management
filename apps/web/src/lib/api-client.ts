@@ -10,6 +10,7 @@ export interface ApiErrorResponse {
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   accessToken?: string;
   fallbackMessage?: string;
+  formData?: FormData;
   json?: unknown;
   showErrorToast?: boolean;
 }
@@ -20,10 +21,10 @@ export class ApiClientError extends Error {
   timestamp: string | null;
 
   constructor(
-      message: string,
-      status: number,
-      errors: Record<string, string> = {},
-      timestamp: string | null = null
+    message: string,
+    status: number,
+    errors: Record<string, string> = {},
+    timestamp: string | null = null
   ) {
     super(message);
     this.name = "ApiClientError";
@@ -135,6 +136,7 @@ export async function requestApi<TResponse>(
   const {
     accessToken,
     fallbackMessage = "Không thể hoàn tất yêu cầu lúc này.",
+    formData,
     headers,
     json,
     showErrorToast,
@@ -149,9 +151,17 @@ export async function requestApi<TResponse>(
   }
 
   let body: BodyInit | undefined;
+  if (json !== undefined && formData !== undefined) {
+    throw new ApiClientError("Chỉ được gửi một loại nội dung trong mỗi yêu cầu.", 0);
+  }
+
   if (json !== undefined) {
     requestHeaders.set("Content-Type", "application/json");
     body = JSON.stringify(json);
+  }
+
+  if (formData !== undefined) {
+    body = formData;
   }
 
   let response: Response;

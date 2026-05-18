@@ -55,6 +55,7 @@ function createAuthSession(overrides: Partial<AuthSession> = {}): AuthSession {
       email: "khach@example.com",
       displayName: "Khach Hang",
       phone: "0909123456",
+      avatarUrl: null,
       emailVerified: true,
       roles: ["customer"],
       permissions: ["customer.self_service"]

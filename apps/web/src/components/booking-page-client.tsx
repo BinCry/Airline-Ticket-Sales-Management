@@ -11,7 +11,7 @@ import type {
 } from "@qlvmb/shared-types";
 
 import { SectionHeading } from "@/components/section-heading";
-import { loadActiveAuthSession } from "@/lib/auth-session";
+import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import { createBookingHold } from "@/lib/booking-api";
 import { parseBookingHandoffState, type BookingHandoffSegment } from "@/lib/booking-flow";
 import { hienThiTenGoiGia } from "@/lib/display";
@@ -31,6 +31,25 @@ interface PassengerFormState {
   fullName: string;
   passengerType: PassengerType;
 }
+
+const seatRows = Array.from({ length: 28 }, (_, index) => index + 1);
+const seatLetters = ["A", "B", "C", "D", "E", "F"];
+const unavailableSeats = new Set([
+  "1C",
+  "2F",
+  "4A",
+  "6D",
+  "8C",
+  "10E",
+  "12A",
+  "14F",
+  "17B",
+  "19D",
+  "22A",
+  "24F",
+  "27C"
+]);
+const seatPrice = 320000;
 
 function buildPassengerForms(
   adultCount: number,
@@ -83,6 +102,17 @@ function formatDateTime(value: string) {
   }).format(parsedDate);
 }
 
+function hydrateContactFromSession(
+  currentContact: ContactFormState,
+  authSession: AuthSession
+): ContactFormState {
+  return {
+    fullName: currentContact.fullName || authSession.user.displayName,
+    email: currentContact.email || authSession.user.email,
+    phone: currentContact.phone || authSession.user.phone || ""
+  };
+}
+
 function tinhTienCoBan(segments: BookingHandoffSegment[], passengerCount: number) {
   return segments.reduce((tongTien, segment) => tongTien + segment.price * passengerCount, 0);
 }
@@ -108,14 +138,23 @@ export function BookingPageClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
 
   useEffect(() => {
-    setAccessToken(loadActiveAuthSession()?.accessToken);
+    const storedSession = loadActiveAuthSession();
+    setAccessToken(storedSession?.accessToken);
+
+    if (!storedSession) {
+      return;
+    }
+
+    setContact((currentContact) => hydrateContactFromSession(currentContact, storedSession));
   }, []);
 
   useEffect(() => {
     if (!handoffState) {
       setPassengers([]);
+      setSelectedSeats([]);
       return;
     }
 
@@ -127,6 +166,10 @@ export function BookingPageClient() {
       )
     );
   }, [handoffState]);
+
+  useEffect(() => {
+    setSelectedSeats((currentSeats) => currentSeats.slice(0, passengers.length));
+  }, [passengers.length]);
 
   if (!handoffState) {
     return (
@@ -147,6 +190,8 @@ export function BookingPageClient() {
 
   const totalPassengerCount = passengers.length;
   const baseAmount = tinhTienCoBan(handoffState.segments, totalPassengerCount);
+  const seatAmount = selectedSeats.length * seatPrice;
+  const totalAmount = baseAmount + seatAmount;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -162,7 +207,14 @@ export function BookingPageClient() {
 
     try {
       const payload: ApiCreateBookingHoldRequest = {
-        ancillaries: [],
+        ancillaries: selectedSeats.length > 0
+          ? [
+              {
+                code: "SEAT_PLUS",
+                quantity: selectedSeats.length
+              }
+            ]
+          : [],
         contact: {
           email: contact.email.trim(),
           fullName: contact.fullName.trim(),
@@ -175,6 +227,13 @@ export function BookingPageClient() {
           fullName: passenger.fullName.trim(),
           passengerType: passenger.passengerType
         })),
+        seatSelections: currentHandoffState.segments.length > 0
+          ? selectedSeats.map((seatNumber, passengerIndex) => ({
+              inventoryId: currentHandoffState.segments[0].inventoryId,
+              passengerIndex,
+              seatNumber
+            }))
+          : [],
         segments: currentHandoffState.segments.map((segment) => ({
           inventoryId: segment.inventoryId
         })),
@@ -207,6 +266,24 @@ export function BookingPageClient() {
     );
   }
 
+  function toggleSeat(seatNumber: string) {
+    if (unavailableSeats.has(seatNumber)) {
+      return;
+    }
+
+    setSelectedSeats((currentSeats) => {
+      if (currentSeats.includes(seatNumber)) {
+        return currentSeats.filter((seat) => seat !== seatNumber);
+      }
+
+      if (currentSeats.length >= totalPassengerCount) {
+        return currentSeats;
+      }
+
+      return [...currentSeats, seatNumber];
+    });
+  }
+
   return (
     <section className="section">
       <div className="container">
@@ -215,15 +292,14 @@ export function BookingPageClient() {
             <span className="section-eyebrow">Đặt vé</span>
             <h1 className="page-title">Nhập thông tin hành khách và giữ chỗ theo chuyến bay đã chọn.</h1>
             <p className="page-hero-copy">
-              Luồng này dùng trực tiếp dữ liệu đã chọn từ trang tìm chuyến bay. Khi giữ chỗ thành công,
-              hệ thống sẽ tạo mã PNR và chuyển sang bước thanh toán sandbox.
+              Kiểm tra hành trình, nhập thông tin hành khách, chọn thêm vị trí ghế ưu tiên và giữ chỗ trước khi thanh toán.
             </p>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Giữ chỗ trong 15 phút</span>
             <h3>{handoffState.tripType === "round_trip" ? "Hành trình khứ hồi" : "Hành trình một chiều"}</h3>
-            <p>{totalPassengerCount} hành khách • Tổng tiền tạm tính theo hạng vé đã chọn.</p>
-            <strong>{formatCurrency(baseAmount)}</strong>
+            <p>{totalPassengerCount} hành khách • Tổng tiền tạm tính theo hạng vé và dịch vụ đã chọn.</p>
+            <strong>{formatCurrency(totalAmount)}</strong>
           </div>
         </div>
 
@@ -233,7 +309,7 @@ export function BookingPageClient() {
             <SectionHeading
               eyebrow="Chuyến bay đã chọn"
               title="Tóm tắt hành trình"
-              description="Thông tin này đi thẳng vào payload giữ chỗ theo inventoryId của từng chặng."
+              description="Kiểm tra lại chặng bay, giờ khởi hành và gói giá trước khi nhập thông tin hành khách."
             />
             <div className="stack-list">
               {handoffState.segments.map((segment, index) => (
@@ -308,7 +384,7 @@ export function BookingPageClient() {
                             email: event.target.value
                           }))
                         }
-                        placeholder="ban@example.com"
+                        placeholder="tenban@gmail.com"
                       />
                     </label>
                     <label className="field">
@@ -384,6 +460,63 @@ export function BookingPageClient() {
                     ))}
                   </div>
                 </div>
+
+                <div className="booking-form-section">
+                  <div className="booking-seat-head">
+                    <div>
+                      <h3>Chọn chỗ ngồi</h3>
+                      <p>Chọn tối đa {totalPassengerCount} ghế ưu tiên cho chặng bay đã chọn. Ghế này sẽ được giữ lại và ưu tiên khi làm thủ tục trực tuyến.</p>
+                    </div>
+                    <strong>{formatCurrency(seatAmount)}</strong>
+                  </div>
+                  <div className="seat-map-card" aria-label="Sơ đồ chỗ ngồi trên máy bay">
+                    <div className="seat-map-airframe" aria-hidden="true">
+                      <div className="seat-map-tail" />
+                    </div>
+                    <div className="seat-map-nose" aria-hidden="true">Mũi máy bay</div>
+                    <div className="seat-map-wing seat-map-wing-left" aria-hidden="true" />
+                    <div className="seat-map-wing seat-map-wing-right" aria-hidden="true" />
+                    <div className="seat-map-cabin">
+                      {seatRows.map((row) => (
+                        <div key={row} className="seat-map-row">
+                          <span className="seat-row-number">{row}</span>
+                          {seatLetters.map((letter, index) => {
+                            const seatNumber = `${row}${letter}`;
+                            const isSelected = selectedSeats.includes(seatNumber);
+                            const isUnavailable = unavailableSeats.has(seatNumber);
+
+                            return (
+                              <button
+                                key={seatNumber}
+                                type="button"
+                                className={[
+                                  "seat-button",
+                                  index === 3 ? "seat-button-after-aisle" : "",
+                                  row <= 5 ? "seat-button-priority" : "",
+                                  isSelected ? "seat-button-selected" : "",
+                                  isUnavailable ? "seat-button-unavailable" : ""
+                                ].filter(Boolean).join(" ")}
+                                disabled={isUnavailable}
+                                onClick={() => toggleSeat(seatNumber)}
+                                aria-pressed={isSelected}
+                              >
+                                {seatNumber}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="seat-map-legend">
+                      <span><i className="seat-legend-dot seat-legend-priority" /> Ghế ưu tiên</span>
+                      <span><i className="seat-legend-dot seat-legend-selected" /> Đã chọn</span>
+                      <span><i className="seat-legend-dot seat-legend-unavailable" /> Không còn</span>
+                    </div>
+                    <p className="seat-map-summary">
+                      Đã chọn {selectedSeats.length}/{totalPassengerCount}: {selectedSeats.length > 0 ? selectedSeats.join(", ") : "chưa chọn ghế"}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {submitError ? (
@@ -396,7 +529,7 @@ export function BookingPageClient() {
               <div className="booking-submit-row">
                 <div>
                   <span className="section-eyebrow">Tổng tiền tạm tính</span>
-                  <strong className="booking-total-amount">{formatCurrency(baseAmount)}</strong>
+                  <strong className="booking-total-amount">{formatCurrency(totalAmount)}</strong>
                 </div>
                 <button type="submit" className="button button-primary" disabled={isSubmitting}>
                   {isSubmitting ? "Đang xử lý..." : "Tiếp tục / Giữ chỗ"}
@@ -412,7 +545,7 @@ export function BookingPageClient() {
           <div className="surface-card booking-processing-card">
             <span className="section-eyebrow">Đang xử lý</span>
             <h3>Đang tạo giữ chỗ</h3>
-            <p>Hệ thống đang khóa ghế và tạo mã PNR cho lựa chọn hiện tại.</p>
+            <p>Đang giữ chỗ và tạo mã đặt chỗ cho lựa chọn hiện tại.</p>
           </div>
         </div>
       ) : null}

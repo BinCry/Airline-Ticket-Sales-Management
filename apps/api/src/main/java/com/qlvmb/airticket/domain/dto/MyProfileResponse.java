@@ -7,6 +7,7 @@ public record MyProfileResponse(
     String email,
     String displayName,
     String phone,
+    String avatarUrl,
     boolean emailVerified,
     String status,
     List<String> roles

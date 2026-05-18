@@ -1,0 +1,13 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - curl
+  - wget
+  - git
+  - jq
+  - ca-certificates
+
+runcmd:
+  - timedatectl set-timezone Asia/Ho_Chi_Minh
+  - curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash

@@ -119,7 +119,7 @@ export function AuthShell({
               <div className="auth-support-head">
                 <div>
                   <span className="section-eyebrow">Hỗ trợ xác minh</span>
-                  <h2>Luôn có kênh hỗ trợ nếu bạn cần kiểm tra lại thông tin</h2>
+                  <h2>Liên hệ hỗ trợ nếu bạn cần kiểm tra lại thông tin tài khoản</h2>
                 </div>
                 <StatusChip tone="neutral" label="Phục vụ 24/7" />
               </div>

@@ -80,6 +80,7 @@ class FlightSearchServiceTest {
     assertThat(response.outboundFlights()).hasSize(1);
     assertThat(response.returnFlights()).isEmpty();
     assertThat(response.outboundFlights().getFirst().code()).isEqualTo("AU201");
+    assertThat(response.outboundFlights().getFirst().departureTime()).isEqualTo("06:10");
     verify(flightRepository, never()).searchRoute(eq("HAN"), eq("SGN"), any(), any());
   }
 
@@ -127,6 +128,7 @@ class FlightSearchServiceTest {
 
     assertThat(response.outboundFlights()).hasSize(1);
     assertThat(response.returnFlights()).hasSize(1);
+    assertThat(response.flights()).hasSize(2);
     assertThat(response.fares()).hasSize(1);
     assertThat(response.criteria().returnDate()).isEqualTo("2026-03-23");
   }
@@ -305,6 +307,7 @@ class FlightSearchServiceTest {
     when(flight.getDepartureAt()).thenReturn(OffsetDateTime.parse(departureAt));
     when(flight.getArrivalAt()).thenReturn(OffsetDateTime.parse(arrivalAt));
     when(flight.getStatus()).thenReturn(status);
+    when(flight.isSalesOpen()).thenReturn(true);
     when(flight.getFareInventories()).thenReturn(inventories);
     for (FlightFareInventoryEntity inventory : inventories) {
       lenient().when(inventory.getFlight()).thenReturn(flight);

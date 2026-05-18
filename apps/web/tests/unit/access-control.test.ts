@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canAccessBackofficeModule,
+  canAccessBackofficeModuleByRoles,
   getAllowedBackofficeModulesByPermissions
 } from "@/lib/access-control";
 
@@ -40,5 +41,13 @@ describe("access-control", () => {
 
   it("chan khach vang lai vao backoffice", () => {
     expect(getAllowedBackofficeModulesByPermissions([])).toEqual([]);
+  });
+
+  it("khong fallback sang role khi kiem tra permission o web", () => {
+    expect(canAccessBackofficeModule(["customer_support"], "sales")).toBe(false);
+  });
+
+  it("van co the suy ra module theo role khi can hien nhan vai tro", () => {
+    expect(canAccessBackofficeModuleByRoles(["customer_support"], "sales")).toBe(true);
   });
 });

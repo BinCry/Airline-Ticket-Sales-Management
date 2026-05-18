@@ -1,0 +1,65 @@
+name: ci-production
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ci-production.yml"
+      - ".github/workflows/deploy.yml"
+      - "docker-compose.prod.yml"
+      - "infra/**"
+      - "apps/api/Dockerfile"
+      - "apps/web/Dockerfile"
+      - "apps/web/next.config.ts"
+      - "package.json"
+      - "package-lock.json"
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+      - "refactor/**"
+      - "test/**"
+      - "docs/**"
+      - "chore/**"
+      - "hotfix/**"
+    paths:
+      - ".github/workflows/ci-production.yml"
+      - ".github/workflows/deploy.yml"
+      - "docker-compose.prod.yml"
+      - "infra/**"
+      - "apps/api/Dockerfile"
+      - "apps/web/Dockerfile"
+      - "apps/web/next.config.ts"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-production-config:
+    name: validate-production-config
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lay ma nguon
+        uses: actions/checkout@v4
+
+      - name: Thiet lap Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cai dependency
+        run: npm ci
+
+      - name: Kiem tra cau hinh production
+        shell: pwsh
+        run: ./infra/scripts/kiem-tra-san-sang-production.ps1

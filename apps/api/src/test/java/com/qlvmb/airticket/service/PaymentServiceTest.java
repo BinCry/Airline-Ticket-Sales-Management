@@ -2,6 +2,7 @@ package com.qlvmb.airticket.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.qlvmb.airticket.domain.dto.PaymentCallbackRequest;
@@ -10,8 +11,10 @@ import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
 import com.qlvmb.airticket.exception.NotFoundException;
+import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,31 +27,61 @@ class PaymentServiceTest {
   @Mock
   private BookingService bookingService;
 
+  @Mock
+  private NotificationOutboxService notificationOutboxService;
+
+  @Mock
+  private PaymentTransactionRepository paymentTransactionRepository;
+
+  @Mock
+  private MemberVoucherService memberVoucherService;
+
   private PaymentService paymentService;
 
   @BeforeEach
   void setUp() {
-    paymentService = new PaymentService(bookingService);
+    paymentService = new PaymentService(
+        bookingService,
+        memberVoucherService,
+        notificationOutboxService,
+        paymentTransactionRepository,
+        "",
+        "",
+        "",
+        "BIDV",
+        "",
+        "",
+        900
+    );
   }
 
   @Test
-  void createPaymentSession_shouldReturnSandboxUrl() {
+  void createPaymentSession_shouldReturnLocalSePaySession() {
     BookingEntity booking = heldBooking("A6C2P1");
     when(bookingService.findBookingForPayment("A6C2P1")).thenReturn(booking);
     when(bookingService.mapPaymentStatus(BookingEntity.PAYMENT_STATUS_PENDING)).thenReturn("pending");
+    when(paymentTransactionRepository.findByBookingId(any())).thenReturn(Optional.empty());
+    when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingService.generatePaymentReference()).thenReturn("SEPAY-000000000001");
 
     PaymentSessionResponse response = paymentService.createPaymentSession("A6C2P1");
 
     assertThat(response.bookingCode()).isEqualTo("A6C2P1");
-    assertThat(response.paymentUrl()).isEqualTo("/payment-sandbox?pnr=A6C2P1");
+    assertThat(response.provider()).isEqualTo("sepay");
+    assertThat(response.sessionMode()).isEqualTo("local");
+    assertThat(response.referenceCode()).isEqualTo("SEPAY-000000000001");
     assertThat(response.paymentStatus()).isEqualTo("pending");
+    assertThat(response.discountAmount()).isZero();
+    assertThat(response.appliedVoucherCode()).isNull();
   }
 
   @Test
   void handlePaymentCallback_shouldTicketBookingAndCreateTicket() {
     BookingEntity booking = heldBooking("A6C2P1");
     when(bookingService.findBookingForPayment("A6C2P1")).thenReturn(booking);
-    when(bookingService.generatePaymentReference()).thenReturn("SANDBOX-000000000001");
+    when(paymentTransactionRepository.findByBookingId(any())).thenReturn(Optional.empty());
+    when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingService.generatePaymentReference()).thenReturn("SEPAY-000000000001", "SEPAY-000000000002");
     when(bookingService.generateUniqueTicketNumber()).thenReturn("7380000000001");
     when(bookingService.mapOverviewResponse(booking)).thenCallRealMethod();
     when(bookingService.mapBookingStatus(BookingEntity.STATUS_TICKETED)).thenReturn("ticketed");

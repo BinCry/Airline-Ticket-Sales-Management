@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "projectPrefix": {
+      "value": "qlvmb-prod"
+    },
+    "location": {
+      "value": "southeastasia"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "adminSshPublicKey": {
+      "value": "ssh-ed25519 AAAA... thay-khoa-ssh-cua-ban"
+    },
+    "vmSize": {
+      "value": "Standard_B2s"
+    },
+    "postgresqlSku": {
+      "value": "Standard_B1ms"
+    },
+    "postgresqlTier": {
+      "value": "Burstable"
+    },
+    "postgresqlVersion": {
+      "value": "16"
+    },
+    "postgresqlAdminUsername": {
+      "value": "qlvmbadmin"
+    },
+    "postgresqlAdminPassword": {
+      "value": "ThayMatKhauRiengChoPostgres123!"
+    },
+    "databaseName": {
+      "value": "airticket"
+    }
+  }
+}

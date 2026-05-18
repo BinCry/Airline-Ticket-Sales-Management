@@ -12,7 +12,7 @@ import com.qlvmb.airticket.domain.dto.AuthRegisterRequest;
 import com.qlvmb.airticket.domain.dto.AuthSessionResponse;
 import com.qlvmb.airticket.domain.dto.AuthSummaryResponse;
 import com.qlvmb.airticket.service.AuthService;
-import com.qlvmb.airticket.service.DemoDataService;
+import com.qlvmb.airticket.service.AuthSummaryService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,16 +29,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService authService;
-  private final DemoDataService demoDataService;
+  private final AuthSummaryService authSummaryService;
 
-  public AuthController(AuthService authService, DemoDataService demoDataService) {
+  public AuthController(AuthService authService, AuthSummaryService authSummaryService) {
     this.authService = authService;
-    this.demoDataService = demoDataService;
+    this.authSummaryService = authSummaryService;
   }
 
   @GetMapping("/roles")
   public AuthSummaryResponse getRoleSummary() {
-    return demoDataService.getAuthSummary();
+    return authSummaryService.getSummary();
   }
 
   @PostMapping("/register")

@@ -11,6 +11,18 @@ import { ApiClientError, requestApi } from "@/lib/api-client";
 
 type RawSearchParam = string | string[] | undefined;
 
+export const TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH: ApiFlightSearchCriteria = {
+  from: "SGN",
+  to: "HAN",
+  departureDate: "2026-05-23",
+  returnDate: "2026-05-26",
+  tripType: "round_trip",
+  fareFamily: "pho_thong_linh_hoat",
+  adultCount: 1,
+  childCount: 0,
+  infantCount: 0
+};
+
 export class FlightSearchApiError extends ApiClientError {
   constructor(
     message: string,
@@ -96,46 +108,43 @@ function laMangGoiGiaHopLe(giaTri: unknown): giaTri is ApiFareCard[] {
   return Array.isArray(giaTri);
 }
 
-function formatNgayTheoInput(date: Date): string {
-  const nam = date.getFullYear();
-  const thang = String(date.getMonth() + 1).padStart(2, "0");
-  const ngay = String(date.getDate()).padStart(2, "0");
-  return `${nam}-${thang}-${ngay}`;
-}
-
-function taoNgayMacDinh() {
-  const homNay = new Date();
-  const ngayDi = new Date(homNay);
-  ngayDi.setDate(homNay.getDate() + 7);
-  const ngayVe = new Date(ngayDi);
-  ngayVe.setDate(ngayDi.getDate() + 3);
-
-  return {
-    departureDate: formatNgayTheoInput(ngayDi),
-    returnDate: formatNgayTheoInput(ngayVe)
-  };
-}
-
 export function chuanHoaTieuChiTimChuyenBay(
   searchParams: Record<string, RawSearchParam>
 ): ApiFlightSearchCriteria {
-  const ngayMacDinh = taoNgayMacDinh();
   const tripType = chuanHoaLoaiHanhTrinh(searchParams.tripType);
-  const departureDate = chuanHoaNgay(searchParams.departureDate, ngayMacDinh.departureDate);
+  const departureDate = chuanHoaNgay(
+    searchParams.departureDate,
+    TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate
+  );
   const returnDate = tripType === "one_way"
     ? null
-    : chuanHoaNgay(searchParams.returnDate, ngayMacDinh.returnDate);
+    : chuanHoaNgay(
+        searchParams.returnDate,
+        TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate ?? TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate
+      );
 
   return {
-    from: chuanHoaMaSanBay(searchParams.from, "SGN"),
-    to: chuanHoaMaSanBay(searchParams.to, "HAN"),
+    from: chuanHoaMaSanBay(searchParams.from, TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from),
+    to: chuanHoaMaSanBay(searchParams.to, TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to),
     departureDate,
     returnDate,
     tripType,
     fareFamily: chuanHoaGoiGia(searchParams.fareFamily),
-    adultCount: chuanHoaSoLuong(searchParams.adultCount, 1, 1),
-    childCount: chuanHoaSoLuong(searchParams.childCount, 0, 0),
-    infantCount: chuanHoaSoLuong(searchParams.infantCount, 0, 0)
+    adultCount: chuanHoaSoLuong(
+      searchParams.adultCount,
+      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.adultCount,
+      1
+    ),
+    childCount: chuanHoaSoLuong(
+      searchParams.childCount,
+      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.childCount,
+      0
+    ),
+    infantCount: chuanHoaSoLuong(
+      searchParams.infantCount,
+      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.infantCount,
+      0
+    )
   };
 }
 

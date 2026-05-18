@@ -63,8 +63,10 @@ public record BookingHoldResponse(
   public record PriceSummaryResponse(
       long baseAmount,
       long ancillaryAmount,
+      long discountAmount,
       long totalAmount,
-      String currency
+      String currency,
+      String appliedVoucherCode
   ) {
   }
 }

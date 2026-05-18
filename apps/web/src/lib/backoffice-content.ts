@@ -9,173 +9,77 @@ export interface BackofficeModuleSummary {
   roles: string[];
 }
 
-export interface BackofficeModuleDetail {
-  title: string;
-  summary: string;
-  panels: Array<{
-    title: string;
-    items: string[];
-  }>;
-}
-
 export const backofficeModules: BackofficeModuleSummary[] = [
   {
     key: "sales",
     title: "Bán vé nội bộ",
-    summary: "Hỗ trợ nhân viên xử lý yêu cầu đặt chỗ và thao tác sau bán cho khách.",
+    summary: "Tra cứu đặt chỗ nội bộ, xem nhanh trạng thái thanh toán, vé và hồ sơ hành khách.",
     href: "/backoffice/sales",
     highlights: [
-      "Tra cứu booking có xác minh",
-      "Giữ chỗ và cập nhật liên hệ",
-      "Theo dõi trạng thái thanh toán"
+      "Tra cứu booking theo mã PNR",
+      "Theo dõi trạng thái thanh toán",
+      "Mở nhanh hồ sơ hành trình của khách"
     ],
     roles: ["customer_support"]
   },
   {
     key: "support",
     title: "Chăm sóc khách hàng",
-    summary: "Tiếp nhận yêu cầu hỗ trợ và phản hồi theo SLA nội bộ.",
+    summary: "Theo dõi notification outbox, kiểm tra email vé lỗi và gửi lại khi cần.",
     href: "/backoffice/support",
     highlights: [
-      "Tạo và theo dõi yêu cầu hỗ trợ",
-      "Lưu lịch sử trao đổi với khách",
-      "Phân loại mức độ ưu tiên"
+      "Xem danh sách email vé đã gửi",
+      "Ưu tiên xử lý email lỗi",
+      "Gửi lại email ngay từ backoffice"
     ],
     roles: ["customer_support"]
   },
   {
     key: "finance",
     title: "Đối soát và hoàn tiền",
-    summary: "Kiểm soát giao dịch và theo dõi trạng thái hoàn tiền cho booking đủ điều kiện.",
+    summary: "Duyệt hoàn vé, kiểm tra số tiền hoàn và tình trạng xử lý của từng yêu cầu.",
     href: "/backoffice/finance",
     highlights: [
-      "Theo dõi giao dịch thanh toán",
-      "Kiểm tra yêu cầu hoàn tiền",
-      "Đối chiếu trạng thái callback"
+      "Kiểm tra yêu cầu hoàn vé",
+      "Duyệt hoặc từ chối theo hồ sơ thật",
+      "Theo dõi trạng thái sau xử lý"
     ],
     roles: ["customer_support"]
   },
   {
     key: "cms",
     title: "Nội dung công khai",
-    summary: "Quản lý FAQ, hướng dẫn và nội dung hiển thị cho khu vực khách hàng.",
+    summary: "Rà soát các khối nội dung công khai đang phát hành trên trang chủ, hỗ trợ và cẩm nang.",
     href: "/backoffice/cms",
     highlights: [
-      "Cập nhật FAQ hỗ trợ",
-      "Kiểm tra nội dung trước khi phát hành",
-      "Theo dõi lịch sử thay đổi"
+      "Kiểm tra điều hướng công khai",
+      "Rà soát FAQ và ưu đãi đang hiển thị",
+      "Mở nhanh liên kết cuối trang"
     ],
     roles: ["customer_support"]
   },
   {
     key: "operations",
-    title: "Điều hành chuyến bay",
-    summary: "Quản lý giá, lịch bay, tồn ghế và trạng thái khai thác theo kế hoạch vận hành.",
+    title: "Điều hành chuyến bay và voucher",
+    summary: "Theo dõi tình trạng chuyến bay, xử lý sự cố khai thác và quản lý voucher hội viên thuộc phạm vi vận hành.",
     href: "/backoffice/operations",
     highlights: [
-      "Điều chỉnh giá theo hạng vé",
-      "Theo dõi tình trạng tồn ghế",
-      "Cập nhật trạng thái chuyến bay"
+      "Tra cứu chuyến bay theo mã hoặc ngày",
+      "Kiểm tra trạng thái khai thác và mở bán",
+      "Cấp, sửa hoặc thu hồi voucher hội viên"
     ],
     roles: ["operations_staff"]
   },
   {
     key: "admin",
-    title: "Kiểm soát hệ thống",
-    summary: "Theo dõi cấu hình phân quyền và nhật ký các thao tác nhạy cảm.",
+    title: "Quản trị hệ thống",
+    summary: "Theo dõi số liệu thật, nhật ký thao tác và quản lý role, trạng thái tài khoản nội bộ.",
     href: "/backoffice/admin",
     highlights: [
-      "Kiểm tra quyền truy cập",
-      "Xem nhật ký thao tác",
-      "Kiểm soát cấu hình vận hành"
+      "Xem số liệu vận hành thật",
+      "Cập nhật vai trò nhân sự",
+      "Khóa hoặc mở khóa tài khoản"
     ],
     roles: ["operations_staff"]
   }
 ];
-
-export const backofficeModuleDetails: Record<BackofficeModuleKey, BackofficeModuleDetail> = {
-  sales: {
-    title: "Bán vé nội bộ",
-    summary: "Phân hệ phục vụ nhân viên xử lý đặt chỗ thay mặt khách hàng.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Tra cứu booking theo mã",
-          "Xem trạng thái thanh toán",
-          "Theo dõi lịch sử cập nhật liên hệ"
-        ]
-      }
-    ]
-  },
-  support: {
-    title: "Chăm sóc khách hàng",
-    summary: "Phân hệ tiếp nhận và theo dõi yêu cầu hỗ trợ sau bán.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Tiếp nhận yêu cầu hỗ trợ",
-          "Theo dõi SLA phản hồi",
-          "Ghi nhận trạng thái xử lý"
-        ]
-      }
-    ]
-  },
-  finance: {
-    title: "Đối soát và hoàn tiền",
-    summary: "Phân hệ theo dõi giao dịch, đối soát callback và yêu cầu hoàn tiền.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Xem giao dịch theo mã booking",
-          "Kiểm tra callback thanh toán",
-          "Theo dõi tiến trình hoàn tiền"
-        ]
-      }
-    ]
-  },
-  cms: {
-    title: "Nội dung công khai",
-    summary: "Phân hệ quản lý nội dung FAQ và hướng dẫn cho khách hàng.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Cập nhật FAQ hỗ trợ",
-          "Điều chỉnh nội dung hướng dẫn",
-          "Kiểm tra trạng thái phát hành"
-        ]
-      }
-    ]
-  },
-  operations: {
-    title: "Điều hành chuyến bay",
-    summary: "Phân hệ phục vụ cập nhật kế hoạch khai thác và tồn ghế.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Điều chỉnh giá theo chặng",
-          "Theo dõi tồn ghế theo hạng",
-          "Cập nhật trạng thái chuyến bay"
-        ]
-      }
-    ]
-  },
-  admin: {
-    title: "Kiểm soát hệ thống",
-    summary: "Phân hệ giám sát quyền truy cập và nhật ký vận hành.",
-    panels: [
-      {
-        title: "Tác vụ hiện có",
-        items: [
-          "Xem quyền truy cập theo vai trò",
-          "Theo dõi nhật ký thao tác",
-          "Kiểm tra cấu hình hệ thống"
-        ]
-      }
-    ]
-  }
-};

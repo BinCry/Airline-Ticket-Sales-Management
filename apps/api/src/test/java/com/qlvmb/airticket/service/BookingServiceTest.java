@@ -47,6 +47,9 @@ class BookingServiceTest {
   @Mock
   private TicketRepository ticketRepository;
 
+  @Mock
+  private MemberVoucherService memberVoucherService;
+
   private BookingService bookingService;
 
   @BeforeEach
@@ -55,7 +58,8 @@ class BookingServiceTest {
         flightFareInventoryRepository,
         bookingRepository,
         ticketRepository,
-        new ProductCatalogService()
+        new ProductCatalogService(),
+        memberVoucherService
     );
   }
 
@@ -112,7 +116,7 @@ class BookingServiceTest {
     BookingHoldResponse response = bookingService.createHold(
         oneWayHoldRequest(
             List.of(
-                new BookingHoldRequest.AncillaryRequest("SEAT_PLUS", 2),
+                new BookingHoldRequest.AncillaryRequest("SEAT_PLUS", 1),
                 new BookingHoldRequest.AncillaryRequest("BAG_23", 1)
             ),
             List.of(20101L)
@@ -120,8 +124,8 @@ class BookingServiceTest {
     );
 
     assertThat(response.selectedAncillaries()).hasSize(2);
-    assertThat(response.priceSummary().ancillaryAmount()).isEqualTo(930000L);
-    assertThat(response.priceSummary().totalAmount()).isEqualTo(2420000L);
+    assertThat(response.priceSummary().ancillaryAmount()).isEqualTo(610000L);
+    assertThat(response.priceSummary().totalAmount()).isEqualTo(2100000L);
   }
 
   @Test
@@ -181,6 +185,11 @@ class BookingServiceTest {
       List<BookingHoldRequest.AncillaryRequest> ancillaries,
       List<Long> inventoryIds
   ) {
+    List<BookingHoldRequest.SeatSelectionRequest> seatSelections = ancillaries.stream()
+        .anyMatch(ancillary -> "SEAT_PLUS".equalsIgnoreCase(ancillary.code()))
+        ? List.of(new BookingHoldRequest.SeatSelectionRequest(inventoryIds.get(0), 0, "12A"))
+        : List.of();
+
     return new BookingHoldRequest(
         "one_way",
         new BookingHoldRequest.ContactRequest(
@@ -200,7 +209,8 @@ class BookingServiceTest {
         inventoryIds.stream()
             .map(BookingHoldRequest.SegmentRequest::new)
             .toList(),
-        ancillaries
+        ancillaries,
+        seatSelections
     );
   }
 

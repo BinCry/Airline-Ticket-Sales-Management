@@ -27,10 +27,6 @@ export async function fetchAirportOptions(
 ): Promise<AirportOption[]> {
   const tuKhoa = query.trim();
 
-  if (!tuKhoa) {
-    return [];
-  }
-
   const params = new URLSearchParams({ query: tuKhoa });
   const payload = await requestApi<unknown[]>(
     `/api/airports?${params.toString()}`,

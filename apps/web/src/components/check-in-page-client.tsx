@@ -4,11 +4,16 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { SectionHeading } from "@/components/section-heading";
-import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import { completeCheckin } from "@/lib/booking-api";
 import { layVeCoTheCheckin } from "@/lib/booking-self-service";
-import { fetchManageBooking, type ManageBookingOverview } from "@/lib/manage-booking-api";
+import {
+  fetchManageBooking,
+  requestBookingLookupOtp,
+  verifyBookingLookupOtp,
+  type ManageBookingOverview
+} from "@/lib/manage-booking-api";
 import { pushToast } from "@/lib/toast";
 
 type LookupState = "idle" | "loading" | "error" | "success";
@@ -32,6 +37,11 @@ function taoMaVachGia(count: number) {
 export function CheckInPageClient() {
   const searchParams = useSearchParams();
   const [bookingCode, setBookingCode] = useState("");
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupOtp, setLookupOtp] = useState("");
+  const [lookupToken, setLookupToken] = useState<string | null>(null);
+  const [isSendingLookupOtp, setIsSendingLookupOtp] = useState(false);
+  const [isVerifyingLookupOtp, setIsVerifyingLookupOtp] = useState(false);
   const [lookupState, setLookupState] = useState<LookupState>("idle");
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [bookingOverview, setBookingOverview] = useState<ManageBookingOverview | null>(null);
@@ -46,14 +56,24 @@ export function CheckInPageClient() {
 
   useEffect(() => {
     const bookingCodeFromQuery = searchParams.get("bookingCode")?.trim().toUpperCase() ?? "";
+    const emailFromQuery = searchParams.get("email")?.trim().toLowerCase() ?? "";
+    const lookupTokenFromQuery = searchParams.get("lookupToken")?.trim() ?? "";
     if (!bookingCodeFromQuery) {
       return;
     }
 
     setBookingCode(bookingCodeFromQuery);
-    void traCuuBooking(bookingCodeFromQuery);
+    if (emailFromQuery) {
+      setLookupEmail(emailFromQuery);
+    }
+    if (lookupTokenFromQuery) {
+      setLookupToken(lookupTokenFromQuery);
+    }
+    if (accessToken || lookupTokenFromQuery) {
+      void traCuuBooking(bookingCodeFromQuery);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, accessToken]);
 
   const danhSachVeCoTheCheckin = useMemo(
     () => (bookingOverview ? layVeCoTheCheckin(bookingOverview) : []),
@@ -66,15 +86,87 @@ export function CheckInPageClient() {
     setBoardingPasses([]);
 
     try {
-      const nextBookingOverview = await fetchManageBooking(nextBookingCode, accessToken);
+      const nextBookingOverview = await fetchManageBooking(
+        nextBookingCode,
+        accessToken,
+        accessToken ? undefined : lookupToken ?? undefined
+      );
       setBookingOverview(nextBookingOverview);
       setSelectedTicketNumbers(layVeCoTheCheckin(nextBookingOverview).map((ticket) => ticket.ticketNumber));
       setLookupState("success");
     } catch (error) {
       setBookingOverview(null);
       setSelectedTicketNumbers([]);
+      if (!accessToken && error instanceof ApiClientError && error.status === 401) {
+        setLookupToken(null);
+      }
       setLookupError(resolveApiClientErrorMessage(error, "Không thể tra cứu check-in lúc này."));
       setLookupState("error");
+    }
+  }
+
+  async function handleRequestLookupOtp(normalizedBookingCode: string) {
+    if (isSendingLookupOtp || accessToken) {
+      return;
+    }
+
+    const normalizedEmail = lookupEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setLookupError("Vui lòng nhập email liên hệ booking trước khi yêu cầu OTP.");
+      setLookupState("error");
+      return;
+    }
+
+    setIsSendingLookupOtp(true);
+    setLookupError(null);
+    try {
+      await requestBookingLookupOtp({
+        bookingCode: normalizedBookingCode,
+        email: normalizedEmail
+      });
+      setLookupState("idle");
+      pushToast({
+        title: "Đã gửi OTP",
+        message: "Vui lòng kiểm tra email và nhập OTP trực tiếp trên màn hình này.",
+        tone: "success"
+      });
+    } catch (error) {
+      setLookupError(resolveApiClientErrorMessage(error, "Không thể gửi OTP tra cứu."));
+      setLookupState("error");
+    } finally {
+      setIsSendingLookupOtp(false);
+    }
+  }
+
+  async function handleVerifyLookupOtp(normalizedBookingCode: string) {
+    if (isVerifyingLookupOtp || accessToken) {
+      return;
+    }
+
+    const normalizedEmail = lookupEmail.trim().toLowerCase();
+    const normalizedOtp = lookupOtp.trim();
+    if (!normalizedEmail || normalizedOtp.length !== 6) {
+      setLookupError("Vui lòng nhập đầy đủ email và mã OTP 6 số.");
+      setLookupState("error");
+      return;
+    }
+
+    setIsVerifyingLookupOtp(true);
+    setLookupError(null);
+    try {
+      const verified = await verifyBookingLookupOtp({
+        bookingCode: normalizedBookingCode,
+        email: normalizedEmail,
+        otp: normalizedOtp
+      });
+      setLookupToken(verified.lookupToken);
+      setLookupOtp("");
+      await traCuuBooking(normalizedBookingCode);
+    } catch (error) {
+      setLookupError(resolveApiClientErrorMessage(error, "Không thể xác minh OTP tra cứu."));
+      setLookupState("error");
+    } finally {
+      setIsVerifyingLookupOtp(false);
     }
   }
 
@@ -82,6 +174,11 @@ export function CheckInPageClient() {
     event.preventDefault();
     const normalizedBookingCode = bookingCode.trim().toUpperCase();
     if (!normalizedBookingCode || lookupState === "loading") {
+      return;
+    }
+
+    if (!accessToken && !lookupToken) {
+      await handleRequestLookupOtp(normalizedBookingCode);
       return;
     }
 
@@ -110,10 +207,15 @@ export function CheckInPageClient() {
           bookingCode: bookingOverview.bookingCode,
           ticketNumbers: selectedTicketNumbers
         },
-        accessToken
+        accessToken,
+        accessToken ? undefined : lookupToken ?? undefined
       );
 
-      const latestBookingOverview = await fetchManageBooking(bookingOverview.bookingCode, accessToken);
+      const latestBookingOverview = await fetchManageBooking(
+        bookingOverview.bookingCode,
+        accessToken,
+        accessToken ? undefined : lookupToken ?? undefined
+      );
       setBookingOverview(latestBookingOverview);
       setBoardingPasses(response.boardingPasses);
       setSelectedTicketNumbers([]);
@@ -139,15 +241,15 @@ export function CheckInPageClient() {
         <div className="page-hero-card">
           <div>
             <span className="section-eyebrow">Làm thủ tục trực tuyến</span>
-            <h1 className="page-title">Tra cứu PNR và tạo thẻ lên máy bay trực tiếp từ dữ liệu thật.</h1>
+            <h1 className="page-title">Tra cứu PNR, chọn hành khách và nhận thẻ lên máy bay.</h1>
             <p className="page-hero-copy">
-              Luồng này dùng dữ liệu ticket và boarding pass từ backend, không còn nội dung mô phỏng.
+              Kiểm tra vé đủ điều kiện, hoàn tất làm thủ tục và xem vị trí ghế trên sơ đồ khoang bay.
             </p>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Self-service</span>
             <h3>{bookingOverview?.bookingCode ?? "Chưa có PNR"}</h3>
-            <p>{bookingOverview ? "Đã đồng bộ dữ liệu đặt chỗ." : "Nhập mã đặt chỗ để bắt đầu làm thủ tục."}</p>
+            <p>{bookingOverview ? "Đã sẵn sàng làm thủ tục cho booking này." : "Nhập mã đặt chỗ để bắt đầu làm thủ tục."}</p>
           </div>
         </div>
 
@@ -158,10 +260,43 @@ export function CheckInPageClient() {
               <span>Mã đặt chỗ</span>
               <input
                 value={bookingCode}
-                onChange={(event) => setBookingCode(event.target.value)}
+                onChange={(event) => {
+                  setBookingCode(event.target.value);
+                  if (!accessToken) {
+                    setLookupToken(null);
+                    setLookupOtp("");
+                  }
+                }}
                 placeholder="Ví dụ: A6C2P1"
               />
             </label>
+            {!accessToken ? (
+              <>
+                <label className="field">
+                  <span>Email liên hệ booking</span>
+                  <input
+                    type="email"
+                    value={lookupEmail}
+                    onChange={(event) => {
+                      setLookupEmail(event.target.value);
+                      setLookupToken(null);
+                    }}
+                    placeholder="tenban@gmail.com"
+                    autoComplete="email"
+                  />
+                </label>
+                <label className="field">
+                  <span>Mã OTP tra cứu</span>
+                  <input
+                    value={lookupOtp}
+                    onChange={(event) => setLookupOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Nhập 6 số OTP"
+                    inputMode="numeric"
+                    maxLength={6}
+                  />
+                </label>
+              </>
+            ) : null}
             <div className="field field-inline">
               <span>Trạng thái</span>
               <div className="surface-card">
@@ -178,14 +313,28 @@ export function CheckInPageClient() {
                   {lookupState === "idle"
                     ? "Nhập PNR để xem hành khách và vé đủ điều kiện làm thủ tục."
                     : lookupState === "loading"
-                      ? "Đang đồng bộ dữ liệu từ backend."
+                      ? "Đang tải thông tin đặt chỗ."
                       : lookupState === "success"
                         ? "Đã sẵn sàng để chọn hành khách."
                         : lookupError}
                 </p>
               </div>
             </div>
-            <button type="submit" className="button button-primary" disabled={lookupState === "loading"}>
+            {!accessToken ? (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
+                disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
+              >
+                {isVerifyingLookupOtp ? "Đang xác minh..." : "Xác minh OTP"}
+              </button>
+            ) : null}
+            <button
+              type="submit"
+              className="button button-primary"
+              disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
+            >
               {lookupState === "loading" ? "Đang tải..." : "Tra cứu Check-in"}
             </button>
           </div>

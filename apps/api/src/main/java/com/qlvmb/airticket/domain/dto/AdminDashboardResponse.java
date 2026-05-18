@@ -24,6 +24,7 @@ public record AdminDashboardResponse(
   }
 
   public record AuditCard(
+      Long id,
       String actor,
       String action,
       String target,

@@ -9,6 +9,19 @@ const airportCards = [
   "Đà Nẵng: ưu tiên khách có yêu cầu hỗ trợ đặc biệt qua bộ phận chăm sóc khách hàng trước chuyến."
 ];
 
+const policyCards = [
+  {
+    id: "dieu-kien-ve",
+    title: "Điều kiện vé",
+    description: "Kiểm tra hạng vé, thời hạn giữ chỗ, quy định đổi hoặc hoàn trước khi xác nhận thanh toán."
+  },
+  {
+    id: "hanh-ly",
+    title: "Hành lý",
+    description: "Chuẩn bị hành lý xách tay, hành lý ký gửi và các vật dụng cần khai báo trước khi ra sân bay."
+  }
+];
+
 export default function SupportPage() {
   return (
     <section className="section">
@@ -51,7 +64,7 @@ export default function SupportPage() {
         </div>
 
         <div className="section-gap" />
-        <div className="card-grid card-grid-3">
+        <div id="lien-he" className="card-grid card-grid-3">
           {supportChannels.map((channel) => (
             <article key={channel.title} className="surface-card promo-card">
               <h3>{channel.title}</h3>
@@ -62,8 +75,18 @@ export default function SupportPage() {
         </div>
 
         <div className="section-gap" />
+        <div className="card-grid card-grid-2">
+          {policyCards.map((policy) => (
+            <article key={policy.id} id={policy.id} className="surface-card">
+              <h3>{policy.title}</h3>
+              <p>{policy.description}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="section-gap" />
         <div className="section-split">
-          <div>
+          <div id="faq">
             <SectionHeading
               eyebrow="Câu hỏi thường gặp"
               title="Những câu hỏi hành khách thường gặp trước ngày bay"
@@ -78,7 +101,7 @@ export default function SupportPage() {
               ))}
             </div>
           </div>
-          <div>
+          <div id="san-bay">
             <SectionHeading
               eyebrow="Thông tin sân bay"
               title="Thông tin cần biết trước khi đến sân bay"

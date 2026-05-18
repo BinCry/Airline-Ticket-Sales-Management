@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
-import { AuthGooglePlaceholder } from "@/components/auth-google-placeholder";
 import { AuthShell } from "@/components/auth-shell";
 import { PasswordField } from "@/components/password-field";
 import { StatusChip } from "@/components/status-chip";
@@ -18,9 +17,9 @@ const loginStats = [
     detail: "Xem lại lịch bay, dịch vụ đã chọn và thời hạn làm thủ tục."
   },
   {
-    label: "Ưu đãi hội viên",
-    value: "03 mã",
-    detail: "Lưu voucher và quyền lợi đang áp dụng theo hạng thành viên."
+    label: "Hồ sơ hành khách",
+    value: "Lưu sẵn",
+    detail: "Giảm thao tác nhập lại thông tin liên hệ và giấy tờ ở lần đặt vé tiếp theo."
   },
   {
     label: "Thông báo cá nhân",
@@ -45,7 +44,7 @@ const supportItems = [
 const trustPoints = [
   "Lưu lịch sử đặt chỗ, hóa đơn và thông báo chuyến bay trong cùng một nơi.",
   "Đồng bộ hồ sơ hành khách thường dùng để đặt vé nhanh hơn trên cả điện thoại lẫn máy tính.",
-  "Nhận ưu đãi hội viên, voucher cá nhân hóa và nhắc việc trước ngày khởi hành."
+  "Nhận nhắc việc trước ngày khởi hành, email vé và các cập nhật mới nhất về hành trình."
 ];
 
 function LoginPageContent() {
@@ -60,6 +59,14 @@ function LoginPageContent() {
 
   const isReadyToContinue = authSession !== null;
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
+
+  function handleAuthSuccess(nextAuthSession: AuthSession) {
+    persistAuthSession(nextAuthSession, shouldRemember);
+    setAuthSession(nextAuthSession);
+
+    const redirectTo = searchParams.get("redirectTo")?.trim();
+    router.push(redirectTo || "/account");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,11 +84,7 @@ function LoginPageContent() {
         password
       });
 
-      persistAuthSession(nextAuthSession, shouldRemember);
-      setAuthSession(nextAuthSession);
-
-      const redirectTo = searchParams.get("redirectTo")?.trim();
-      router.push(redirectTo || "/account");
+      handleAuthSuccess(nextAuthSession);
     } catch (error) {
       setSubmissionError(
         resolveAuthErrorMessage(error, "Không thể đăng nhập trong lúc này.")
@@ -95,11 +98,11 @@ function LoginPageContent() {
     <AuthShell
       activeTab="login"
       eyebrow="Tài khoản hành khách"
-      title="Đăng nhập để theo dõi hành trình, điểm thưởng và các cập nhật dành riêng cho bạn."
+      title="Đăng nhập để theo dõi hành trình và các cập nhật dành riêng cho bạn."
       description="Khách hàng có tài khoản có thể xem lại đặt chỗ, lưu hồ sơ hành khách, nhận thông báo trước giờ bay và quản lý tiện ích sau khi mua vé. Nếu chưa có tài khoản, bạn vẫn có thể tiếp tục xem website và đặt vé với vai trò khách."
       stats={loginStats}
       sideTitle="Một tài khoản cho toàn bộ hành trình"
-      sideDescription="Thông tin đặt chỗ, quyền lợi hội viên và thông báo thay đổi chuyến bay được gom về cùng một luồng theo dõi để hành khách thao tác nhanh hơn sau khi đăng nhập."
+      sideDescription="Thông tin đặt chỗ, hồ sơ hành khách và thông báo thay đổi chuyến bay được gom về cùng một luồng theo dõi để hành khách thao tác nhanh hơn sau khi đăng nhập."
       trustPoints={trustPoints}
       supportItems={supportItems}
     >
@@ -112,7 +115,7 @@ function LoginPageContent() {
           tone={isReadyToContinue ? "success" : isSubmitting ? "info" : "neutral"}
           label={
             isReadyToContinue
-              ? "Đã lưu phiên"
+              ? "Sẵn sàng sử dụng"
               : isSubmitting
                 ? "Đang xác thực"
                 : "Chờ xác thực"
@@ -123,12 +126,12 @@ function LoginPageContent() {
       {isReadyToContinue && authSession ? (
         <article className="auth-success-card">
           <StatusChip tone="success" label="Đăng nhập thành công" />
-          <h3>Xin chào {authSession.user.displayName}, phiên làm việc đã sẵn sàng</h3>
+          <h3>Xin chào {authSession.user.displayName}, tài khoản của bạn đã sẵn sàng</h3>
           <p>
-            Hệ thống đã lưu phiên{" "}
-            {shouldRemember ? "trên thiết bị này" : "trong phiên duyệt hiện tại"} để
-            bạn tiếp tục theo dõi hành trình, điểm thưởng và các cập nhật liên quan tới
-            đặt chỗ của mình.
+            Thông tin đăng nhập đã được lưu{" "}
+            {shouldRemember ? "trên thiết bị này" : "trong lần truy cập hiện tại"} để bạn
+            tiếp tục theo dõi hành trình, email vé và các cập nhật liên quan tới đặt chỗ
+            của mình.
           </p>
           <div className="auth-action-row">
             <Link href="/account" className="button button-primary">
@@ -141,17 +144,12 @@ function LoginPageContent() {
         </article>
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
-          <AuthGooglePlaceholder
-            buttonLabel="Tiếp tục với Google"
-            helperText="Lựa chọn đăng nhập bằng Google đang được chuẩn bị để nối vào luồng xác thực sau này. Hiện tại bạn vẫn có thể dùng email và mật khẩu như bên dưới."
-          />
-
           <div className="auth-field-grid">
             <label className="field auth-field">
               <span>Email đăng ký</span>
               <input
                 type="email"
-                placeholder="khachhang@vietnam-airlines.vn"
+                placeholder="tenban@gmail.com"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -202,7 +200,7 @@ function LoginPageContent() {
             <p>
               Bạn vẫn có thể tìm chuyến bay, xem tình trạng chuyến bay, quản lý đặt chỗ
               và đọc cẩm nang hành trình mà không cần đăng nhập. Tài khoản giúp rút ngắn
-              thao tác khi cần lưu hồ sơ, voucher và lịch sử giao dịch.
+              thao tác khi cần lưu hồ sơ, nhận email vé và xem lại lịch sử giao dịch.
             </p>
           </div>
 

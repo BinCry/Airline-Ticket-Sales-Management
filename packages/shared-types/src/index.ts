@@ -255,6 +255,29 @@ export interface ApiFlightSearchResponse {
   returnFlights: ApiFlightCard[];
 }
 
+export interface ApiFlightStatusItem {
+  flightId: number;
+  code: string;
+  from: string;
+  to: string;
+  originCode: string;
+  destinationCode: string;
+  departureAt: string;
+  arrivalAt: string;
+  departureTime: string;
+  arrivalTime: string;
+  status: FlightStatus;
+  statusLabel: string;
+  gate: string;
+  note: string;
+}
+
+export interface ApiFlightStatusResponse {
+  queryCode: string | null;
+  queryDate: string | null;
+  flights: ApiFlightStatusItem[];
+}
+
 export interface ApiBookingContactInput {
   fullName: string;
   email: string;
@@ -278,19 +301,28 @@ export interface ApiBookingAncillaryInput {
   quantity?: number | null;
 }
 
+export interface ApiBookingSeatSelectionInput {
+  inventoryId: number;
+  passengerIndex: number;
+  seatNumber: string;
+}
+
 export interface ApiCreateBookingHoldRequest {
   tripType: Exclude<TripType, "multi_city">;
   contact: ApiBookingContactInput;
   passengers: ApiBookingPassengerInput[];
   segments: ApiBookingSegmentInput[];
   ancillaries: ApiBookingAncillaryInput[];
+  seatSelections: ApiBookingSeatSelectionInput[];
 }
 
 export interface ApiBookingPriceSummary {
   baseAmount: number;
   ancillaryAmount: number;
+  discountAmount: number;
   totalAmount: number;
   currency: "VND";
+  appliedVoucherCode: string | null;
 }
 
 export interface ApiBookingSelectedSegment {
@@ -333,9 +365,24 @@ export interface ApiBookingHoldResponse {
 
 export interface ApiPaymentSessionResponse {
   bookingCode: string;
-  paymentUrl: string;
+  provider: "sepay";
+  sessionMode: "live" | "local";
+  paymentUrl: string | null;
   paymentStatus: Extract<PaymentStatus, "pending" | "paid" | "failed" | "expired">;
   expiresAt: string;
+  referenceCode: string;
+  amount: number;
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolderName: string | null;
+  qrCodeUrl: string | null;
+  qrCodeDataUrl: string | null;
+  discountAmount: number;
+  appliedVoucherCode: string | null;
+}
+
+export interface ApiApplyVoucherRequest {
+  voucherCode: string;
 }
 
 export interface ApiPaymentCallbackRequest {
@@ -346,6 +393,10 @@ export interface ApiPaymentCallbackRequest {
 export interface ApiCheckinCompleteRequest {
   bookingCode: string;
   ticketNumbers: string[];
+  seatSelections?: Array<{
+    ticketNumber: string;
+    seatNumber: string;
+  }>;
 }
 
 export interface ApiBoardingPass {
@@ -381,6 +432,10 @@ export interface ApiManageBookingSegment {
   pricePerPassenger: number;
   passengerCount: number;
   subtotalAmount: number;
+  status?: FlightStatus;
+  statusLabel?: string;
+  gate?: string;
+  note?: string;
 }
 
 export interface ApiManageBookingContact {
@@ -404,6 +459,14 @@ export interface ApiManageBookingAncillary {
   unitPrice: number;
   quantity: number;
   subtotalAmount: number;
+}
+
+export interface ApiManageBookingSeatSelection {
+  inventoryId: number;
+  flightCode: string;
+  passengerName: string;
+  seatNumber: string;
+  unitPrice: number;
 }
 
 export interface ApiManageBookingTicket {
@@ -436,8 +499,10 @@ export interface ApiBackofficeRefundItem {
 export interface ApiManageBookingPriceSummary {
   baseAmount: number;
   ancillaryAmount: number;
+  discountAmount: number;
   totalAmount: number;
   currency: "VND";
+  appliedVoucherCode: string | null;
 }
 
 export interface ApiManageBookingOverview {
@@ -452,6 +517,7 @@ export interface ApiManageBookingOverview {
   contact: ApiManageBookingContact | null;
   passengers: ApiManageBookingPassenger[];
   ancillaries: ApiManageBookingAncillary[];
+  seatSelections: ApiManageBookingSeatSelection[];
   tickets: ApiManageBookingTicket[];
   boardingPasses: ApiBoardingPass[];
   refundRequest: ApiRefundRequestSummary | null;

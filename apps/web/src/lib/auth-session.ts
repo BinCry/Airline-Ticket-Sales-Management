@@ -1,3 +1,5 @@
+import { presentUserDisplayName } from "@/lib/present-user-label";
+
 export const AUTH_SESSION_STORAGE_KEY = "qlvmb.auth.session";
 export const AUTH_SESSION_UPDATED_EVENT = "qlvmb:auth-session-updated";
 export const AUTH_ACCESS_TOKEN_COOKIE = "qlvmb.access_token";
@@ -7,6 +9,7 @@ export interface AuthSessionUser {
   email: string;
   displayName: string;
   phone: string | null;
+  avatarUrl: string | null;
   emailVerified: boolean;
   roles: string[];
   permissions: string[];
@@ -59,6 +62,11 @@ export function parseAuthSession(serializedSession: string | null): AuthSession 
       typeof parsedUser.email !== "string" ||
       typeof parsedUser.displayName !== "string" ||
       (parsedUser.phone !== null && typeof parsedUser.phone !== "string") ||
+      (
+        parsedUser.avatarUrl !== null &&
+        typeof parsedUser.avatarUrl !== "string" &&
+        typeof parsedUser.avatarUrl !== "undefined"
+      ) ||
       typeof parsedUser.emailVerified !== "boolean" ||
       !isStringArray(parsedUser.roles)
     ) {
@@ -73,8 +81,9 @@ export function parseAuthSession(serializedSession: string | null): AuthSession 
       user: {
         id: parsedUser.id,
         email: parsedUser.email,
-        displayName: parsedUser.displayName,
+        displayName: presentUserDisplayName(parsedUser.displayName),
         phone: parsedUser.phone,
+        avatarUrl: parsedUser.avatarUrl ?? null,
         emailVerified: parsedUser.emailVerified,
         roles: parsedUser.roles,
         permissions: normalizedPermissions

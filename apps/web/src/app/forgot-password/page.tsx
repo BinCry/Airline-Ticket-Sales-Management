@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AuthShell } from "@/components/auth-shell";
 import { PasswordChecklist } from "@/components/password-checklist";
+import { PasswordField } from "@/components/password-field";
 import { StatusChip } from "@/components/status-chip";
 import {
   requestForgotPasswordOtp,
@@ -18,17 +19,17 @@ const forgotStats = [
   {
     label: "Xác minh OTP",
     value: "06 số",
-    detail: "Mã xác thực được gửi về email đã đăng ký để bảo vệ tài khoản."
+    detail: "Mã xác thực được gửi về email đã đăng ký."
   },
   {
     label: "Thời gian hiệu lực",
-    value: "10 phút",
-    detail: "Khuyến nghị đổi mật khẩu ngay sau khi nhận được mã xác minh."
+    value: "5 phút",
+    detail: "Nên hoàn tất đặt lại mật khẩu ngay sau khi nhận OTP."
   },
   {
-    label: "Kiểm tra an toàn",
-    value: "Theo tiêu chí",
-    detail: "Mật khẩu mới được đối chiếu với chuỗi phổ biến và thông tin cá nhân."
+    label: "Mật khẩu mới",
+    value: "Đủ mạnh",
+    detail: "Mật khẩu mới phải đáp ứng cùng chính sách bảo mật của đăng ký."
   }
 ];
 
@@ -36,19 +37,19 @@ const forgotSupportItems = [
   {
     title: "Tổng đài xác minh",
     value: "1900 6868",
-    note: "Phù hợp khi bạn không còn truy cập được email hoặc cần đối chiếu thông tin gấp."
+    note: "Phù hợp khi bạn không còn truy cập được email."
   },
   {
     title: "Email hỗ trợ",
     value: "support@vietnam-airlines.vn",
-    note: "Gửi kèm mã đặt chỗ hoặc email đăng ký để được hướng dẫn nhanh hơn."
+    note: "Gửi kèm email đăng ký hoặc mã đặt chỗ để được hỗ trợ nhanh hơn."
   }
 ];
 
 const forgotTrustPoints = [
-  "Luồng quên mật khẩu được chia thành từng bước rõ ràng để thao tác dễ hơn trên điện thoại.",
-  "Mã OTP và mật khẩu mới đi theo cùng một màn hình, giảm nhầm lẫn khi khôi phục tài khoản.",
-  "Tiêu chí mật khẩu được hiển thị trực tiếp để hạn chế việc đặt chuỗi quá yếu."
+  "Kiểm tra email đã đăng ký trước khi gửi OTP.",
+  "Chặn OTP sai, hết hạn hoặc đã sử dụng.",
+  "Chặn mật khẩu mới yếu trước khi cập nhật tài khoản."
 ];
 
 function maskEmail(email: string) {
@@ -58,10 +59,7 @@ function maskEmail(email: string) {
     return email;
   }
 
-  const head = localPart.slice(0, 2);
-  const tail = localPart.slice(-1);
-
-  return `${head}***${tail}@${domain}`;
+  return `${localPart.slice(0, 2)}***${localPart.slice(-1)}@${domain}`;
 }
 
 export default function ForgotPasswordPage() {
@@ -74,16 +72,16 @@ export default function ForgotPasswordPage() {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(null);
 
+  const normalizedEmail = email.trim();
   const isOtpReady = /^\d{6}$/.test(otp);
   const isPasswordReady =
-    isPasswordPolicySatisfied(password, [email]) &&
+    isPasswordPolicySatisfied(password, [normalizedEmail]) &&
     confirmPassword.length > 0 &&
     confirmPassword === password;
 
   async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const normalizedEmail = email.trim();
     if (!normalizedEmail || isSubmitting) {
       return;
     }
@@ -108,7 +106,6 @@ export default function ForgotPasswordPage() {
   async function handleOtpSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const normalizedEmail = email.trim();
     if (!normalizedEmail || !isOtpReady || isSubmitting) {
       return;
     }
@@ -138,7 +135,6 @@ export default function ForgotPasswordPage() {
   async function handleResetSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const normalizedEmail = email.trim();
     if (!normalizedEmail || !isOtpReady || !isPasswordReady || isSubmitting) {
       return;
     }
@@ -160,7 +156,6 @@ export default function ForgotPasswordPage() {
   }
 
   async function handleResendOtp() {
-    const normalizedEmail = email.trim();
     if (!normalizedEmail || isSubmitting) {
       return;
     }
@@ -185,11 +180,11 @@ export default function ForgotPasswordPage() {
     <AuthShell
       activeTab="forgot-password"
       eyebrow="Khôi phục tài khoản"
-      title="Lấy lại quyền truy cập bằng luồng OTP rõ ràng, dễ thao tác và kiểm tra an toàn ngay trên web."
-      description="Khi quên mật khẩu, hành khách có thể xác minh email, nhập mã OTP và đặt lại mật khẩu mới ngay trên website."
+      title="Đặt lại mật khẩu bằng OTP gửi tới email đã đăng ký."
+      description="Nhập email, xác minh OTP và tạo mật khẩu mới đủ mạnh để tiếp tục đăng nhập."
       stats={forgotStats}
-      sideTitle="Khôi phục quyền truy cập theo từng bước"
-      sideDescription="Mỗi bước được tách riêng để hành khách biết mình đang ở đâu trong quá trình khôi phục mật khẩu."
+      sideTitle="Khôi phục theo từng bước"
+      sideDescription="Mỗi bước đều hiển thị trạng thái rõ ràng để bạn biết cần làm gì tiếp theo."
       trustPoints={forgotTrustPoints}
       supportItems={forgotSupportItems}
     >
@@ -225,7 +220,7 @@ export default function ForgotPasswordPage() {
       {submissionError ? (
         <div className="auth-note-card">
           <div className="auth-note-head">
-            <h3>Không thể tiếp tục thao tác</h3>
+            <h3>Không thể tiếp tục</h3>
             <span className="pill">Cần kiểm tra lại</span>
           </div>
           <p>{submissionError}</p>
@@ -249,7 +244,7 @@ export default function ForgotPasswordPage() {
               <span>Email đã đăng ký</span>
               <input
                 type="email"
-                placeholder="khachhang@vietnam-airlines.vn"
+                placeholder="tenban@gmail.com"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -272,15 +267,15 @@ export default function ForgotPasswordPage() {
         <form className="auth-form" onSubmit={handleOtpSubmit}>
           <div className="auth-note-card">
             <div className="auth-note-head">
-              <h3>Mã OTP đã sẵn sàng để nhập</h3>
-              <span className="pill">{maskEmail(email)}</span>
+              <h3>Nhập mã OTP</h3>
+              <span className="pill">{maskEmail(normalizedEmail)}</span>
             </div>
             <p>Kiểm tra hộp thư đến hoặc thư rác rồi nhập mã gồm 6 chữ số.</p>
           </div>
 
           <div className="auth-field-grid">
             <label className="field auth-field">
-              <span>Mã OTP gồm 6 chữ số</span>
+              <span>Mã OTP</span>
               <input
                 type="text"
                 inputMode="numeric"
@@ -331,33 +326,27 @@ export default function ForgotPasswordPage() {
       {step === 3 ? (
         <form className="auth-form" onSubmit={handleResetSubmit}>
           <div className="auth-field-grid auth-field-grid-double">
-            <label className="field auth-field">
-              <span>Mật khẩu mới</span>
-              <input
-                type="password"
-                placeholder="Tạo mật khẩu mới"
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
-            <label className="field auth-field">
-              <span>Nhập lại mật khẩu mới</span>
-              <input
-                type="password"
-                placeholder="Nhập lại để xác nhận"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                required
-              />
-            </label>
+            <PasswordField
+              label="Mật khẩu mới"
+              placeholder="Tạo mật khẩu mới"
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+            <PasswordField
+              label="Nhập lại mật khẩu mới"
+              placeholder="Nhập lại để xác nhận"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+            />
           </div>
 
           <PasswordChecklist
             password={password}
-            blockedFragments={[email]}
+            blockedFragments={[normalizedEmail]}
             confirmPassword={confirmPassword}
           />
 
@@ -385,7 +374,7 @@ export default function ForgotPasswordPage() {
         <article className="auth-success-card">
           <StatusChip tone="success" label="Khôi phục hoàn tất" />
           <h3>Mật khẩu mới đã sẵn sàng để sử dụng</h3>
-          <p>Bạn có thể đăng nhập lại để tiếp tục quản lý tài khoản và đặt chỗ.</p>
+          <p>Bạn có thể đăng nhập lại bằng mật khẩu mới.</p>
           <div className="auth-action-row">
             <Link href="/login" className="button button-primary">
               Quay lại đăng nhập

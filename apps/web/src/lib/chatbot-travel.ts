@@ -131,7 +131,7 @@ function buildTravelFallbackReply(
 
   return (
     (weatherSummary ? `${weatherSummary}\n\n` : "") +
-    "Mình đang tạm thời không lấy được gợi ý AI trực tiếp, nên gửi bạn một vài hướng đi nhanh để tham khảo:\n\n" +
+    "Mình chưa thể lấy gợi ý tự động lúc này. Bạn có thể thử các hướng sau:\n\n" +
     `${suggestions}\n\n` +
     "Bạn có thể hỏi lại theo mẫu như: đi 3 ngày 2 đêm, ngân sách bao nhiêu, đi với ai và muốn nghỉ dưỡng hay khám phá để mình gợi ý sát hơn."
   );
@@ -217,7 +217,7 @@ function buildSystemInstruction(
     `Nếu người dùng hỏi về thời tiết hiện tại, chỉ được trả lời khi được cấp dữ liệu thời tiết đã xác thực; nếu không có dữ liệu thì phải nói rõ chưa xác thực được.\n` +
     `Không dùng markdown phức tạp hoặc đoạn quá dài.\n` +
     `Kết thúc bằng 1 câu ngắn gợi ý bước tiếp theo như đọc blog hoặc tìm chuyến bay.\n\n` +
-    `Một số điểm đến và dữ liệu tham khảo trên website:\n${groundedDestinations}` +
+    `Một số điểm đến nổi bật:\n${groundedDestinations}` +
     weatherPromptContext
   );
 }

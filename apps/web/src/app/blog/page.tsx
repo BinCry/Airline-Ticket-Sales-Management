@@ -19,12 +19,6 @@ const promotionPhotos = [
   }
 ] as const;
 
-const cmsRules = [
-  "Banner, cẩm nang, câu hỏi thường gặp và trang pháp lý đều có trạng thái nháp, duyệt, đăng, lưu lịch sử phiên bản.",
-  "Nội dung quản lý song ngữ Việt/Anh và có thể lên lịch theo chiến dịch.",
-  "Trợ lý hỗ trợ chỉ đọc tri thức từ mục câu hỏi thường gặp đã phát hành."
-];
-
 export const revalidate = 604800;
 
 export default async function BlogPage() {
@@ -48,12 +42,13 @@ export default async function BlogPage() {
             <h3>Nội dung hỗ trợ quyết định đặt vé</h3>
             <p>
               Các bài viết và chương trình ưu đãi được sắp cạnh nhau để hành khách
-              vừa tham khảo thông tin, vừa nhanh chóng quay lại lựa chọn hành trình phù hợp.
+              vừa đọc thông tin, vừa nhanh chóng quay lại lựa chọn hành trình phù hợp.
             </p>
           </div>
         </div>
 
         <div className="section-gap" />
+        <div id="bai-viet" />
         <SectionHeading
           eyebrow="Tin du lịch mới"
           title="Danh sách bài báo du lịch đang được cập nhật từ nguồn tin tiếng Việt"
@@ -113,17 +108,6 @@ export default async function BlogPage() {
             );
           })}
         </div>
-
-        <div className="section-gap" />
-        <div className="surface-card policy-card">
-          <h3>Quy tắc quản trị nội dung bắt buộc</h3>
-          <ul className="list-clean">
-            {cmsRules.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
-        </div>
-
         <style>{`
           .travel-news-grid {
             gap: 22px;

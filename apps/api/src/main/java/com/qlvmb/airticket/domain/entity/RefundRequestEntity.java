@@ -42,6 +42,9 @@ public class RefundRequestEntity {
   @Column(name = "updated_at", nullable = false)
   private OffsetDateTime updatedAt;
 
+  @Column(name = "hidden_at")
+  private OffsetDateTime hiddenAt;
+
   protected RefundRequestEntity() {
   }
 
@@ -89,6 +92,10 @@ public class RefundRequestEntity {
     return updatedAt;
   }
 
+  public OffsetDateTime getHiddenAt() {
+    return hiddenAt;
+  }
+
   public boolean isPending() {
     return STATUS_PENDING.equals(status);
   }
@@ -101,5 +108,14 @@ public class RefundRequestEntity {
   public void markRejected(OffsetDateTime updatedAt) {
     status = STATUS_REJECTED;
     this.updatedAt = updatedAt;
+  }
+
+  public boolean isHidden() {
+    return hiddenAt != null;
+  }
+
+  public void hideFromUi(OffsetDateTime hiddenAt) {
+    this.hiddenAt = hiddenAt;
+    this.updatedAt = hiddenAt;
   }
 }

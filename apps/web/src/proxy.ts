@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
-  canAccessBackofficeModuleByRoles,
+  canAccessBackofficeModule,
   hasAnyBackofficeAccess,
   isBackofficeModuleKey,
   sanitizeUserRoles
@@ -18,10 +18,16 @@ function buildLoginRedirect(request: NextRequest): NextResponse {
   return NextResponse.redirect(loginUrl);
 }
 
-function buildHomeRedirect(request: NextRequest, noticeCode: string): NextResponse {
-  const homeUrl = new URL("/", request.url);
-  homeUrl.searchParams.set("thong-bao", noticeCode);
-  return NextResponse.redirect(homeUrl);
+function buildHomeRedirect(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/", request.url));
+}
+
+function buildAccountRedirect(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/account", request.url));
+}
+
+function buildBackofficeRedirect(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/backoffice", request.url));
 }
 
 function sanitizeRedirectTarget(value: string | null): string | null {
@@ -90,9 +96,10 @@ export function proxy(request: NextRequest) {
   }
 
   const roles = sanitizeUserRoles(readJwtStringArray(payload, "roles"));
+  const permissions = sanitizeUserRoles(readJwtStringArray(payload, "permissions"));
 
-  if (!hasAnyBackofficeAccess(roles)) {
-    return buildHomeRedirect(request, "khong-co-quyen");
+  if (!hasAnyBackofficeAccess(permissions)) {
+    return roles.length > 0 ? buildAccountRedirect(request) : buildHomeRedirect(request);
   }
 
   const moduleKey = pathname.split("/")[2]?.trim() ?? "";
@@ -104,11 +111,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (canAccessBackofficeModuleByRoles(roles, moduleKey)) {
+  if (canAccessBackofficeModule(permissions, moduleKey)) {
     return NextResponse.next();
   }
 
-  return buildHomeRedirect(request, "khong-co-quyen");
+  return buildBackofficeRedirect(request);
 }
 
 export const config = {
