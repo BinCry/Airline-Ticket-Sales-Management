@@ -107,6 +107,24 @@ class PaymentServiceTest {
         .hasMessage("Mã đặt chỗ không hợp lệ hoặc đã hết hạn giữ chỗ.");
   }
 
+  @Test
+  void resolveSePayBankSlug_shouldSupportMbBank() {
+    assertThat(PaymentService.resolveSePayBankSlug("MB Bank")).isEqualTo("mbb");
+    assertThat(PaymentService.resolveSePayBankSlug("MBBank")).isEqualTo("mbb");
+  }
+
+  @Test
+  void resolveSePayBankSlug_shouldSupportBidv() {
+    assertThat(PaymentService.resolveSePayBankSlug("BIDV")).isEqualTo("bidv");
+  }
+
+  @Test
+  void resolveSePayBankSlug_shouldRejectUnsupportedBank() {
+    assertThatThrownBy(() -> PaymentService.resolveSePayBankSlug("Vietcombank"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Ngân hàng SePay chưa được hỗ trợ");
+  }
+
   private BookingEntity heldBooking(String bookingCode) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(2);
     BookingEntity booking = BookingEntity.createHold(

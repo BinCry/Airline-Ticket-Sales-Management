@@ -31,6 +31,8 @@ public class PaymentService {
   private static final String SESSION_MODE_LIVE = "live";
   private static final String SESSION_MODE_LOCAL = "local";
   private static final String SEPAY_CALLBACK_AUTH_PREFIX = "Apikey ";
+  private static final String SEPAY_BANK_SLUG_BIDV = "bidv";
+  private static final String SEPAY_BANK_SLUG_MBB = "mbb";
 
   private final BookingService bookingService;
   private final MemberVoucherService memberVoucherService;
@@ -315,8 +317,9 @@ public class PaymentService {
   }
 
   private SePaySessionData createLiveSession(BookingEntity booking, String orderCode) {
+    String sePayBankSlug = resolveSePayBankSlug(defaultBankName());
     SePayOrderResponse response = sePayRestClient.post()
-        .uri("/userapi/bidv/{bankAccountId}/orders", sePayBankAccountId)
+        .uri("/userapi/{bankSlug}/{bankAccountId}/orders", sePayBankSlug, sePayBankAccountId)
         .header(HttpHeaders.AUTHORIZATION, "Bearer " + sePayToken)
         .contentType(MediaType.APPLICATION_JSON)
         .body(new SePayCreateOrderRequest(
@@ -347,6 +350,27 @@ public class PaymentService {
 
   private String defaultBankName() {
     return sePayBankName == null ? "BIDV" : sePayBankName;
+  }
+
+  static String resolveSePayBankSlug(String bankName) {
+    String normalized = normalizeBankName(bankName);
+    return switch (normalized) {
+      case "BIDV" -> SEPAY_BANK_SLUG_BIDV;
+      case "MB", "MBB", "MBBANK" -> SEPAY_BANK_SLUG_MBB;
+      default -> throw new IllegalStateException(
+          "Ngân hàng SePay chưa được hỗ trợ cho tạo phiên thanh toán: " + bankName
+      );
+    };
+  }
+
+  private static String normalizeBankName(String bankName) {
+    if (bankName == null) {
+      return "";
+    }
+
+    return bankName
+        .replaceAll("[^\\p{IsAlphabetic}\\p{IsDigit}]+", "")
+        .toUpperCase();
   }
 
   private String trimToNull(String value) {
