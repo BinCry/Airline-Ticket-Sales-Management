@@ -51,7 +51,9 @@ class PaymentServiceTest {
         "BIDV",
         "",
         "",
-        900
+        900,
+        "https://userapi.sepay.vn/v2",
+        "https://qr.sepay.vn/img"
     );
   }
 
@@ -76,19 +78,21 @@ class PaymentServiceTest {
   }
 
   @Test
-  void createPaymentSession_shouldReturnLocalSePaySessionWhenTokenMissing() {
+  void createPaymentSession_shouldReturnQrSessionWhenMbBankConfigured() {
     PaymentService service = new PaymentService(
         bookingService,
         memberVoucherService,
         notificationOutboxService,
         paymentTransactionRepository,
         "",
-        "39127",
+        "",
         "",
         "MB Bank",
-        "",
-        "",
-        900
+        "0985512831",
+        "PHAM MINH QUAN",
+        900,
+        "https://userapi.sepay.vn/v2",
+        "https://qr.sepay.vn/img"
     );
     BookingEntity booking = heldBooking("A6C2P2");
     when(bookingService.findBookingForPayment("A6C2P2")).thenReturn(booking);
@@ -99,8 +103,11 @@ class PaymentServiceTest {
 
     PaymentSessionResponse response = service.createPaymentSession("A6C2P2");
 
-    assertThat(response.sessionMode()).isEqualTo("local");
-    assertThat(response.referenceCode()).isEqualTo("SEPAY-000000000003");
+    assertThat(response.sessionMode()).isEqualTo("live");
+    assertThat(response.qrCodeUrl()).contains("qr.sepay.vn/img");
+    assertThat(response.qrCodeUrl()).contains("acc=0985512831");
+    assertThat(response.qrCodeUrl()).contains("bank=MBBank");
+    assertThat(response.qrCodeUrl()).contains("des=SEPAY-000000000003");
   }
 
   @Test
@@ -113,10 +120,12 @@ class PaymentServiceTest {
         "token-gia-lap",
         "",
         "",
-        "MB Bank",
+        "BIDV",
         "",
         "",
-        900
+        900,
+        "https://userapi.sepay.vn/v2",
+        "https://qr.sepay.vn/img"
     );
     BookingEntity booking = heldBooking("A6C2P3");
     when(bookingService.findBookingForPayment("A6C2P3")).thenReturn(booking);
@@ -164,21 +173,28 @@ class PaymentServiceTest {
   }
 
   @Test
-  void resolveSePayBankSlug_shouldSupportMbBank() {
-    assertThat(PaymentService.resolveSePayBankSlug("MB Bank")).isEqualTo("mbb");
-    assertThat(PaymentService.resolveSePayBankSlug("MBBank")).isEqualTo("mbb");
+  void resolveSePaySupportedOrderBank_shouldSupportBidv() {
+    assertThat(PaymentService.resolveSePaySupportedOrderBank("BIDV")).isEqualTo("BIDV");
   }
 
   @Test
-  void resolveSePayBankSlug_shouldSupportBidv() {
-    assertThat(PaymentService.resolveSePayBankSlug("BIDV")).isEqualTo("bidv");
-  }
-
-  @Test
-  void resolveSePayBankSlug_shouldRejectUnsupportedBank() {
-    assertThatThrownBy(() -> PaymentService.resolveSePayBankSlug("Vietcombank"))
+  void resolveSePaySupportedOrderBank_shouldRejectMbBank() {
+    assertThatThrownBy(() -> PaymentService.resolveSePaySupportedOrderBank("MB Bank"))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("Ngân hàng SePay chưa được hỗ trợ");
+        .hasMessageContaining("SePay");
+  }
+
+  @Test
+  void requireSePayBankAccountXid_shouldAcceptUuid() {
+    assertThat(PaymentService.requireSePayBankAccountXid("7c773680-2ad1-4c1d-a5a2-7d1d7d2cf7e7"))
+        .isEqualTo("7c773680-2ad1-4c1d-a5a2-7d1d7d2cf7e7");
+  }
+
+  @Test
+  void requireSePayBankAccountXid_shouldRejectNumericId() {
+    assertThatThrownBy(() -> PaymentService.requireSePayBankAccountXid("39127"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID");
   }
 
   private BookingEntity heldBooking(String bookingCode) {

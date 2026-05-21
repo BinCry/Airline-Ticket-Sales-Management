@@ -15,6 +15,7 @@ import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class PaymentService {
   private static final String SESSION_MODE_LIVE = "live";
   private static final String SESSION_MODE_LOCAL = "local";
   private static final String SEPAY_CALLBACK_AUTH_PREFIX = "Apikey ";
+  private static final String SEPAY_ORDER_BANK_BIDV = "BIDV";
   private static final String SEPAY_BANK_SLUG_BIDV = "bidv";
   private static final String SEPAY_BANK_SLUG_MBB = "mbb";
 
@@ -49,6 +51,7 @@ public class PaymentService {
   private final String sePayAccountNumber;
   private final String sePayAccountHolderName;
   private final long sePayOrderDurationSeconds;
+  private final String sePayQrBaseUrl;
 
   public PaymentService(
       BookingService bookingService,
@@ -61,14 +64,16 @@ public class PaymentService {
       @Value("${app.payment.sepay.bank-name:BIDV}") String sePayBankName,
       @Value("${app.payment.sepay.account-number:}") String sePayAccountNumber,
       @Value("${app.payment.sepay.account-holder-name:}") String sePayAccountHolderName,
-      @Value("${app.payment.sepay.order-duration-seconds:900}") long sePayOrderDurationSeconds
+      @Value("${app.payment.sepay.order-duration-seconds:900}") long sePayOrderDurationSeconds,
+      @Value("${app.payment.sepay.api-base-url:https://userapi.sepay.vn/v2}") String sePayApiBaseUrl,
+      @Value("${app.payment.sepay.qr-base-url:https://qr.sepay.vn/img}") String sePayQrBaseUrl
   ) {
     this.bookingService = bookingService;
     this.memberVoucherService = memberVoucherService;
     this.notificationOutboxService = notificationOutboxService;
     this.paymentTransactionRepository = paymentTransactionRepository;
     this.sePayRestClient = RestClient.builder()
-        .baseUrl("https://my.sepay.vn")
+        .baseUrl(sePayApiBaseUrl)
         .build();
     this.sePayToken = trimToNull(sePayToken);
     this.sePayBankAccountId = trimToNull(sePayBankAccountId);
@@ -77,6 +82,7 @@ public class PaymentService {
     this.sePayAccountNumber = trimToNull(sePayAccountNumber);
     this.sePayAccountHolderName = trimToNull(sePayAccountHolderName);
     this.sePayOrderDurationSeconds = sePayOrderDurationSeconds;
+    this.sePayQrBaseUrl = trimToNull(sePayQrBaseUrl);
   }
 
   @Transactional
@@ -105,9 +111,14 @@ public class PaymentService {
       );
     }
 
-    SePaySessionData sessionData = sePayReady
-        ? createLiveSession(booking, orderCode)
-        : createLocalSession(booking, orderCode);
+    SePaySessionData sessionData;
+    if (canCreateAutomaticOrderSession()) {
+      sessionData = createLiveSession(booking, orderCode);
+    } else if (canCreateQrTransferSession()) {
+      sessionData = createQrTransferSession(booking, orderCode);
+    } else {
+      sessionData = createLocalSession(booking, orderCode);
+    }
 
     if (transaction == null) {
       transaction = PaymentTransactionEntity.createPending(
@@ -306,7 +317,20 @@ public class PaymentService {
   }
 
   private boolean isSePayConfigured() {
-    return sePayToken != null && sePayBankAccountId != null;
+    return canCreateAutomaticOrderSession() || canCreateQrTransferSession();
+  }
+
+  private boolean canCreateAutomaticOrderSession() {
+    return sePayToken != null
+        && sePayBankAccountId != null
+        && isSePayOrderBankSupported(defaultBankName());
+  }
+
+  private boolean canCreateQrTransferSession() {
+    return sePayBankName != null
+        && sePayAccountNumber != null
+        && sePayAccountHolderName != null
+        && sePayQrBaseUrl != null;
   }
 
   private void validateWebhookAuthorization(String authorizationHeader) {
@@ -334,25 +358,52 @@ public class PaymentService {
     );
   }
 
+  private SePaySessionData createQrTransferSession(BookingEntity booking, String orderCode) {
+    String qrBankCode = resolveSePayQrBankCode(defaultBankName());
+    String qrCodeUrl = buildSePayQrUrl(qrBankCode, sePayAccountNumber, booking.getTotalAmount(), orderCode);
+    LOGGER.info(
+        "Booking {} dÃ¹ng QR chuyá»ƒn khoáº£n SePay vá»›i bank code {} vÃ  sá»‘ tÃ i khoáº£n {}.",
+        booking.getBookingCode(),
+        qrBankCode,
+        sePayAccountNumber
+    );
+
+    return new SePaySessionData(
+        SESSION_MODE_LIVE,
+        qrCodeUrl,
+        qrCodeUrl,
+        qrCodeUrl,
+        defaultBankName(),
+        sePayAccountNumber,
+        sePayAccountHolderName,
+        null,
+        orderCode
+    );
+  }
+
   private SePaySessionData createLiveSession(BookingEntity booking, String orderCode) {
-    String sePayBankSlug = resolveSePayBankSlug(defaultBankName());
+    String supportedOrderBank = resolveSePaySupportedOrderBank(defaultBankName());
+    String sePayBankAccountXid = requireSePayBankAccountXid(sePayBankAccountId);
     LOGGER.info(
         "Booking {} dùng bank slug SePay {} từ bank name {}.",
         booking.getBookingCode(),
-        sePayBankSlug,
-        defaultBankName()
+        supportedOrderBank,
+        sePayBankAccountXid
     );
 
     try {
       SePayOrderResponse response = sePayRestClient.post()
-          .uri("/userapi/{bankSlug}/{bankAccountId}/orders", sePayBankSlug, sePayBankAccountId)
+          .uri("/bank-accounts/{bankAccountXid}/orders", sePayBankAccountXid)
           .header(HttpHeaders.AUTHORIZATION, "Bearer " + sePayToken)
           .contentType(MediaType.APPLICATION_JSON)
           .body(new SePayCreateOrderRequest(
+              null,
               booking.getTotalAmount(),
               orderCode,
+              null,
               sePayOrderDurationSeconds,
-              true
+              "1",
+              "compact"
           ))
           .retrieve()
           .body(SePayOrderResponse.class);
@@ -373,7 +424,7 @@ public class PaymentService {
           response.data().bankName(),
           response.data().accountNumber(),
           response.data().accountHolderName(),
-          response.data().orderId(),
+          response.data().id(),
           response.data().orderCode()
       );
     } catch (IllegalStateException exception) {
@@ -398,15 +449,52 @@ public class PaymentService {
     return sePayBankName == null ? "BIDV" : sePayBankName;
   }
 
-  static String resolveSePayBankSlug(String bankName) {
+  static String resolveSePaySupportedOrderBank(String bankName) {
     String normalized = normalizeBankName(bankName);
     return switch (normalized) {
-      case "BIDV" -> SEPAY_BANK_SLUG_BIDV;
-      case "MB", "MBB", "MBBANK" -> SEPAY_BANK_SLUG_MBB;
+      case "BIDV" -> SEPAY_ORDER_BANK_BIDV;
       default -> throw new IllegalStateException(
           "Ngân hàng SePay chưa được hỗ trợ cho tạo phiên thanh toán: " + bankName
       );
     };
+  }
+
+  static String requireSePayBankAccountXid(String bankAccountId) {
+    if (bankAccountId == null) {
+      throw new IllegalStateException("APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID đang thiếu.");
+    }
+
+    try {
+      return UUID.fromString(bankAccountId).toString();
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalStateException(
+          "APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID phải là UUID tài khoản ngân hàng SePay API v2."
+      );
+    }
+  }
+
+  static boolean isSePayOrderBankSupported(String bankName) {
+    return "BIDV".equals(normalizeBankName(bankName));
+  }
+
+  static String resolveSePayQrBankCode(String bankName) {
+    String normalized = normalizeBankName(bankName);
+    return switch (normalized) {
+      case "BIDV" -> "BIDV";
+      case "MB", "MBB", "MBBANK" -> "MBBank";
+      default -> bankName;
+    };
+  }
+
+  private String buildSePayQrUrl(String qrBankCode, String accountNumber, long amount, String orderCode) {
+    return String.format(
+        "%s?acc=%s&bank=%s&amount=%d&des=%s&template=compact",
+        sePayQrBaseUrl,
+        accountNumber,
+        qrBankCode,
+        amount,
+        orderCode
+    );
   }
 
   private static String normalizeBankName(String bankName) {
@@ -455,10 +543,13 @@ public class PaymentService {
   }
 
   private record SePayCreateOrderRequest(
+      String va_prefix,
       long amount,
       String order_code,
+      String va_holder_name,
       long duration,
-      boolean with_qrcode
+      String with_qrcode,
+      String qrcode_template
   ) {
   }
 
@@ -471,7 +562,7 @@ public class PaymentService {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   private record SePayOrderData(
-      @JsonProperty("order_id") String orderId,
+      String id,
       @JsonProperty("order_code") String orderCode,
       @JsonProperty("va_number") String vaNumber,
       @JsonProperty("va_holder_name") String vaHolderName,
