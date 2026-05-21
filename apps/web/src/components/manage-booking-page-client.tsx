@@ -133,7 +133,7 @@ export function ManageBookingPageClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, accessToken]);
 
-  async function traCuuBooking(nextBookingCode: string) {
+  async function traCuuBooking(nextBookingCode: string, nextLookupToken?: string | null) {
     setLookupState("loading");
     setLookupError(null);
     setBookingOverview(null);
@@ -142,7 +142,7 @@ export function ManageBookingPageClient() {
       const nextBookingOverview = await fetchManageBooking(
         nextBookingCode,
         accessToken,
-        accessToken ? undefined : lookupToken ?? undefined
+        accessToken ? undefined : nextLookupToken ?? lookupToken ?? undefined
       );
       setBookingOverview(nextBookingOverview);
       setLookupState("success");
@@ -210,8 +210,8 @@ export function ManageBookingPageClient() {
         otp: normalizedOtp
       });
       setLookupToken(verified.lookupToken);
+      await traCuuBooking(normalizedBookingCode, verified.lookupToken);
       setLookupOtp("");
-      await traCuuBooking(normalizedBookingCode);
     } catch (error) {
       setLookupError(resolveApiClientErrorMessage(error, "Không thể xác minh OTP tra cứu."));
       setLookupState("error");
