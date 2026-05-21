@@ -76,6 +76,62 @@ class PaymentServiceTest {
   }
 
   @Test
+  void createPaymentSession_shouldReturnLocalSePaySessionWhenTokenMissing() {
+    PaymentService service = new PaymentService(
+        bookingService,
+        memberVoucherService,
+        notificationOutboxService,
+        paymentTransactionRepository,
+        "",
+        "39127",
+        "",
+        "MB Bank",
+        "",
+        "",
+        900
+    );
+    BookingEntity booking = heldBooking("A6C2P2");
+    when(bookingService.findBookingForPayment("A6C2P2")).thenReturn(booking);
+    when(bookingService.mapPaymentStatus(BookingEntity.PAYMENT_STATUS_PENDING)).thenReturn("pending");
+    when(paymentTransactionRepository.findByBookingId(any())).thenReturn(Optional.empty());
+    when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingService.generatePaymentReference()).thenReturn("SEPAY-000000000003");
+
+    PaymentSessionResponse response = service.createPaymentSession("A6C2P2");
+
+    assertThat(response.sessionMode()).isEqualTo("local");
+    assertThat(response.referenceCode()).isEqualTo("SEPAY-000000000003");
+  }
+
+  @Test
+  void createPaymentSession_shouldReturnLocalSePaySessionWhenBankAccountIdMissing() {
+    PaymentService service = new PaymentService(
+        bookingService,
+        memberVoucherService,
+        notificationOutboxService,
+        paymentTransactionRepository,
+        "token-gia-lap",
+        "",
+        "",
+        "MB Bank",
+        "",
+        "",
+        900
+    );
+    BookingEntity booking = heldBooking("A6C2P3");
+    when(bookingService.findBookingForPayment("A6C2P3")).thenReturn(booking);
+    when(bookingService.mapPaymentStatus(BookingEntity.PAYMENT_STATUS_PENDING)).thenReturn("pending");
+    when(paymentTransactionRepository.findByBookingId(any())).thenReturn(Optional.empty());
+    when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingService.generatePaymentReference()).thenReturn("SEPAY-000000000004");
+
+    PaymentSessionResponse response = service.createPaymentSession("A6C2P3");
+
+    assertThat(response.sessionMode()).isEqualTo("local");
+    assertThat(response.referenceCode()).isEqualTo("SEPAY-000000000004");
+  }
+
+  @Test
   void handlePaymentCallback_shouldTicketBookingAndCreateTicket() {
     BookingEntity booking = heldBooking("A6C2P1");
     when(bookingService.findBookingForPayment("A6C2P1")).thenReturn(booking);

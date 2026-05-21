@@ -15,6 +15,8 @@ import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.time.OffsetDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,6 +27,7 @@ import org.springframework.web.client.RestClient;
 @Service
 public class PaymentService {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(PaymentService.class);
   private static final String PAYMENT_FAILED_MESSAGE =
       "Thanh to\u00e1n ch\u01b0a th\u00e0nh c\u00f4ng.";
   private static final String SEPAY_PROVIDER = "sepay";
@@ -87,7 +90,22 @@ public class PaymentService {
 
     PaymentTransactionEntity transaction = paymentTransactionRepository.findByBookingId(booking.getId()).orElse(null);
     String orderCode = transaction == null ? bookingService.generatePaymentReference() : transaction.getOrderCode();
-    SePaySessionData sessionData = isSePayConfigured()
+    boolean sePayReady = isSePayConfigured();
+    if (sePayReady) {
+      LOGGER.info(
+          "Booking {} đang khởi tạo phiên thanh toán SePay live với cấu hình: {}",
+          bookingCode,
+          describeSePayConfig()
+      );
+    } else {
+      LOGGER.info(
+          "Booking {} dùng session thanh toán local vì cấu hình SePay chưa đủ: {}",
+          bookingCode,
+          describeSePayConfig()
+      );
+    }
+
+    SePaySessionData sessionData = sePayReady
         ? createLiveSession(booking, orderCode)
         : createLocalSession(booking, orderCode);
 
@@ -318,34 +336,62 @@ public class PaymentService {
 
   private SePaySessionData createLiveSession(BookingEntity booking, String orderCode) {
     String sePayBankSlug = resolveSePayBankSlug(defaultBankName());
-    SePayOrderResponse response = sePayRestClient.post()
-        .uri("/userapi/{bankSlug}/{bankAccountId}/orders", sePayBankSlug, sePayBankAccountId)
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + sePayToken)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(new SePayCreateOrderRequest(
-            booking.getTotalAmount(),
-            orderCode,
-            sePayOrderDurationSeconds,
-            true
-        ))
-        .retrieve()
-        .body(SePayOrderResponse.class);
-
-    if (response == null || response.data() == null || response.data().orderCode() == null) {
-      throw new IllegalStateException("Kh\u00f4ng th\u1ec3 kh\u1edfi t\u1ea1o phi\u00ean thanh to\u00e1n SePay.");
-    }
-
-    return new SePaySessionData(
-        SESSION_MODE_LIVE,
-        response.data().qrCodeUrl(),
-        response.data().qrCodeUrl(),
-        response.data().qrCode(),
-        response.data().bankName(),
-        response.data().accountNumber(),
-        response.data().accountHolderName(),
-        response.data().orderId(),
-        response.data().orderCode()
+    LOGGER.info(
+        "Booking {} dùng bank slug SePay {} từ bank name {}.",
+        booking.getBookingCode(),
+        sePayBankSlug,
+        defaultBankName()
     );
+
+    try {
+      SePayOrderResponse response = sePayRestClient.post()
+          .uri("/userapi/{bankSlug}/{bankAccountId}/orders", sePayBankSlug, sePayBankAccountId)
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + sePayToken)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(new SePayCreateOrderRequest(
+              booking.getTotalAmount(),
+              orderCode,
+              sePayOrderDurationSeconds,
+              true
+          ))
+          .retrieve()
+          .body(SePayOrderResponse.class);
+
+      if (response == null || response.data() == null || response.data().orderCode() == null) {
+        LOGGER.warn(
+            "Booking {} nhận response SePay thiếu dữ liệu bắt buộc khi tạo phiên thanh toán.",
+            booking.getBookingCode()
+        );
+        throw new IllegalStateException("Kh\u00f4ng th\u1ec3 kh\u1edfi t\u1ea1o phi\u00ean thanh to\u00e1n SePay.");
+      }
+
+      return new SePaySessionData(
+          SESSION_MODE_LIVE,
+          response.data().qrCodeUrl(),
+          response.data().qrCodeUrl(),
+          response.data().qrCode(),
+          response.data().bankName(),
+          response.data().accountNumber(),
+          response.data().accountHolderName(),
+          response.data().orderId(),
+          response.data().orderCode()
+      );
+    } catch (IllegalStateException exception) {
+      LOGGER.warn(
+          "Booking {} không thể chuẩn bị phiên thanh toán SePay live: {}",
+          booking.getBookingCode(),
+          exception.getMessage()
+      );
+      throw exception;
+    } catch (RuntimeException exception) {
+      LOGGER.error(
+          "Booking {} gọi SePay live thất bại với cấu hình: {}",
+          booking.getBookingCode(),
+          describeSePayConfig(),
+          exception
+      );
+      throw exception;
+    }
   }
 
   private String defaultBankName() {
@@ -380,6 +426,19 @@ public class PaymentService {
 
     String trimmed = value.trim();
     return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private String describeSePayConfig() {
+    return "token=" + describePresence(sePayToken)
+        + ", bankAccountId=" + describePresence(sePayBankAccountId)
+        + ", webhookApiKey=" + describePresence(sePayWebhookApiKey)
+        + ", bankName=" + defaultBankName()
+        + ", accountNumber=" + describePresence(sePayAccountNumber)
+        + ", accountHolderName=" + describePresence(sePayAccountHolderName);
+  }
+
+  private String describePresence(String value) {
+    return value == null ? "thiếu" : "có";
   }
 
   private record SePaySessionData(
