@@ -164,6 +164,31 @@ export default function BookingCheckoutPage() {
   }, [accessToken, bookingCode]);
 
   useEffect(() => {
+    if (!bookingCode || !session || session.paymentStatus === "paid") {
+      return;
+    }
+
+    let isMounted = true;
+    const intervalId = window.setInterval(() => {
+      void createPaymentSession(bookingCode, accessToken)
+        .then((nextSession) => {
+          if (!isMounted) {
+            return;
+          }
+          setSession(nextSession);
+        })
+        .catch(() => {
+          // Bỏ qua lỗi tạm thời khi tự làm mới trạng thái thanh toán.
+        });
+    }, 15000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [accessToken, bookingCode, session]);
+
+  useEffect(() => {
     if (!accessToken || !isMemberSession) {
       setMemberVouchers([]);
       setVoucherErrorMessage(null);

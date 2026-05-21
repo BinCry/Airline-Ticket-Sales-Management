@@ -15,6 +15,7 @@ import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +100,11 @@ public class PaymentService {
     }
 
     PaymentTransactionEntity transaction = paymentTransactionRepository.findByBookingId(booking.getId()).orElse(null);
+    if (tryReconcilePendingTransaction(booking, transaction, currentTime)) {
+      LOGGER.info("Booking {} đã được đối soát lại thành công qua API SePay.", bookingCode);
+      return mapPaymentSession(booking, transaction);
+    }
+
     String orderCode = transaction == null ? bookingService.generatePaymentReference() : transaction.getOrderCode();
     boolean sePayReady = isSePayConfigured();
     if (sePayReady) {
@@ -218,15 +224,22 @@ public class PaymentService {
   @Transactional
   public void handleSePayWebhook(SePayWebhookRequest request, String authorizationHeader) {
     validateWebhookAuthorization(authorizationHeader);
-    if (!request.isIncomingTransfer() || request.normalizedCode() == null) {
+    if (!request.isIncomingTransfer()) {
+      return;
+    }
+
+    String normalizedOrderCode = request.normalizedCode();
+    if (normalizedOrderCode == null) {
+      LOGGER.info("Webhook SePay không trích được mã thanh toán hợp lệ từ payload: {}", request);
       return;
     }
 
     PaymentTransactionEntity transaction = paymentTransactionRepository
-        .findByOrderCodeIgnoreCase(request.normalizedCode())
+        .findByOrderCodeIgnoreCase(normalizedOrderCode)
         .orElse(null);
 
     if (transaction == null) {
+      LOGGER.warn("Webhook SePay nhận mã thanh toán {} nhưng không tìm thấy giao dịch tương ứng.", normalizedOrderCode);
       return;
     }
 
@@ -254,6 +267,12 @@ public class PaymentService {
     }
 
     if (request.transferAmount() == null || request.transferAmount() < booking.getTotalAmount()) {
+      LOGGER.warn(
+          "Webhook SePay nhận mã thanh toán {} nhưng số tiền không đủ. Nhận {}, cần {}.",
+          normalizedOrderCode,
+          request.transferAmount(),
+          booking.getTotalAmount()
+      );
       transaction.markFailed(request.toString(), currentTime);
       return;
     }
@@ -266,6 +285,56 @@ public class PaymentService {
         currentTime,
         request.toString()
     );
+  }
+
+  private boolean tryReconcilePendingTransaction(
+      BookingEntity booking,
+      PaymentTransactionEntity transaction,
+      OffsetDateTime currentTime
+  ) {
+    if (!canReconcilePendingTransaction(booking, transaction)) {
+      return false;
+    }
+
+    String searchKeyword = buildSePaySearchKeyword(transaction.getOrderCode());
+    try {
+      SePayTransactionListResponse response = sePayRestClient.get()
+          .uri(uriBuilder -> uriBuilder
+              .path("/transactions")
+              .queryParam("q", searchKeyword)
+              .queryParam("transfer_type", "in")
+              .queryParam("amount_in_min", booking.getTotalAmount())
+              .queryParam("page", 1)
+              .queryParam("per_page", 20)
+              .build())
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + sePayToken)
+          .retrieve()
+          .body(SePayTransactionListResponse.class);
+
+      SePayTransactionData matchedTransaction =
+          findMatchingSePayTransaction(response == null ? List.of() : response.data(), transaction.getOrderCode(), booking.getTotalAmount());
+      if (matchedTransaction == null) {
+        return false;
+      }
+
+      finalizeSuccessfulPayment(
+          booking,
+          transaction,
+          null,
+          matchedTransaction.referenceNumber(),
+          currentTime,
+          matchedTransaction.toString()
+      );
+      return true;
+    } catch (RuntimeException exception) {
+      LOGGER.warn(
+          "Booking {} không thể đối soát lại giao dịch SePay với từ khóa {}.",
+          booking.getBookingCode(),
+          searchKeyword,
+          exception
+      );
+      return false;
+    }
   }
 
   private void finalizeSuccessfulPayment(
@@ -335,6 +404,15 @@ public class PaymentService {
         && sePayAccountNumber != null
         && sePayAccountHolderName != null
         && sePayQrBaseUrl != null;
+  }
+
+  private boolean canReconcilePendingTransaction(BookingEntity booking, PaymentTransactionEntity transaction) {
+    return booking.isHold()
+        && transaction != null
+        && PaymentTransactionEntity.STATUS_PENDING.equals(transaction.getStatus())
+        && SEPAY_PROVIDER.equalsIgnoreCase(transaction.getProvider())
+        && transaction.getOrderCode() != null
+        && sePayToken != null;
   }
 
   private void validateWebhookAuthorization(String authorizationHeader) {
@@ -501,6 +579,38 @@ public class PaymentService {
     );
   }
 
+  private SePayTransactionData findMatchingSePayTransaction(
+      List<SePayTransactionData> transactions,
+      String orderCode,
+      long expectedAmount
+  ) {
+    if (transactions == null || transactions.isEmpty()) {
+      return null;
+    }
+
+    for (SePayTransactionData transaction : transactions) {
+      if (!transaction.isIncomingTransfer()) {
+        continue;
+      }
+      if (!orderCode.equalsIgnoreCase(transaction.normalizedCode())) {
+        continue;
+      }
+      if (transaction.amountIn() == null || transaction.amountIn() < expectedAmount) {
+        continue;
+      }
+      return transaction;
+    }
+
+    return null;
+  }
+
+  private String buildSePaySearchKeyword(String orderCode) {
+    if (orderCode == null) {
+      return "";
+    }
+    return orderCode.replace("-", "").trim().toUpperCase();
+  }
+
   private static String normalizeBankName(String bankName) {
     if (bankName == null) {
       return "";
@@ -562,6 +672,42 @@ public class PaymentService {
       String message,
       SePayOrderData data
   ) {
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private record SePayTransactionListResponse(
+      String status,
+      List<SePayTransactionData> data
+  ) {
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private record SePayTransactionData(
+      String id,
+      String code,
+      @JsonProperty("transaction_content") String transactionContent,
+      @JsonProperty("reference_number") String referenceNumber,
+      @JsonProperty("amount_in") Long amountIn,
+      @JsonProperty("transfer_type") String transferType
+  ) {
+
+    private boolean isIncomingTransfer() {
+      return transferType != null && "in".equalsIgnoreCase(transferType.trim());
+    }
+
+    private String normalizedCode() {
+      String normalized = SePayWebhookRequest.extractNormalizedPaymentCode(code);
+      if (normalized != null) {
+        return normalized;
+      }
+
+      normalized = SePayWebhookRequest.extractNormalizedPaymentCode(transactionContent);
+      if (normalized != null) {
+        return normalized;
+      }
+
+      return SePayWebhookRequest.extractNormalizedPaymentCode(referenceNumber);
+    }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
