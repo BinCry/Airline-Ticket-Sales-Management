@@ -31,6 +31,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -232,6 +233,20 @@ public class BookingService {
     return mapOverviewResponse(booking);
   }
 
+  @Transactional(readOnly = true)
+  public void assertOwnedByAuthenticatedUser(String bookingCode, AuthenticatedUser authenticatedUser) {
+    if (authenticatedUser == null || authenticatedUser.email() == null || authenticatedUser.email().isBlank()) {
+      throw new NotFoundException(BOOKING_NOT_FOUND_MESSAGE);
+    }
+
+    String normalizedBookingCode = normalizeBookingCode(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
+    String normalizedEmail = authenticatedUser.email().trim().toLowerCase(Locale.ROOT);
+    boolean ownedByAuthenticatedUser = bookingRepository.existsOwnedByContactEmail(normalizedBookingCode, normalizedEmail);
+    if (!ownedByAuthenticatedUser) {
+      throw new NotFoundException(BOOKING_NOT_FOUND_MESSAGE);
+    }
+  }
+
   @Transactional
   public BookingOverviewResponse requestRefund(String bookingCode, RefundRequestCreateRequest request) {
     BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
@@ -304,11 +319,8 @@ public class BookingService {
 
   @Transactional
   public BookingEntity lockDetailedBooking(String bookingCode, String notFoundMessage) {
-    if (bookingCode == null || bookingCode.isBlank()) {
-      throw new NotFoundException(notFoundMessage);
-    }
-
-    return bookingRepository.lockDetailedByBookingCode(bookingCode.trim().toUpperCase())
+    String normalizedBookingCode = normalizeBookingCode(bookingCode, notFoundMessage);
+    return bookingRepository.lockDetailedByBookingCode(normalizedBookingCode)
         .orElseThrow(() -> new NotFoundException(notFoundMessage));
   }
 
@@ -907,6 +919,13 @@ public class BookingService {
       throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
     }
     return normalizedSeatNumber;
+  }
+
+  private String normalizeBookingCode(String bookingCode, String notFoundMessage) {
+    if (bookingCode == null || bookingCode.isBlank()) {
+      throw new NotFoundException(notFoundMessage);
+    }
+    return bookingCode.trim().toUpperCase();
   }
 
   private String generateUniqueBookingCode() {

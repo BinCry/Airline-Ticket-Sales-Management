@@ -13,6 +13,7 @@ import com.qlvmb.airticket.domain.entity.PermissionEntity;
 import com.qlvmb.airticket.domain.entity.RoleEntity;
 import com.qlvmb.airticket.domain.entity.UserAccountEntity;
 import com.qlvmb.airticket.domain.dto.MyProfileResponse;
+import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.JwtAuthenticationFilter;
@@ -874,6 +875,48 @@ class ControllerSecurityTest {
     mockMvc.perform(get("/api/bookings/manage/A6C2P1")
             .header("X-Booking-Lookup-Token", "lookup-token-hop-le"))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBookingManage_shouldAllowCustomerOwnedBookingWithoutLookupToken() throws Exception {
+    mockMvc.perform(get("/api/bookings/manage/A6C2P1")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBookingManage_shouldAllowMemberOwnedBookingWithoutLookupToken() throws Exception {
+    mockMvc.perform(get("/api/bookings/manage/A6C2P1")
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                bearerToken(List.of("member"), List.of("customer.self_service", "member.loyalty"))
+            ))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBookingManage_shouldReturnNotFoundForCustomerWhenBookingNotOwned() throws Exception {
+    org.mockito.Mockito.doThrow(new NotFoundException("Khong tim thay dat cho."))
+        .when(bookingService)
+        .assertOwnedByAuthenticatedUser(ArgumentMatchers.eq("A6C2P1"), ArgumentMatchers.any());
+
+    mockMvc.perform(get("/api/bookings/manage/A6C2P1")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void getBookingManage_shouldReturnNotFoundForMemberWhenBookingNotOwned() throws Exception {
+    org.mockito.Mockito.doThrow(new NotFoundException("Khong tim thay dat cho."))
+        .when(bookingService)
+        .assertOwnedByAuthenticatedUser(ArgumentMatchers.eq("A6C2P1"), ArgumentMatchers.any());
+
+    mockMvc.perform(get("/api/bookings/manage/A6C2P1")
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                bearerToken(List.of("member"), List.of("customer.self_service", "member.loyalty"))
+            ))
+        .andExpect(status().isNotFound());
   }
 
   @Test

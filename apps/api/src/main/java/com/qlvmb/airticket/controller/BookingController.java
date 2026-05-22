@@ -103,7 +103,10 @@ public class BookingController {
       String bookingCode,
       String lookupToken
   ) {
-    if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser) {
+    if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser authenticatedUser) {
+      if (authenticatedUser.permissions().contains(PermissionCode.CUSTOMER_SELF_SERVICE)) {
+        bookingService.assertOwnedByAuthenticatedUser(bookingCode, authenticatedUser);
+      }
       return;
     }
     bookingLookupSessionService.assertLookupSessionAllowed(bookingCode, lookupToken);

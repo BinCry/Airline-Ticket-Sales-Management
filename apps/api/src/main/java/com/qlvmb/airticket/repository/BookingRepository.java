@@ -21,6 +21,18 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
   boolean existsByBookingCodeIgnoreCase(String bookingCode);
 
   @Query("""
+      select count(booking) > 0
+      from BookingEntity booking
+      join booking.contact contact
+      where upper(booking.bookingCode) = upper(:bookingCode)
+        and lower(contact.email) = lower(:contactEmail)
+      """)
+  boolean existsOwnedByContactEmail(
+      @Param("bookingCode") String bookingCode,
+      @Param("contactEmail") String contactEmail
+  );
+
+  @Query("""
       select booking.id
       from BookingEntity booking
       join booking.contact contact
