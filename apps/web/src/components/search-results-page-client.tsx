@@ -364,6 +364,7 @@ function taoTheKetQua(
             ) : tieuDe === "Chặng đi" ? (
               <Link
                 href={taoDuongDanChonChieuDi(criteria, flight)}
+                scroll={false}
                 className={`button ${
                   selectedOutboundFlight?.inventoryId === flight.inventoryId
                     ? "button-secondary"
