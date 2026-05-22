@@ -72,8 +72,59 @@ test("operations_staff vào được admin và operations", async ({ page }) => 
 });
 
 test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ page }) => {
+  await page.route("**/api/flights/18/booking-options", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({
+        flightId: 18,
+        code: "VN5201",
+        originCode: "SGN",
+        destinationCode: "HAN",
+        from: "Thành phố Hồ Chí Minh",
+        to: "Hà Nội",
+        departureAt: "2026-05-23T01:30:00Z",
+        arrivalAt: "2026-05-23T03:40:00Z",
+        baseFare: 1490000,
+        fareOptions: [
+          {
+            inventoryId: 1801,
+            fareFamily: "pho_thong_tiet_kiem",
+            title: "Phổ thông tiết kiệm",
+            price: 1490000,
+            seatsLeft: 120,
+            totalSeats: 120,
+            rowStart: 9,
+            rowEnd: 28
+          },
+          {
+            inventoryId: 1802,
+            fareFamily: "pho_thong_linh_hoat",
+            title: "Phổ thông linh hoạt",
+            price: 1990000,
+            seatsLeft: 36,
+            totalSeats: 36,
+            rowStart: 3,
+            rowEnd: 8
+          },
+          {
+            inventoryId: 1803,
+            fareFamily: "thuong_gia",
+            title: "Thương gia",
+            price: 2490000,
+            seatsLeft: 12,
+            totalSeats: 12,
+            rowStart: 1,
+            rowEnd: 2
+          }
+        ],
+        seats: []
+      })
+    });
+  });
+
   const handoffUrl = "/booking?adultCount=1&childCount=0&infantCount=0&tripType=one_way"
-    + "&segment1InventoryId=18"
+    + "&segment1FlightId=18"
     + "&segment1Code=VN5201"
     + "&segment1From=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh"
     + "&segment1To=H%C3%A0%20N%E1%BB%99i"
@@ -83,8 +134,7 @@ test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ p
     + "&segment1ArrivalAt=2026-05-23T03:40:00Z"
     + "&segment1DepartureTime=08:30"
     + "&segment1ArrivalTime=10:40"
-    + "&segment1FareFamily=pho_thong_tiet_kiem"
-    + "&segment1Price=1490000";
+    + "&segment1BaseFare=1490000";
 
   await page.goto(handoffUrl);
   await expect(page.locator(".seat-map-cabin")).toBeVisible();
