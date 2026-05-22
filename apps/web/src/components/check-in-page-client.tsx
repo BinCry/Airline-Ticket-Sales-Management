@@ -70,7 +70,7 @@ export function CheckInPageClient() {
       setLookupToken(lookupTokenFromQuery);
     }
     if (accessToken || lookupTokenFromQuery) {
-      void traCuuBooking(bookingCodeFromQuery);
+      void traCuuBooking(bookingCodeFromQuery, lookupTokenFromQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, accessToken]);
@@ -80,7 +80,7 @@ export function CheckInPageClient() {
     [bookingOverview]
   );
 
-  async function traCuuBooking(nextBookingCode: string) {
+  async function traCuuBooking(nextBookingCode: string, nextLookupToken?: string | null) {
     setLookupState("loading");
     setLookupError(null);
     setBoardingPasses([]);
@@ -89,11 +89,12 @@ export function CheckInPageClient() {
       const nextBookingOverview = await fetchManageBooking(
         nextBookingCode,
         accessToken,
-        accessToken ? undefined : lookupToken ?? undefined
+        accessToken ? undefined : nextLookupToken ?? lookupToken ?? undefined
       );
       setBookingOverview(nextBookingOverview);
       setSelectedTicketNumbers(layVeCoTheCheckin(nextBookingOverview).map((ticket) => ticket.ticketNumber));
       setLookupState("success");
+      return true;
     } catch (error) {
       setBookingOverview(null);
       setSelectedTicketNumbers([]);
@@ -102,6 +103,7 @@ export function CheckInPageClient() {
       }
       setLookupError(resolveApiClientErrorMessage(error, "Không thể tra cứu check-in lúc này."));
       setLookupState("error");
+      return false;
     }
   }
 
@@ -160,8 +162,10 @@ export function CheckInPageClient() {
         otp: normalizedOtp
       });
       setLookupToken(verified.lookupToken);
-      setLookupOtp("");
-      await traCuuBooking(normalizedBookingCode);
+      const daTraCuuThanhCong = await traCuuBooking(normalizedBookingCode, verified.lookupToken);
+      if (daTraCuuThanhCong) {
+        setLookupOtp("");
+      }
     } catch (error) {
       setLookupError(resolveApiClientErrorMessage(error, "Không thể xác minh OTP tra cứu."));
       setLookupState("error");
@@ -294,6 +298,11 @@ export function CheckInPageClient() {
                     inputMode="numeric"
                     maxLength={6}
                   />
+                  <small>
+                    {lookupToken
+                      ? "Phi\u00ean OTP \u0111\u00e3 h\u1ee3p l\u1ec7. B\u1ea1n c\u00f3 th\u1ec3 tra c\u1ee9u tr\u1ef1c ti\u1ebfp."
+                      : "Nh\u1ea5n tra c\u1ee9u \u0111\u1ec3 nh\u1eadn OTP, sau \u0111\u00f3 x\u00e1c minh tr\u01b0\u1edbc khi xem th\u00f4ng tin."}
+                  </small>
                 </label>
               </>
             ) : null}
