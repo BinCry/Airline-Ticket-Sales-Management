@@ -1781,6 +1781,18 @@ img {
   flex-wrap: wrap;
 }
 
+.booking-payment-overview {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(280px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.booking-payment-detail-list {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
 .booking-seat-head {
   display: flex;
   align-items: flex-start;
@@ -4949,8 +4961,8 @@ th {
 }
 
 .booking-payment-qr {
-  width: min(220px, 100%);
-  padding: 14px;
+  width: min(260px, 100%);
+  padding: 16px;
   border: 1px solid rgba(18, 61, 105, 0.1);
   border-radius: 22px;
   background:
@@ -4965,6 +4977,14 @@ th {
 }
 
 @media (max-width: 820px) {
+  .booking-payment-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-payment-qr {
+    width: min(260px, 100%);
+  }
+
   .booking-modal-actions,
   .boarding-pass-head,
   .booking-ticket-meta,

@@ -383,50 +383,60 @@ export default function BookingCheckoutPage() {
                 </>
               ) : session ? (
                 <>
-                  <div className="result-grid result-grid-rich">
-                    <div>
-                      <span>Mã PNR</span>
-                      <strong>{session.bookingCode}</strong>
-                    </div>
-                    <div>
-                      <span>Trạng thái</span>
-                      <strong>{session.paymentStatus}</strong>
-                    </div>
-                    <div>
-                      <span>Mã thanh toán</span>
-                      <strong>{session.referenceCode}</strong>
-                    </div>
-                    <div>
-                      <span>Hết hạn giữ chỗ</span>
-                      <strong>{formatDateTime(session.expiresAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Số tiền</span>
-                      <strong>{formatCurrency(session.amount)}</strong>
-                    </div>
-                    <div>
-                      <span>Giảm từ voucher</span>
-                      <strong>
-                        {session.discountAmount > 0
-                          ? formatCurrency(session.discountAmount)
-                          : "Chưa áp dụng"}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Ngân hàng nhận</span>
-                      <strong>{session.bankName ?? "Chưa cấu hình"}</strong>
-                    </div>
-                    <div>
-                      <span>Số tài khoản</span>
-                      <strong>{session.accountNumber ?? "Chưa cấu hình"}</strong>
-                    </div>
-                    <div>
-                      <span>Chủ tài khoản</span>
-                      <strong>{session.accountHolderName ?? "Chưa cấu hình"}</strong>
-                    </div>
-                    <div>
-                      <span>Mã voucher</span>
-                      <strong>{session.appliedVoucherCode ?? "Chưa áp dụng"}</strong>
+                  <div className="booking-payment-overview">
+                    {paymentQrCodeUrl ? (
+                      <div className="booking-payment-qr">
+                        <img
+                          src={paymentQrCodeUrl}
+                          alt={`Mã QR thanh toán cho ${session.referenceCode}`}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="result-grid booking-payment-detail-list">
+                      <div>
+                        <span>Mã PNR</span>
+                        <strong>{session.bookingCode}</strong>
+                      </div>
+                      <div>
+                        <span>Trạng thái</span>
+                        <strong>{session.paymentStatus}</strong>
+                      </div>
+                      <div>
+                        <span>Mã thanh toán</span>
+                        <strong>{session.referenceCode}</strong>
+                      </div>
+                      <div>
+                        <span>Hết hạn giữ chỗ</span>
+                        <strong>{formatDateTime(session.expiresAt)}</strong>
+                      </div>
+                      <div>
+                        <span>Số tiền</span>
+                        <strong>{formatCurrency(session.amount)}</strong>
+                      </div>
+                      <div>
+                        <span>Giảm từ voucher</span>
+                        <strong>
+                          {session.discountAmount > 0
+                            ? formatCurrency(session.discountAmount)
+                            : "Chưa áp dụng"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Ngân hàng nhận</span>
+                        <strong>{session.bankName ?? "Chưa cấu hình"}</strong>
+                      </div>
+                      <div>
+                        <span>Số tài khoản</span>
+                        <strong>{session.accountNumber ?? "Chưa cấu hình"}</strong>
+                      </div>
+                      <div>
+                        <span>Chủ tài khoản</span>
+                        <strong>{session.accountHolderName ?? "Chưa cấu hình"}</strong>
+                      </div>
+                      <div>
+                        <span>Mã voucher</span>
+                        <strong>{session.appliedVoucherCode ?? "Chưa áp dụng"}</strong>
+                      </div>
                     </div>
                   </div>
                   {session.discountAmount > 0 || session.appliedVoucherCode ? (
@@ -441,14 +451,6 @@ export default function BookingCheckoutPage() {
                         Tổng thanh toán hiện tại đã bao gồm mức giảm{" "}
                         {formatCurrency(session.discountAmount)}.
                       </p>
-                    </div>
-                  ) : null}
-                  {paymentQrCodeUrl ? (
-                    <div className="booking-payment-qr">
-                      <img
-                        src={paymentQrCodeUrl}
-                        alt={`Mã QR thanh toán cho ${session.referenceCode}`}
-                      />
                     </div>
                   ) : null}
                   <div className="booking-submit-row">
