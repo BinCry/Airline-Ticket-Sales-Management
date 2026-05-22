@@ -151,7 +151,7 @@ export function SiteHeader() {
                   Backoffice
                 </Link>
               ) : null}
-              <Link href="/search" className="button button-primary">
+              <Link href="/booking" className="button button-primary">
                 Đặt vé
               </Link>
             </div>
@@ -195,7 +195,7 @@ export function SiteHeader() {
             </Link>
           ) : null}
           <Link
-            href="/search"
+            href="/booking"
             className="button button-primary nav-action-button"
           >
             Đặt vé

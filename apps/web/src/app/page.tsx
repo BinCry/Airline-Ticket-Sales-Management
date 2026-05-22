@@ -128,7 +128,7 @@ export default async function HomePage() {
               cùng một trải nghiệm thống nhất.
             </p>
             <div className="hero-actions home-hero-actions">
-              <Link href="/search" className="button button-primary home-hero-primary">
+              <Link href="/booking" className="button button-primary home-hero-primary">
                 Đặt vé ngay
               </Link>
               <Link href="/manage-booking" className="button button-secondary home-hero-secondary">

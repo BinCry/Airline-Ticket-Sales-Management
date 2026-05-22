@@ -2,7 +2,7 @@ import { mainNavigation, type SiteLink } from "@/lib/public-content";
 
 const STAFF_ROLE_CODES = new Set(["customer_support", "operations_staff"]);
 const BACKOFFICE_PERMISSION_PREFIX = "backoffice.";
-const DAT_VE_NAV_HREF = "/search#dat-ve";
+const DAT_VE_NAV_HREF = "/booking";
 
 function hasBackofficeAccess(permissionsOrRoles: string[]) {
   return permissionsOrRoles.some((value) => {

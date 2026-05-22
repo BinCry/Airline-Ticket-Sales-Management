@@ -21,7 +21,7 @@ const TOAST_MESSAGE_BY_QUERY: Record<string, Omit<ToastPayload, "id">> = {
     tone: "warning"
   },
   "chon-chuyen-bay-truoc": {
-    message: "Hãy chọn ít nhất một chuyến bay trước khi chuyển sang bước đặt vé.",
+    message: "Hãy chọn ít nhất một chuyến bay một chiều hoặc khứ hồi trước khi chuyển sang bước đặt vé.",
     title: "Chưa chọn chuyến bay",
     tone: "warning"
   }

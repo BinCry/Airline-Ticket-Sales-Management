@@ -187,7 +187,7 @@ function hienThiTrangThaiLocGoiGia(criteria: ApiFlightSearchCriteria): string {
 
 function hienThiThongBaoDieuHuong(notice: string | null): string | null {
   if (notice === "chon-chuyen-bay-truoc") {
-    return "Hãy chọn hành trình trước khi chuyển sang bước nhập thông tin đặt vé.";
+    return "Hãy chọn ít nhất một chuyến bay một chiều hoặc khứ hồi trước khi chuyển sang bước nhập thông tin đặt vé.";
   }
 
   return null;
