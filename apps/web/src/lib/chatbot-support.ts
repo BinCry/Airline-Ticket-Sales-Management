@@ -298,14 +298,26 @@ function findBestKnowledgeItem(text: string) {
   return bestItem && bestScore >= 1.8 ? bestItem : null;
 }
 
+function getLatestUserMessage(messages: ChatbotApiMessage[]) {
+  return (
+    messages
+      .slice()
+      .reverse()
+      .find((message) => message.role === "user")?.content ?? ""
+  );
+}
+
 export function buildSupportReply(messages: ChatbotApiMessage[]): SupportReply {
-  const recentMessages = messages
-    .slice(-8)
+  const latestUserMessage = getLatestUserMessage(messages);
+  const recentUserMessages = messages
+    .filter((message) => message.role === "user")
+    .slice(-4)
     .map((message) => message.content)
     .join(" ");
 
-  const normalizedConversation = normalizeText(recentMessages);
-  const bestItem = findBestKnowledgeItem(normalizedConversation);
+  const bestItem =
+    findBestKnowledgeItem(normalizeText(latestUserMessage)) ??
+    findBestKnowledgeItem(normalizeText(recentUserMessages));
 
   if (bestItem) {
     return {
