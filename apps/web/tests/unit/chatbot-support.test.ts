@@ -71,4 +71,41 @@ describe("chatbot-support", () => {
     expect(response.reply).toContain("support@vietnam-airlines.vn");
     expect(actionLinks("abc xyz qwerty")).toContain("/support");
   });
+
+  it("uu tien cau hoi moi nhat cua nguoi dung thay vi loi chao cua bot", () => {
+    const response = buildSupportReply([
+      {
+        content:
+          "Xin chào, bạn có thể hỏi về tìm chuyến, đặt vé, thanh toán, tra cứu mã đặt chỗ, check-in, hạng vé, hành lý hoặc tài khoản.",
+        role: "assistant"
+      },
+      {
+        content: "abc xyz qwerty",
+        role: "user"
+      }
+    ]);
+
+    expect(response.reply).toContain("1900 6868");
+    expect(response.actions?.map((action) => action.href)).toContain("/support");
+  });
+
+  it("khong de cau tra loi cu lam lech chu de cau hoi moi", () => {
+    const response = buildSupportReply([
+      {
+        content: "Tôi muốn tra cứu mã đặt chỗ",
+        role: "user"
+      },
+      {
+        content: "Để tra cứu đặt chỗ, bạn cần mã đặt chỗ và họ tên hành khách.",
+        role: "assistant"
+      },
+      {
+        content: "Tôi quên mật khẩu tài khoản",
+        role: "user"
+      }
+    ]);
+
+    expect(response.reply).toContain("quên mật khẩu");
+    expect(response.actions?.map((action) => action.href)).toContain("/forgot-password");
+  });
 });
