@@ -1,4 +1,5 @@
 import { supportChannels, supportFaqs } from "@/lib/public-content";
+import { findMatchingFaqs } from "@/lib/support-faq-utils";
 
 import type { ChatbotAction, ChatbotApiMessage } from "@/lib/chatbot-shared";
 
@@ -23,6 +24,54 @@ const hotline =
 const supportEmail =
   supportChannels.find((channel) => channel.channel.includes("@"))?.channel ??
   "support@vietnam-airlines.vn";
+
+function getFaqActions(category: string): ChatbotAction[] {
+  const faqAction = { href: "/support#faq", label: "Xem FAQ" };
+
+  switch (category) {
+    case "Voucher":
+      return [faqAction, { href: "/account", label: "Mở tài khoản" }];
+    case "Check-in":
+      return [faqAction, { href: "/check-in", label: "Làm thủ tục" }];
+    case "Hỗ trợ đặc biệt":
+      return [faqAction, { href: "/support", label: "Liên hệ hỗ trợ" }];
+    case "Đặt vé":
+      return [faqAction, { href: "/search", label: "Tìm chuyến bay" }];
+    case "Thanh toán":
+    case "Tra cứu":
+    case "OTP":
+    case "Hoàn vé":
+    case "Hành lý":
+    case "Vé điện tử":
+      return [faqAction, { href: "/manage-booking", label: "Quản lý đặt chỗ" }];
+    default:
+      return [faqAction, { href: "/support", label: "Liên hệ hỗ trợ" }];
+  }
+}
+
+function findRelatedFaqs(text: string) {
+  const results = findMatchingFaqs(supportFaqs, text, 3);
+
+  if ((results[0]?.score ?? 0) < 10) {
+    return [];
+  }
+
+  return results.filter((result) => result.score >= 5);
+}
+
+function buildRelatedFaqReply(results: ReturnType<typeof findRelatedFaqs>) {
+  const intro =
+    results.length >= 3
+      ? "Mình tìm thấy 3 FAQ liên quan nhất:"
+      : `Mình tìm thấy ${results.length} FAQ liên quan:`;
+
+  return [
+    intro,
+    ...results.map((result, index) => {
+      return `${index + 1}. ${result.faq.question}\n${result.faq.answer}`;
+    })
+  ].join("\n\n");
+}
 
 const supportKnowledge: SupportKnowledgeItem[] = [
   {
@@ -835,6 +884,15 @@ export function buildSupportReply(messages: ChatbotApiMessage[]): SupportReply {
     .slice(-4)
     .map((message) => message.content)
     .join(" ");
+
+  const relatedFaqs = findRelatedFaqs(latestUserMessage);
+
+  if (relatedFaqs.length > 0) {
+    return {
+      actions: getFaqActions(relatedFaqs[0].faq.category).slice(0, 2),
+      reply: buildRelatedFaqReply(relatedFaqs)
+    };
+  }
 
   const bestItem =
     findBestKnowledgeItem(normalizeText(latestUserMessage)) ??

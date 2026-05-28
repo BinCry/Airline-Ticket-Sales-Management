@@ -74,21 +74,34 @@ describe("chatbot-support", () => {
   it("tra loi otp tra cuu booking cho khach chua dang nhap", () => {
     const response = ask("Tôi không nhận được OTP tra cứu đặt chỗ bằng email liên hệ");
 
-    expect(response.reply).toContain("token tra cứu tạm thời");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("Không nhận được OTP tra cứu");
     expect(actionLinks("Tôi không nhận được OTP tra cứu đặt chỗ bằng email liên hệ")).toContain("/manage-booking");
   });
 
   it("hieu cau otp tra cuu bi viet tat va thieu chu", () => {
     const response = ask("Tôi ko nhan dc otp tra cu dat cho");
 
-    expect(response.reply).toContain("token tra cứu tạm thời");
+    expect(response.reply).toContain("OTP tra cứu");
+    expect(response.reply).toContain("yêu cầu mã mới");
     expect(actionLinks("Tôi ko nhan dc otp tra cu dat cho")).toContain("/manage-booking");
+  });
+
+  it("tra loi truc tiep cau hoi faq ve otp", () => {
+    const response = ask("Không nhận được OTP tra cứu thì xử lý thế nào?");
+
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("Không nhận được OTP tra cứu");
+    expect(response.reply).toContain("yêu cầu mã mới");
+    expect(actionLinks("Không nhận được OTP tra cứu thì xử lý thế nào?")).toContain("/support#faq");
   });
 
   it("tra loi hoan ve va huy dat cho", () => {
     const response = ask("Tôi muốn hoàn vé, hủy đặt chỗ và kiểm tra trạng thái hoàn tiền");
 
-    expect(response.reply).toContain("Hoàn vé hoặc hủy đặt chỗ");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("Tôi muốn hoàn vé hoặc hủy đặt chỗ");
+    expect(response.reply).toContain("yêu cầu hoàn/hủy");
     expect(actionLinks("Tôi muốn hoàn vé, hủy đặt chỗ và kiểm tra trạng thái hoàn tiền")).toContain("/manage-booking");
   });
 
@@ -107,17 +120,28 @@ describe("chatbot-support", () => {
     expect(actionLinks("Tôi đã thanh toán nhưng chưa nhận được email vé điện tử và cần xuất hóa đơn")).toContain("/manage-booking");
   });
 
+  it("tra loi truc tiep cau hoi faq ve voucher", () => {
+    const response = ask("Vì sao mã giảm giá hoặc voucher không dùng được?");
+
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("mã giảm giá hoặc voucher");
+    expect(response.reply).toContain("điều kiện áp dụng");
+    expect(actionLinks("Vì sao mã giảm giá hoặc voucher không dùng được?")).toContain("/support#faq");
+  });
+
   it("tra loi voucher va uu dai hoi vien", () => {
     const response = ask("Voucher của tôi không dùng được mã giảm giá khi áp dụng ưu đãi hội viên");
 
-    expect(response.reply).toContain("Voucher và ưu đãi");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("mã giảm giá hoặc voucher");
     expect(actionLinks("Voucher của tôi không dùng được mã giảm giá khi áp dụng ưu đãi hội viên")).toContain("/account");
   });
 
   it("hieu cau voucher bi go sai va viet tat", () => {
     const response = ask("Vaucher cua toi ko dung dc ma giam gia");
 
-    expect(response.reply).toContain("Voucher và ưu đãi");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("điều kiện áp dụng");
     expect(actionLinks("Vaucher cua toi ko dung dc ma giam gia")).toContain("/account");
   });
 
@@ -139,14 +163,16 @@ describe("chatbot-support", () => {
   it("tra loi dich vu bo tro va suat an", () => {
     const response = ask("Tôi muốn mua thêm suất ăn và hành lý Bag_23 sau khi đặt vé");
 
-    expect(response.reply).toContain("Dịch vụ bổ trợ");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("mua thêm hành lý");
     expect(actionLinks("Tôi muốn mua thêm suất ăn và hành lý Bag_23 sau khi đặt vé")).toContain("/manage-booking");
   });
 
   it("hieu cau thanh toan viet tat va go sai thu tu chu", () => {
     const response = ask("TT bi loi, da tru tien nhung booking chua cap nhat thanh taon");
 
-    expect(response.reply).toContain("không nên tạo thêm giao dịch mới");
+    expect(response.reply).toContain("Mình tìm thấy");
+    expect(response.reply).toContain("thanh toán");
     expect(actionLinks("TT bi loi, da tru tien nhung booking chua cap nhat thanh taon")).toContain("/manage-booking");
   });
 
