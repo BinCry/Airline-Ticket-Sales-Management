@@ -26,20 +26,20 @@ export const chatbotModeOrder: ChatMode[] = ["support", "travel"];
 
 export const chatbotModeConfig = {
   support: {
-    description: "Tra cứu nhanh các luồng khách hàng: tìm chuyến, đặt vé, thanh toán, check-in và tài khoản",
+    description: "Tra cứu nhanh các luồng khách hàng: tìm chuyến, đặt vé, thanh toán, OTP, hoàn vé, check-in và tài khoản",
     emptyLabel:
-      "Bạn có thể hỏi về tìm chuyến, đặt vé, thanh toán, mã đặt chỗ, check-in, hạng vé hoặc tài khoản.",
+      "Bạn có thể hỏi về tìm chuyến, đặt vé, thanh toán, OTP tra cứu, hoàn vé, voucher, email vé, check-in, hạng vé hoặc tài khoản.",
     label: "Hỗ trợ khách hàng",
-    placeholder: "Ví dụ: Tôi cần thanh toán lại",
+    placeholder: "Ví dụ: Tôi cần tra cứu OTP đặt chỗ",
     prompts: [
       "Tôi muốn tra cứu mã đặt chỗ",
       "Tôi cần thanh toán lại",
-      "Tôi muốn xem điều kiện hạng vé",
-      "Tôi muốn làm thủ tục trực tuyến thì cần gì?"
+      "Tôi muốn hoàn vé hoặc đổi ngày bay",
+      "Tôi chưa nhận được email vé"
     ],
     submitLabel: "Gửi hỗ trợ",
     welcome:
-      "Xin chào, mình đang ở chế độ hỗ trợ khách hàng. Bạn cứ hỏi về tìm chuyến, đặt vé, thanh toán, tra cứu mã đặt chỗ, check-in, hạng vé, hành lý, tài khoản hoặc cách liên hệ nhân viên hỗ trợ nhé."
+      "Xin chào, mình đang ở chế độ hỗ trợ khách hàng. Bạn cứ hỏi về tìm chuyến, đặt vé, thanh toán, OTP tra cứu, hoàn vé, check-in, email vé, voucher, hạng vé, hành lý, tài khoản hoặc cách liên hệ nhân viên hỗ trợ nhé."
   },
   travel: {
     description: "Gợi ý điểm đến, lịch trình và ý tưởng nghỉ ngơi theo nhu cầu của bạn",
