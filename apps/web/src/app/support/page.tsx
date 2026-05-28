@@ -1,7 +1,8 @@
 import Image from "next/image";
 
 import { SectionHeading } from "@/components/section-heading";
-import { supportChannels, supportFaqs } from "@/lib/public-content";
+import { SupportFaqSearch } from "@/components/support-faq-search";
+import { supportChannels, supportFaqCategories, supportFaqs } from "@/lib/public-content";
 
 const airportCards = [
   "Nội Bài: mở quầy trước 2 giờ, khu vực C và D có quầy làm thủ tục tự động.",
@@ -92,14 +93,7 @@ export default function SupportPage() {
               title="Những câu hỏi hành khách thường gặp trước ngày bay"
               description="Câu trả lời rõ ràng giúp hành khách tự xử lý nhanh hơn và giảm thời gian chờ hỗ trợ ở các tình huống quen thuộc."
             />
-            <div className="stack-list">
-              {supportFaqs.map((faq) => (
-                <article key={faq.question} className="surface-card">
-                  <h3>{faq.question}</h3>
-                  <p>{faq.answer}</p>
-                </article>
-              ))}
-            </div>
+            <SupportFaqSearch categories={supportFaqCategories} faqs={supportFaqs} />
           </div>
           <div id="san-bay">
             <SectionHeading

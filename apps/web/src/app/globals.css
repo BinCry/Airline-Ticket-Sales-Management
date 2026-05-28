@@ -1750,6 +1750,157 @@ img {
   gap: 14px;
 }
 
+.support-faq-search {
+  display: grid;
+  gap: 16px;
+}
+
+.support-faq-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  gap: 12px;
+  align-items: end;
+}
+
+.support-faq-search-field input {
+  border-radius: 12px;
+}
+
+.support-faq-count {
+  min-height: 52px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-strong);
+}
+
+.support-faq-count span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.support-faq-count strong {
+  color: var(--primary);
+  font-size: 0.98rem;
+}
+
+.support-faq-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.support-faq-suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.support-faq-suggestion-list > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.support-faq-suggestion-list button {
+  min-height: 38px;
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 1px solid rgba(18, 61, 105, 0.14);
+  border-radius: 999px;
+  background: rgba(18, 61, 105, 0.06);
+  color: var(--primary);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.support-faq-suggestion-list button:hover {
+  background: rgba(18, 61, 105, 0.1);
+  transform: translateY(-1px);
+}
+
+.support-faq-category-list .filter-chip-button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.support-faq-category-list .filter-chip-button.active {
+  color: #fffaf1;
+}
+
+.support-faq-card {
+  display: grid;
+  gap: 10px;
+}
+
+.support-faq-card .pill {
+  justify-self: start;
+}
+
+.support-faq-toggle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 14px;
+  align-items: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.support-faq-title-wrap {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.support-faq-toggle-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(18, 61, 105, 0.14);
+  border-radius: 50%;
+  background: rgba(18, 61, 105, 0.06);
+  color: var(--primary);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.support-faq-card h3,
+.support-faq-card p {
+  margin: 0;
+}
+
+.support-faq-card p {
+  padding-right: 50px;
+}
+
+.support-faq-highlight {
+  padding: 0 2px;
+  border-radius: 4px;
+  background: rgba(202, 164, 95, 0.28);
+  color: inherit;
+}
+
 .booking-summary-card {
   padding: 22px;
   border-radius: var(--radius-lg);
@@ -4140,6 +4291,23 @@ th {
 
   .footer-grid {
     grid-template-columns: 1fr;
+  }
+
+  .support-faq-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .support-faq-toggle {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .support-faq-toggle-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .support-faq-card p {
+    padding-right: 0;
   }
 
   .nav-row {

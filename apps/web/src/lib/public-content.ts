@@ -31,6 +31,9 @@ export interface ManageAction {
 
 export interface FaqEntry {
   answer: string;
+  category: string;
+  isPopular?: boolean;
+  keywords: string[];
   question: string;
 }
 
@@ -192,20 +195,85 @@ export const supportChannels: SupportItem[] = [
 
 export const supportFaqs: FaqEntry[] = [
   {
+    category: "Đặt vé",
+    keywords: ["đổi chuyến", "đổi vé", "chênh lệch giá", "điều kiện vé"],
     question: "Tôi có thể đổi chuyến sau khi đã thanh toán không?",
     answer:
       "Có. Hệ thống sẽ kiểm tra điều kiện vé, chênh lệch giá và thời hạn xử lý trước khi cho phép xác nhận."
   },
   {
+    category: "Thanh toán",
+    isPopular: true,
+    keywords: ["thanh toán", "giao dịch trùng", "booking trùng", "thanh toán lại"],
     question: "Nếu thanh toán bị gián đoạn thì booking có bị tạo trùng không?",
     answer:
-      "Luồng xử lý hiện tại ưu tiên tránh ghi nhận trùng giao dịch. Khi có bất thường, bạn nên kiểm tra lại mã đặt chỗ hoặc liên hệ hỗ trợ."
+      "Luồng xử lý hiện tại ưu tiên tránh giao dịch trùng hoặc ghi nhận trùng giao dịch. Khi có bất thường, bạn nên kiểm tra lại mã đặt chỗ hoặc liên hệ hỗ trợ."
   },
   {
+    category: "Check-in",
+    keywords: ["check-in", "làm thủ tục", "sân bay", "hành lý ký gửi"],
     question: "Khi nào nên đến sân bay thay vì chỉ làm thủ tục trực tuyến?",
     answer:
       "Bạn nên đến sớm nếu có hành lý ký gửi, cần hỗ trợ đặc biệt, đổi giấy tờ hoặc có thay đổi bất thường về chuyến bay."
+  },
+  {
+    category: "Tra cứu",
+    isPopular: true,
+    keywords: ["mã đặt chỗ", "PNR", "tra cứu", "email liên hệ", "OTP"],
+    question: "Tôi cần thông tin gì để tra cứu mã đặt chỗ?",
+    answer:
+      "Bạn cần nhập đúng mã đặt chỗ và email liên hệ đã dùng khi đặt vé. Nếu chưa đăng nhập, hệ thống có thể yêu cầu OTP để xác minh quyền xem booking."
+  },
+  {
+    category: "OTP",
+    isPopular: true,
+    keywords: ["OTP", "không nhận được OTP", "mã xác minh", "hết hạn"],
+    question: "Không nhận được OTP tra cứu thì xử lý thế nào?",
+    answer:
+      "Hãy kiểm tra email liên hệ, thư rác và thử gửi lại sau ít phút. Nếu OTP đã hết hạn hoặc nhập sai nhiều lần, bạn cần yêu cầu mã mới."
+  },
+  {
+    category: "Hoàn vé",
+    isPopular: true,
+    keywords: ["hoàn vé", "hủy vé", "hoàn tiền", "phí hoàn", "trạng thái hoàn tiền"],
+    question: "Tôi muốn hoàn vé hoặc hủy đặt chỗ thì cần làm gì?",
+    answer:
+      "Bạn nên tra cứu mã đặt chỗ để kiểm tra trạng thái vé, sau đó gửi yêu cầu hoàn/hủy kèm lý do và thông tin giao dịch nếu đã thanh toán."
+  },
+  {
+    category: "Hành lý",
+    keywords: ["hành lý", "hành lý ký gửi", "hành lý xách tay", "quá cân", "mua thêm hành lý"],
+    question: "Tôi có thể mua thêm hành lý sau khi đặt vé không?",
+    answer:
+      "Có thể bổ sung hành lý nếu booking còn đủ điều kiện và chưa quá mốc xử lý. Hãy mở trang quản lý đặt chỗ để kiểm tra dịch vụ còn áp dụng."
+  },
+  {
+    category: "Vé điện tử",
+    isPopular: true,
+    keywords: ["email vé", "vé điện tử", "hóa đơn", "biên nhận", "chưa nhận vé"],
+    question: "Đã thanh toán nhưng chưa nhận email vé thì sao?",
+    answer:
+      "Bạn nên kiểm tra trạng thái thanh toán trong trang quản lý đặt chỗ và hộp thư rác. Nếu thanh toán đã thành công nhưng email vé điện tử hoặc hóa đơn chưa về, hãy liên hệ hỗ trợ kèm mã đặt chỗ."
+  },
+  {
+    category: "Voucher",
+    keywords: ["voucher", "mã giảm giá", "ưu đãi", "hội viên", "khuyến mãi"],
+    question: "Vì sao mã giảm giá hoặc voucher không dùng được?",
+    answer:
+      "Voucher có thể phụ thuộc vào thời hạn sử dụng, tài khoản, hạng vé, chặng bay và trạng thái booking. Hãy kiểm tra điều kiện áp dụng trước khi thanh toán."
+  },
+  {
+    category: "Hỗ trợ đặc biệt",
+    keywords: ["xe lăn", "hỗ trợ đặc biệt", "phụ nữ mang thai", "trẻ em đi một mình", "y tế"],
+    question: "Tôi cần hỗ trợ đặc biệt tại sân bay thì báo ở đâu?",
+    answer:
+      "Bạn nên liên hệ hỗ trợ đặc biệt càng sớm càng tốt, cung cấp mã đặt chỗ, thông tin hành khách cần hỗ trợ và mô tả nhu cầu cụ thể."
   }
+];
+
+export const supportFaqCategories = [
+  "Tất cả",
+  ...Array.from(new Set(supportFaqs.map((faq) => faq.category)))
 ];
 
 export const bookingSteps: BookingStep[] = [
