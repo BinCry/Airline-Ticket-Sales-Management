@@ -65,6 +65,17 @@ export interface MyVoucher {
   bookingCode: string | null;
 }
 
+export interface MyNotification {
+  id: number;
+  type: string;
+  bookingCode: string | null;
+  subject: string;
+  body: string;
+  status: string;
+  createdAt: string;
+  sentAt: string | null;
+}
+
 export interface UpsertMyPassengerPayload {
   fullName: string;
   passengerType: string;
@@ -203,6 +214,33 @@ function isMyVoucher(value: unknown): value is MyVoucher {
 
 function isMyVoucherList(value: unknown): value is MyVoucher[] {
   return Array.isArray(value) && value.every((item) => isMyVoucher(item));
+}
+
+function isMyNotification(value: unknown): value is MyNotification {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const notification = value as Partial<MyNotification>;
+
+  return (
+    typeof notification.id === "number" &&
+    typeof notification.type === "string" &&
+    (notification.bookingCode === null ||
+      typeof notification.bookingCode === "string" ||
+      typeof notification.bookingCode === "undefined") &&
+    typeof notification.subject === "string" &&
+    typeof notification.body === "string" &&
+    typeof notification.status === "string" &&
+    typeof notification.createdAt === "string" &&
+    (notification.sentAt === null ||
+      typeof notification.sentAt === "string" ||
+      typeof notification.sentAt === "undefined")
+  );
+}
+
+function isMyNotificationList(value: unknown): value is MyNotification[] {
+  return Array.isArray(value) && value.every((item) => isMyNotification(item));
 }
 
 function normalizeMyProfile(payload: MyProfile): MyProfile {
@@ -352,6 +390,26 @@ export async function fetchMyVouchers(accessToken: string): Promise<MyVoucher[]>
 
   if (!isMyVoucherList(payload)) {
     throw new MyAccountApiError("Dữ liệu voucher trả về không hợp lệ.", 500);
+  }
+
+  return payload;
+}
+
+export async function fetchMyNotifications(accessToken: string): Promise<MyNotification[]> {
+  let payload: unknown;
+
+  try {
+    payload = await requestApi<unknown>("/api/me/notifications", {
+      accessToken,
+      fallbackMessage: "Không thể tải thông báo cá nhân lúc này.",
+      method: "GET"
+    });
+  } catch (error) {
+    return toMyAccountApiError(error);
+  }
+
+  if (!isMyNotificationList(payload)) {
+    throw new MyAccountApiError("Dữ liệu thông báo trả về không hợp lệ.", 500);
   }
 
   return payload;

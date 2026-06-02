@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.qlvmb.airticket.domain.dto.MyNotificationResponse;
 import com.qlvmb.airticket.domain.dto.NotificationOutboxResponse;
 import com.qlvmb.airticket.domain.entity.AirportEntity;
 import com.qlvmb.airticket.domain.entity.BookingContactEntity;
@@ -14,7 +15,10 @@ import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.NotificationOutboxEntity;
 import com.qlvmb.airticket.repository.NotificationOutboxRepository;
+import com.qlvmb.airticket.security.AuthenticatedUser;
+
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -199,6 +203,39 @@ class NotificationOutboxServiceTest {
       TransactionSynchronizationManager.clearSynchronization();
       TransactionSynchronizationManager.setActualTransactionActive(false);
     }
+  }
+
+  @Test
+  void getMyNotifications_shouldReturnNotificationsByAuthenticatedEmail() {
+    OffsetDateTime currentTime = OffsetDateTime.parse("2026-05-17T14:30:00Z");
+    NotificationOutboxEntity outbox = NotificationOutboxEntity.createTicketEmail(
+        "QC5004",
+        "khach@example.com",
+        "Thông báo vé điện tử",
+        "Nội dung thông báo",
+        currentTime
+    );
+    ReflectionTestUtils.setField(outbox, "id", 7L);
+    outbox.markSent(currentTime.plusMinutes(1));
+
+    when(notificationOutboxRepository.findTop5ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc("khach@example.com"))
+        .thenReturn(List.of(outbox));
+
+    var authenticatedUser = new AuthenticatedUser(
+        101L,
+        "khach@example.com",
+        "Khách Hàng",
+        List.of("customer"),
+        List.of("customer.self_service")
+    );
+
+    List<MyNotificationResponse> responses = notificationOutboxService.getMyNotifications(authenticatedUser);
+
+    assertThat(responses).hasSize(1);
+    assertThat(responses.get(0).id()).isEqualTo(7L);
+    assertThat(responses.get(0).bookingCode()).isEqualTo("QC5004");
+    assertThat(responses.get(0).subject()).isEqualTo("Thông báo vé điện tử");
+    assertThat(responses.get(0).body()).isEqualTo("Nội dung thông báo");
   }
 
   private BookingEntity createBooking(String bookingCode, String email) {

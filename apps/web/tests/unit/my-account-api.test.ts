@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   fetchMyLoyalty,
+  fetchMyNotifications,
   createMyPassenger,
   deleteMyPassenger,
   fetchMyPassengers,
@@ -293,6 +294,53 @@ describe("my-account-api", () => {
         bookingCode: null
       }
     ]);
+  });
+
+  it("tai danh sach thong bao ca nhan tu backend", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: 7,
+            type: "TICKET_EMAIL",
+            bookingCode: "QC5004",
+            subject: "Thong bao ve dien tu",
+            body: "Noi dung thong bao",
+            status: "SENT",
+            createdAt: "2026-05-17T14:30:00Z",
+            sentAt: "2026-05-17T14:31:00Z"
+          }
+        ]),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(fetchMyNotifications("token-notification")).resolves.toEqual([
+      {
+        id: 7,
+        type: "TICKET_EMAIL",
+        bookingCode: "QC5004",
+        subject: "Thong bao ve dien tu",
+        body: "Noi dung thong bao",
+        status: "SENT",
+        createdAt: "2026-05-17T14:30:00Z",
+        sentAt: "2026-05-17T14:31:00Z"
+      }
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/me/notifications",
+      expect.objectContaining({
+        method: "GET"
+      })
+    );
   });
 
   it("them passenger moi qua backend", async () => {

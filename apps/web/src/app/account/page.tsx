@@ -27,11 +27,13 @@ import {
   deleteMyVoucherHistory,
   deleteMyPassenger,
   fetchMyLoyalty,
+  fetchMyNotifications,
   fetchMyPassengers,
   fetchMyProfile,
   fetchMyVouchers,
   MyAccountApiError,
   type MyLoyalty,
+  type MyNotification,
   uploadMyAvatar,
   updateMyPassenger,
   updateMyProfile,
@@ -252,6 +254,32 @@ function formatVoucherStatus(status: string) {
   return status;
 }
 
+function formatNotificationStatus(status: string) {
+  if (status === "SENT") {
+    return "Đã gửi";
+  }
+
+  if (status === "PENDING") {
+    return "Đang chuẩn bị";
+  }
+
+  if (status === "FAILED") {
+    return "Cần gửi lại";
+  }
+
+  return status;
+}
+
+function formatNotificationMeta(notification: MyNotification) {
+  const sentTime = formatDateTime(notification.sentAt ?? notification.createdAt);
+
+  if (notification.bookingCode) {
+    return `${sentTime} · Mã đặt chỗ ${notification.bookingCode}`;
+  }
+
+  return sentTime;
+}
+
 function resolveAccountError(error: unknown, fallbackMessage: string) {
   if (error instanceof MyAccountApiError) {
     const firstFieldError = Object.values(error.errors)[0];
@@ -272,10 +300,12 @@ export default function AccountPage() {
   const [customerProfile, setCustomerProfile] = useState<MyProfile | null>(null);
   const [memberLoyalty, setMemberLoyalty] = useState<MyLoyalty | null>(null);
   const [memberVouchers, setMemberVouchers] = useState<MyVoucher[]>([]);
+  const [myNotifications, setMyNotifications] = useState<MyNotification[]>([]);
   const [profileForm, setProfileForm] = useState<UpdateMyProfilePayload>(EMPTY_PROFILE_FORM);
   const [passengers, setPassengers] = useState<MyPassenger[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [loyaltyError, setLoyaltyError] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
   const [profileActionError, setProfileActionError] = useState<string | null>(null);
   const [profileActionSuccess, setProfileActionSuccess] = useState<string | null>(null);
   const [passengerError, setPassengerError] = useState<string | null>(null);
@@ -291,6 +321,7 @@ export default function AccountPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingPassengers, setIsLoadingPassengers] = useState(false);
   const [isLoadingLoyalty, setIsLoadingLoyalty] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
   const [isSubmittingPassenger, setIsSubmittingPassenger] = useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
@@ -309,10 +340,12 @@ export default function AccountPage() {
       setCustomerProfile(null);
       setMemberLoyalty(null);
       setMemberVouchers([]);
+      setMyNotifications([]);
       setProfileForm(EMPTY_PROFILE_FORM);
       setPassengers([]);
       setProfileError(null);
       setLoyaltyError(null);
+      setNotificationError(null);
       setProfileActionError(null);
       setProfileActionSuccess(null);
       setPassengerError(null);
@@ -328,20 +361,25 @@ export default function AccountPage() {
       setIsLoadingProfile(false);
       setIsLoadingPassengers(false);
       setIsLoadingLoyalty(false);
+      setIsLoadingNotifications(false);
       setHidingVoucherCode(null);
       return;
     }
 
     const accessToken = authSession.accessToken;
+    const sessionRoles = authSession.user.roles;
     let isCancelled = false;
 
     async function loadCustomerData() {
       setIsLoadingProfile(true);
       setIsLoadingPassengers(false);
       setIsLoadingLoyalty(false);
+      setIsLoadingNotifications(!hasAnyRole(sessionRoles, STAFF_ROLE_CODES));
+      setMyNotifications([]);
       setProfileError(null);
       setPassengerError(null);
       setLoyaltyError(null);
+      setNotificationError(null);
 
       try {
         const nextCustomerProfile = await fetchMyProfile(accessToken);
@@ -349,6 +387,35 @@ export default function AccountPage() {
         if (!isCancelled) {
           setCustomerProfile(nextCustomerProfile);
           setProfileForm(buildProfileForm(nextCustomerProfile));
+        }
+
+        if (hasAnyRole(nextCustomerProfile.roles, STAFF_ROLE_CODES)) {
+          if (!isCancelled) {
+            setMyNotifications([]);
+            setNotificationError(null);
+            setIsLoadingNotifications(false);
+          }
+        } else {
+          setIsLoadingNotifications(true);
+
+          try {
+            const nextNotifications = await fetchMyNotifications(accessToken);
+
+            if (!isCancelled) {
+              setMyNotifications(nextNotifications);
+            }
+          } catch (error) {
+            if (!isCancelled) {
+              setMyNotifications([]);
+              setNotificationError(
+                resolveAccountError(error, "Không thể tải thông báo cá nhân lúc này.")
+              );
+            }
+          } finally {
+            if (!isCancelled) {
+              setIsLoadingNotifications(false);
+            }
+          }
         }
 
         if (hasAnyRole(nextCustomerProfile.roles, PASSENGER_SELF_SERVICE_ROLES)) {
@@ -421,9 +488,11 @@ export default function AccountPage() {
         );
         setProfileError(message);
         setPassengerError(message);
+        setNotificationError(message);
       } finally {
         if (!isCancelled) {
           setIsLoadingProfile(false);
+          setIsLoadingNotifications(false);
         }
       }
     }
@@ -1541,13 +1610,42 @@ export default function AccountPage() {
               }
             />
             <div className="stack-list">
-              {activityFeed.map((item) => (
-                <article key={item.title} className="surface-card notification-card">
-                  <span className="pill">{item.time}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary}</p>
+              {isStaffProfile || !activeProfile ? (
+                activityFeed.map((item) => (
+                  <article key={item.title} className="surface-card notification-card">
+                    <span className="pill">{item.time}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.summary}</p>
+                  </article>
+                ))
+              ) : notificationError ? (
+                <article className="surface-card notification-card">
+                  <span className="pill">Thử lại sau</span>
+                  <h3>Chưa tải được thông báo</h3>
+                  <p>{notificationError}</p>
                 </article>
-              ))}
+              ) : isLoadingNotifications ? (
+                <article className="surface-card notification-card">
+                  <span className="pill">Đang tải</span>
+                  <h3>Đang lấy thông báo cá nhân</h3>
+                  <p>Thông tin mới nhất sẽ xuất hiện tại đây sau khi hệ thống hoàn tất tải dữ liệu.</p>
+                </article>
+              ) : myNotifications.length > 0 ? (
+                myNotifications.map((notification) => (
+                  <article key={notification.id} className="surface-card notification-card">
+                    <span className="pill">{formatNotificationStatus(notification.status)}</span>
+                    <h3>{notification.subject}</h3>
+                    <p>{notification.body}</p>
+                    <small>{formatNotificationMeta(notification)}</small>
+                  </article>
+                ))
+              ) : (
+                <article className="surface-card notification-card">
+                  <span className="pill">0 thông báo</span>
+                  <h3>Chưa có thông báo cá nhân</h3>
+                  <p>Các cập nhật về vé, chuyến bay hoặc phản hồi hỗ trợ sẽ xuất hiện tại đây.</p>
+                </article>
+              )}
             </div>
           </div>
         </div>

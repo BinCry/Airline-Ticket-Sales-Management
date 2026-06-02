@@ -31,6 +31,9 @@ coverage/
 
 # AI workflow
 .mcp.json
+.gitnexus/
+CLAUDE.md
+.claude/
 .gemini/
 .claude/skills/.venv/
 .claude/skills/.install-state.json

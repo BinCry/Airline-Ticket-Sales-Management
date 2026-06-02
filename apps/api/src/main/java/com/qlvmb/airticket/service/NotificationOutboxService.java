@@ -1,5 +1,6 @@
 package com.qlvmb.airticket.service;
 
+import com.qlvmb.airticket.domain.dto.MyNotificationResponse;
 import com.qlvmb.airticket.domain.dto.NotificationOutboxResponse;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
@@ -8,6 +9,8 @@ import com.qlvmb.airticket.domain.entity.NotificationOutboxEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.NotificationOutboxRepository;
+import com.qlvmb.airticket.security.AuthenticatedUser;
+
 import java.text.NumberFormat;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -284,6 +287,28 @@ public class NotificationOutboxService {
         outbox.getLastError(),
         outbox.getCreatedAt(),
         outbox.getUpdatedAt(),
+        outbox.getSentAt()
+    );
+  }
+
+  @Transactional(readOnly = true)
+  public List<MyNotificationResponse> getMyNotifications(AuthenticatedUser authenticatedUser) {
+    return notificationOutboxRepository
+        .findTop5ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(authenticatedUser.email())
+        .stream()
+        .map(this::toMyNotificationResponse)
+        .toList();
+  }
+
+  private MyNotificationResponse toMyNotificationResponse(NotificationOutboxEntity outbox) {
+    return new MyNotificationResponse(
+        outbox.getId(),
+        outbox.getType(),
+        outbox.getBookingCode(),
+        outbox.getSubject(),
+        outbox.getBody(),
+        outbox.getStatus(),
+        outbox.getCreatedAt(),
         outbox.getSentAt()
     );
   }

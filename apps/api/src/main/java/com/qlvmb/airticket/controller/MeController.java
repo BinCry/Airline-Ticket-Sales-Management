@@ -2,6 +2,7 @@ package com.qlvmb.airticket.controller;
 
 import com.qlvmb.airticket.domain.dto.ChangePasswordRequest;
 import com.qlvmb.airticket.domain.dto.MyLoyaltyResponse;
+import com.qlvmb.airticket.domain.dto.MyNotificationResponse;
 import com.qlvmb.airticket.domain.dto.MyPassengerResponse;
 import com.qlvmb.airticket.domain.dto.MyProfileResponse;
 import com.qlvmb.airticket.domain.dto.MyVoucherResponse;
@@ -13,6 +14,7 @@ import com.qlvmb.airticket.security.PermissionCode;
 import com.qlvmb.airticket.service.AuthService;
 import com.qlvmb.airticket.service.MemberLoyaltyService;
 import com.qlvmb.airticket.service.MyAccountService;
+import com.qlvmb.airticket.service.NotificationOutboxService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -38,15 +40,18 @@ public class MeController {
   private final AuthService authService;
   private final MyAccountService myAccountService;
   private final MemberLoyaltyService memberLoyaltyService;
+  private final NotificationOutboxService notificationOutboxService;
 
   public MeController(
       AuthService authService,
       MyAccountService myAccountService,
-      MemberLoyaltyService memberLoyaltyService
+      MemberLoyaltyService memberLoyaltyService,
+      NotificationOutboxService notificationOutboxService
   ) {
     this.authService = authService;
     this.myAccountService = myAccountService;
     this.memberLoyaltyService = memberLoyaltyService;
+    this.notificationOutboxService = notificationOutboxService;
   }
 
   @GetMapping("/profile")
@@ -146,5 +151,11 @@ public class MeController {
       throw new UnauthorizedException("Bạn cần đăng nhập để thực hiện thao tác này.");
     }
     return authenticatedUser;
+  }
+
+  @GetMapping("/notifications")
+  @PreAuthorize("isAuthenticated()")
+  public List<MyNotificationResponse> getMyNotifications(Authentication authentication) {
+    return notificationOutboxService.getMyNotifications(requireAuthenticatedUser(authentication));
   }
 }

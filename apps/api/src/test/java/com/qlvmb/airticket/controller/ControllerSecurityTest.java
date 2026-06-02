@@ -12,6 +12,7 @@ import com.qlvmb.airticket.config.SecurityConfig;
 import com.qlvmb.airticket.domain.entity.PermissionEntity;
 import com.qlvmb.airticket.domain.entity.RoleEntity;
 import com.qlvmb.airticket.domain.entity.UserAccountEntity;
+import com.qlvmb.airticket.domain.dto.MyNotificationResponse;
 import com.qlvmb.airticket.domain.dto.MyProfileResponse;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
@@ -223,6 +224,35 @@ class ControllerSecurityTest {
         .andExpect(jsonPath("$.message").value("Phiên đăng nhập không hợp lệ hoặc đã hết hạn."))
         .andExpect(jsonPath("$.errors").isMap())
         .andExpect(jsonPath("$.timestamp").exists());
+  }
+
+  @Test
+  void getMyNotifications_shouldRequireAuthentication() throws Exception {
+    mockMvc.perform(get("/api/me/notifications"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getMyNotifications_shouldAllowAuthenticatedUser() throws Exception {
+    org.mockito.Mockito.when(notificationOutboxService.getMyNotifications(ArgumentMatchers.any()))
+        .thenReturn(List.of(new MyNotificationResponse(
+            7L,
+            "TICKET_EMAIL",
+            "QC5004",
+            "Thông báo vé điện tử",
+            "Nội dung thông báo",
+            "SENT",
+            OffsetDateTime.parse("2026-05-17T14:30:00Z"),
+            OffsetDateTime.parse("2026-05-17T14:31:00Z")
+        )));
+
+    mockMvc.perform(get("/api/me/notifications")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(7))
+        .andExpect(jsonPath("$[0].bookingCode").value("QC5004"))
+        .andExpect(jsonPath("$[0].subject").value("Thông báo vé điện tử"))
+        .andExpect(jsonPath("$[0].recipientEmail").doesNotExist());
   }
 
   @Test
