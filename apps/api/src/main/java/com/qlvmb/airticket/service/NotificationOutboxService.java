@@ -6,6 +6,7 @@ import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.NotificationOutboxEntity;
+import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.NotificationOutboxRepository;
@@ -42,6 +43,9 @@ public class NotificationOutboxService {
   private static final String EMPTY_PASSENGERS_MESSAGE = "- Chưa có thông tin hành khách";
   private static final String EMPTY_SEGMENTS_MESSAGE = "- Chưa có thông tin chặng bay";
   private static final String EMPTY_TICKETS_MESSAGE = "- Chưa có số vé";
+
+  private static final String REFUND_STATUS_SUBJECT_PREFIX = "Káº¿t quáº£ hoÃ n vÃ© cho mÃ£ Ä‘áº·t chá»— ";
+  private static final String REFUND_STATUS_SUBJECT_SUFFIX = " | Vietnam Airlines";
 
   private final NotificationOutboxRepository notificationOutboxRepository;
   private final @Nullable JavaMailSender mailSender;
@@ -89,6 +93,24 @@ public class NotificationOutboxService {
             + booking.getBookingCode()
             + FLIGHT_CANCELLATION_SUBJECT_SUFFIX,
         buildFlightCancellationEmailBody(booking, flight, cancellationNote),
+        currentTime
+    );
+    notificationOutboxRepository.save(outbox);
+    dispatchDelivery(outbox);
+    return toResponse(outbox);
+  }
+
+  @Transactional
+  public NotificationOutboxResponse createAndSendRefundStatusEmail(
+      BookingEntity booking,
+      RefundRequestEntity refundRequest
+  ) {
+    OffsetDateTime currentTime = OffsetDateTime.now(ZoneOffset.UTC);
+    NotificationOutboxEntity outbox = NotificationOutboxEntity.createRefundStatusEmail(
+        booking.getBookingCode(),
+        booking.getContact().getEmail(),
+        REFUND_STATUS_SUBJECT_PREFIX + booking.getBookingCode() + REFUND_STATUS_SUBJECT_SUFFIX,
+        buildRefundStatusEmailBody(booking, refundRequest),
         currentTime
     );
     notificationOutboxRepository.save(outbox);
@@ -256,6 +278,43 @@ public class NotificationOutboxService {
         flight.getDestinationAirport().getCityName(),
         flight.getDepartureAt(),
         cancellationNote
+    );
+  }
+
+  private String buildRefundStatusEmailBody(
+      BookingEntity booking,
+      RefundRequestEntity refundRequest
+  ) {
+    boolean approved = RefundRequestEntity.STATUS_APPROVED.equals(refundRequest.getStatus());
+    String refundStatusLabel = approved ? "Đã chấp thuận" : "Từ chối";
+    String bookingStatusLabel = approved ? "Đặt chỗ đã hủy" : "Đặt chỗ tiếp tục hiệu lực";
+    String nextStep = approved
+        ? "Chúng tôi sẽ tiếp tục xử lý giao dịch hoàn tiền theo quy trình tại kênh thanh toán."
+        : "Bạn có thể giữ nguyên hành trình hoặc liên hệ bộ phận hỗ trợ nếu cần được xem xét thêm.";
+
+    return """
+        Xin chào %s,
+
+        Yêu cầu hoàn vé cho mã đặt chỗ %s đã được cập nhật.
+
+        Kết quả xử lý:
+        - Trạng thái yêu cầu: %s
+        - Trạng thái đặt chỗ: %s
+        - Lý do đã gửi: %s
+        - Số tiền xem xét hoàn: %s
+
+        %s
+
+        Trân trọng,
+        Vietnam Airlines
+        """.formatted(
+        booking.getContact().getFullName(),
+        booking.getBookingCode(),
+        refundStatusLabel,
+        bookingStatusLabel,
+        refundRequest.getReason(),
+        formatAmount(refundRequest.getRefundAmount(), booking.getCurrency()),
+        nextStep
     );
   }
 

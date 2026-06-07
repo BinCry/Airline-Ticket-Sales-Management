@@ -278,9 +278,6 @@ public class FlightSearchService {
       return "round_trip";
     }
     String normalizedTripType = tripType.trim().toLowerCase();
-    if ("multi_city".equals(normalizedTripType)) {
-      throw new BadRequestException("Hiện tại hệ thống chưa hỗ trợ hành trình nhiều chặng.");
-    }
     if (!List.of("one_way", "round_trip").contains(normalizedTripType)) {
       throw new BadRequestException("Loại hành trình không hợp lệ.");
     }

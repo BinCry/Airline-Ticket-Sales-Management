@@ -14,6 +14,7 @@ public class NotificationOutboxEntity {
 
   public static final String TYPE_TICKET_EMAIL = "TICKET_EMAIL";
   public static final String TYPE_FLIGHT_CANCELLATION_EMAIL = "FLIGHT_CANCELLATION_EMAIL";
+  public static final String TYPE_REFUND_STATUS_EMAIL = "REFUND_STATUS_EMAIL";
   public static final String STATUS_PENDING = "PENDING";
   public static final String STATUS_SENT = "SENT";
   public static final String STATUS_FAILED = "FAILED";
@@ -87,6 +88,26 @@ public class NotificationOutboxEntity {
   ) {
     NotificationOutboxEntity outbox = new NotificationOutboxEntity();
     outbox.type = TYPE_FLIGHT_CANCELLATION_EMAIL;
+    outbox.bookingCode = bookingCode;
+    outbox.recipientEmail = recipientEmail;
+    outbox.subject = subject;
+    outbox.body = body;
+    outbox.status = STATUS_PENDING;
+    outbox.retryCount = 0;
+    outbox.createdAt = createdAt;
+    outbox.updatedAt = createdAt;
+    return outbox;
+  }
+
+  public static NotificationOutboxEntity createRefundStatusEmail(
+      String bookingCode,
+      String recipientEmail,
+      String subject,
+      String body,
+      OffsetDateTime createdAt
+  ) {
+    NotificationOutboxEntity outbox = new NotificationOutboxEntity();
+    outbox.type = TYPE_REFUND_STATUS_EMAIL;
     outbox.bookingCode = bookingCode;
     outbox.recipientEmail = recipientEmail;
     outbox.subject = subject;
