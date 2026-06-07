@@ -449,7 +449,7 @@ public class PaymentService {
     String qrBankCode = resolveSePayQrBankCode(defaultBankName());
     String qrCodeUrl = buildSePayQrUrl(qrBankCode, sePayAccountNumber, booking.getTotalAmount(), orderCode);
     LOGGER.info(
-        "Booking {} dÃ¹ng QR chuyá»ƒn khoáº£n SePay vá»›i bank code {} vÃ  sá»‘ tÃ i khoáº£n {}.",
+        "Booking {} dùng QR chuyển khoản SePay với bank code {} và số tài khoản {}.",
         booking.getBookingCode(),
         qrBankCode,
         sePayAccountNumber

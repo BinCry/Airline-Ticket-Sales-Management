@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,19 +33,19 @@ function formatDateTime(value: string) {
 
 function formatVoucherStatus(status: string) {
   if (status === "AVAILABLE") {
-    return "Sáºµn sÃ ng Ã¡p dá»¥ng";
+    return "Sẵn sàng áp dụng";
   }
 
   if (status === "RESERVED") {
-    return "Äang giá»¯ cho booking";
+    return "Đang giữ cho booking";
   }
 
   if (status === "USED") {
-    return "ÄÃ£ sá»­ dá»¥ng";
+    return "Đã sử dụng";
   }
 
   if (status === "EXPIRED") {
-    return "ÄÃ£ háº¿t háº¡n";
+    return "Đã hết hạn";
   }
 
   return status;
@@ -148,7 +148,7 @@ export default function BookingCheckoutPage() {
         }
         setSession(null);
         setErrorMessage(
-          resolveApiClientErrorMessage(error, "KhÃ´ng thá»ƒ chuáº©n bá»‹ thÃ´ng tin thanh toÃ¡n.")
+          resolveApiClientErrorMessage(error, "Không thể chuẩn bị thông tin thanh toán.")
         );
       } finally {
         if (isMounted) {
@@ -179,7 +179,7 @@ export default function BookingCheckoutPage() {
           setSession(nextSession);
         })
         .catch(() => {
-          // Bá» qua lá»—i táº¡m thá»i khi tá»± lÃ m má»›i tráº¡ng thÃ¡i thanh toÃ¡n.
+          // Bỏ qua lỗi tạm thời khi tự làm mới trạng thái thanh toán.
         });
     }, 15000);
 
@@ -215,7 +215,7 @@ export default function BookingCheckoutPage() {
         }
         setMemberVouchers([]);
         setVoucherErrorMessage(
-          resolveApiClientErrorMessage(error, "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch voucher lÃºc nÃ y.")
+          resolveApiClientErrorMessage(error, "Không thể tải danh sách voucher lúc này.")
         );
       } finally {
         if (isMounted) {
@@ -263,14 +263,14 @@ export default function BookingCheckoutPage() {
       );
 
       pushToast({
-        message: "Thanh toÃ¡n thÃ nh cÃ´ng.",
-        title: "ÄÃ£ xuáº¥t vÃ©",
+        message: "Thanh toán thành công.",
+        title: "Đã xuất vé",
         tone: "success"
       });
 
       router.replace(`/manage-booking?bookingCode=${encodeURIComponent(bookingCode)}`);
     } catch (error) {
-      setErrorMessage(resolveApiClientErrorMessage(error, "KhÃ´ng thá»ƒ xÃ¡c nháº­n thanh toÃ¡n."));
+      setErrorMessage(resolveApiClientErrorMessage(error, "Không thể xác nhận thanh toán."));
     } finally {
       setIsPaying(false);
     }
@@ -311,17 +311,17 @@ export default function BookingCheckoutPage() {
       setMemberVouchers(nextVouchers);
       setVoucherCode(nextSession.appliedVoucherCode ?? normalizedVoucherCode);
       setVoucherNotice(
-        `ÄÃ£ Ã¡p voucher ${nextSession.appliedVoucherCode ?? normalizedVoucherCode} cho booking nÃ y.`
+        `Đã áp voucher ${nextSession.appliedVoucherCode ?? normalizedVoucherCode} cho booking này.`
       );
 
       pushToast({
-        message: "Æ¯u Ä‘Ã£i há»™i viÃªn Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t vÃ o tá»•ng thanh toÃ¡n.",
-        title: "ÄÃ£ Ã¡p voucher",
+        message: "Ưu đãi hội viên đã được cập nhật vào tổng thanh toán.",
+        title: "Đã áp voucher",
         tone: "success"
       });
     } catch (error) {
       setVoucherErrorMessage(
-        resolveApiClientErrorMessage(error, "KhÃ´ng thá»ƒ Ã¡p voucher cho booking nÃ y.")
+        resolveApiClientErrorMessage(error, "Không thể áp voucher cho booking này.")
       );
     } finally {
       setIsApplyingVoucher(false);
@@ -333,30 +333,30 @@ export default function BookingCheckoutPage() {
       <div className="container">
         <div className="page-hero-card booking-flow-hero">
           <div>
-            <span className="section-eyebrow">Thanh toÃ¡n</span>
+            <span className="section-eyebrow">Thanh toán</span>
             <h1 className="page-title">
-              XÃ¡c nháº­n thanh toÃ¡n cho mÃ£ Ä‘áº·t chá»— {bookingCode || "..."}
+              Xác nhận thanh toán cho mã đặt chỗ {bookingCode || "..."}
             </h1>
             <p className="page-hero-copy">
-              Thanh toÃ¡n Ä‘á»ƒ xuáº¥t vÃ©, gá»­i thÃ´ng tin hÃ nh trÃ¬nh qua email vÃ  má»Ÿ cÃ¡c bÆ°á»›c tá»±
-              phá»¥c vá»¥ sau bÃ¡n.
+              Thanh toán để xuất vé, gửi thông tin hành trình qua email và mở các bước tự
+              phục vụ sau bán.
             </p>
           </div>
           <div className="booking-summary-card">
-            <span className="pill booking-reference-pill">BÆ°á»›c thanh toÃ¡n</span>
-            <h3>{session?.paymentStatus === "paid" ? "ÄÃ£ thanh toÃ¡n" : "Chá» thanh toÃ¡n"}</h3>
+            <span className="pill booking-reference-pill">Bước thanh toán</span>
+            <h3>{session?.paymentStatus === "paid" ? "Đã thanh toán" : "Chờ thanh toán"}</h3>
             <p>
               {session
-                ? `Háº¿t háº¡n lÃºc ${formatDateTime(session.expiresAt)}`
-                : "Äang chuáº©n bá»‹ mÃ£ thanh toÃ¡n cho booking nÃ y."}
+                ? `Hết hạn lúc ${formatDateTime(session.expiresAt)}`
+                : "Đang chuẩn bị mã thanh toán cho booking này."}
             </p>
             <strong>
-              {session ? formatCurrency(session.amount) : "Äang chuáº©n bá»‹ thÃ´ng tin thanh toÃ¡n"}
+              {session ? formatCurrency(session.amount) : "Đang chuẩn bị thông tin thanh toán"}
             </strong>
             {session?.discountAmount ? (
               <small>
-                ÄÃ£ giáº£m {formatCurrency(session.discountAmount)}
-                {session.appliedVoucherCode ? ` báº±ng voucher ${session.appliedVoucherCode}` : ""}.
+                Đã giảm {formatCurrency(session.discountAmount)}
+                {session.appliedVoucherCode ? ` bằng voucher ${session.appliedVoucherCode}` : ""}.
               </small>
             ) : null}
           </div>
@@ -366,21 +366,21 @@ export default function BookingCheckoutPage() {
         <div className="section-split booking-flow-layout">
           <div className="stack-list">
             <SectionHeading
-              eyebrow="Thanh toÃ¡n"
-              title="Kiá»ƒm tra thÃ´ng tin thanh toÃ¡n"
-              description="DÃ¹ng Ä‘Ãºng mÃ£ thanh toÃ¡n Ä‘á»ƒ SePay xÃ¡c nháº­n giao dá»‹ch vÃ  phÃ¡t hÃ nh vÃ© cho tá»«ng hÃ nh khÃ¡ch trong mÃ£ Ä‘áº·t chá»—."
+              eyebrow="Thanh toán"
+              title="Kiểm tra thông tin thanh toán"
+              description="Dùng đúng mã thanh toán để SePay xác nhận giao dịch và phát hành vé cho từng hành khách trong mã đặt chỗ."
             />
             <article className="surface-card booking-payment-card">
               {isLoading ? (
                 <>
-                  <span className="section-eyebrow">Äang táº£i</span>
-                  <h3>Äang chuáº©n bá»‹ thÃ´ng tin thanh toÃ¡n...</h3>
-                  <p>Vui lÃ²ng chá» trong giÃ¢y lÃ¡t Ä‘á»ƒ táº¡o mÃ£ thanh toÃ¡n cho booking nÃ y.</p>
+                  <span className="section-eyebrow">Đang tải</span>
+                  <h3>Đang chuẩn bị thông tin thanh toán...</h3>
+                  <p>Vui lòng chờ trong giây lát để tạo mã thanh toán cho booking này.</p>
                 </>
               ) : errorMessage ? (
                 <>
-                  <span className="section-eyebrow">KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u</span>
-                  <h3>KhÃ´ng thá»ƒ chuáº©n bá»‹ thÃ´ng tin thanh toÃ¡n</h3>
+                  <span className="section-eyebrow">Không thể tải dữ liệu</span>
+                  <h3>Không thể chuẩn bị thông tin thanh toán</h3>
                   <p>{errorMessage}</p>
                 </>
               ) : session ? (
@@ -390,78 +390,78 @@ export default function BookingCheckoutPage() {
                       <div className="booking-payment-qr">
                         <img
                           src={paymentQrCodeUrl}
-                          alt={`MÃ£ QR thanh toÃ¡n cho ${session.referenceCode}`}
+                          alt={`Mã QR thanh toán cho ${session.referenceCode}`}
                         />
                       </div>
                     ) : null}
                     <div className="result-grid booking-payment-detail-list">
                       <div>
-                        <span>MÃ£ PNR</span>
+                        <span>Mã PNR</span>
                         <strong>{session.bookingCode}</strong>
                       </div>
                       <div>
-                        <span>Tráº¡ng thÃ¡i</span>
+                        <span>Trạng thái</span>
                         <strong>{session.paymentStatus}</strong>
                       </div>
                       <div>
-                        <span>MÃ£ thanh toÃ¡n</span>
+                        <span>Mã thanh toán</span>
                         <strong>{session.referenceCode}</strong>
                       </div>
                       <div>
-                        <span>Háº¿t háº¡n giá»¯ chá»—</span>
+                        <span>Hết hạn giữ chỗ</span>
                         <strong>{formatDateTime(session.expiresAt)}</strong>
                       </div>
                       <div>
-                        <span>Sá»‘ tiá»n</span>
+                        <span>Số tiền</span>
                         <strong>{formatCurrency(session.amount)}</strong>
                       </div>
                       <div>
-                        <span>Giáº£m tá»« voucher</span>
+                        <span>Giảm từ voucher</span>
                         <strong>
                           {session.discountAmount > 0
                             ? formatCurrency(session.discountAmount)
-                            : "ChÆ°a Ã¡p dá»¥ng"}
+                            : "Chưa áp dụng"}
                         </strong>
                       </div>
                       <div>
-                        <span>NgÃ¢n hÃ ng nháº­n</span>
-                        <strong>{session.bankName ?? "ChÆ°a cáº¥u hÃ¬nh"}</strong>
+                        <span>Ngân hàng nhận</span>
+                        <strong>{session.bankName ?? "Chưa cấu hình"}</strong>
                       </div>
                       <div>
-                        <span>Sá»‘ tÃ i khoáº£n</span>
-                        <strong>{session.accountNumber ?? "ChÆ°a cáº¥u hÃ¬nh"}</strong>
+                        <span>Số tài khoản</span>
+                        <strong>{session.accountNumber ?? "Chưa cấu hình"}</strong>
                       </div>
                       <div>
-                        <span>Chá»§ tÃ i khoáº£n</span>
-                        <strong>{session.accountHolderName ?? "ChÆ°a cáº¥u hÃ¬nh"}</strong>
+                        <span>Chủ tài khoản</span>
+                        <strong>{session.accountHolderName ?? "Chưa cấu hình"}</strong>
                       </div>
                       <div>
-                        <span>MÃ£ voucher</span>
-                        <strong>{session.appliedVoucherCode ?? "ChÆ°a Ã¡p dá»¥ng"}</strong>
+                        <span>Mã voucher</span>
+                        <strong>{session.appliedVoucherCode ?? "Chưa áp dụng"}</strong>
                       </div>
                     </div>
                   </div>
                   {session.discountAmount > 0 || session.appliedVoucherCode ? (
                     <div className="auth-note-card">
                       <div className="auth-note-head">
-                        <h3>Æ¯u Ä‘Ã£i há»™i viÃªn Ä‘Ã£ Ä‘Æ°á»£c Ã¡p dá»¥ng</h3>
+                        <h3>Ưu đãi hội viên đã được áp dụng</h3>
                         <span className="pill">
-                          {session.appliedVoucherCode ?? "Voucher há»™i viÃªn"}
+                          {session.appliedVoucherCode ?? "Voucher hội viên"}
                         </span>
                       </div>
                       <p>
-                        Tá»•ng thanh toÃ¡n hiá»‡n táº¡i Ä‘Ã£ bao gá»“m má»©c giáº£m{" "}
+                        Tổng thanh toán hiện tại đã bao gồm mức giảm{" "}
                         {formatCurrency(session.discountAmount)}.
                       </p>
                     </div>
                   ) : null}
                   <div className="booking-submit-row">
                     <div>
-                      <span className="section-eyebrow">PhÆ°Æ¡ng thá»©c</span>
+                      <span className="section-eyebrow">Phương thức</span>
                       <strong className="booking-total-amount">
                         {session.sessionMode === "live"
-                          ? "SePay Ä‘á»‘i soÃ¡t tá»± Ä‘á»™ng"
-                          : "SePay chuyá»ƒn khoáº£n nhanh"}
+                          ? "SePay đối soát tự động"
+                          : "SePay chuyển khoản nhanh"}
                       </strong>
                     </div>
                     <div className="auth-action-row">
@@ -472,7 +472,7 @@ export default function BookingCheckoutPage() {
                           rel="noreferrer"
                           className="button button-primary"
                         >
-                          Má»Ÿ mÃ£ QR / liÃªn káº¿t thanh toÃ¡n
+                          Mở mã QR / liên kết thanh toán
                         </a>
                       ) : null}
                       {coTheXacNhanThuCong ? (
@@ -482,7 +482,7 @@ export default function BookingCheckoutPage() {
                           onClick={() => void handleLocalPaymentConfirmation()}
                           disabled={isPaying}
                         >
-                          {isPaying ? "Äang xÃ¡c nháº­n..." : "TÃ´i Ä‘Ã£ hoÃ n táº¥t thanh toÃ¡n"}
+                          {isPaying ? "Đang xác nhận..." : "Tôi đã hoàn tất thanh toán"}
                         </button>
                       ) : null}
                       {!paymentQrCodeUrl && !coTheXacNhanThuCong ? (
@@ -491,7 +491,7 @@ export default function BookingCheckoutPage() {
                           className="button button-primary"
                           disabled
                         >
-                          Táº¡m thá»i chÆ°a cÃ³ mÃ£ thanh toÃ¡n
+                          Tạm thời chưa có mã thanh toán
                         </button>
                       ) : null}
                     </div>
@@ -505,17 +505,17 @@ export default function BookingCheckoutPage() {
             {isMemberSession ? (
               <article className="surface-card booking-payment-card">
                 <div className="auth-note-head">
-                  <h3>Voucher há»™i viÃªn</h3>
+                  <h3>Voucher hội viên</h3>
                   <span className="pill">
-                    {isLoadingVouchers ? "Äang táº£i" : `${availableVouchers.length} voucher kháº£ dá»¥ng`}
+                    {isLoadingVouchers ? "Đang tải" : `${availableVouchers.length} voucher khả dụng`}
                   </span>
                 </div>
                 <p>
-                  Ãp voucher ngay á»Ÿ bÆ°á»›c thanh toÃ¡n Ä‘á»ƒ cáº­p nháº­t tá»•ng tiá»n trÆ°á»›c khi má»Ÿ mÃ£
-                  QR hoáº·c xÃ¡c nháº­n chuyá»ƒn khoáº£n.
+                  Áp voucher ngay ở bước thanh toán để cập nhật tổng tiền trước khi mở mã
+                  QR hoặc xác nhận chuyển khoản.
                 </p>
                 <label className="field">
-                  <span>MÃ£ voucher</span>
+                  <span>Mã voucher</span>
                   <input
                     value={voucherCode}
                     onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
@@ -529,14 +529,14 @@ export default function BookingCheckoutPage() {
                     onClick={() => void handleApplyVoucher()}
                     disabled={!voucherCode.trim() || isApplyingVoucher || isLoading}
                   >
-                    {isApplyingVoucher ? "Äang Ã¡p dá»¥ng..." : "Ãp voucher"}
+                    {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
                   </button>
                 </div>
                 {voucherErrorMessage ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
-                      <h3>KhÃ´ng thá»ƒ Ã¡p voucher</h3>
-                      <span className="pill">Cáº§n kiá»ƒm tra láº¡i</span>
+                      <h3>Không thể áp voucher</h3>
+                      <span className="pill">Cần kiểm tra lại</span>
                     </div>
                     <p>{voucherErrorMessage}</p>
                   </div>
@@ -544,8 +544,8 @@ export default function BookingCheckoutPage() {
                 {voucherNotice ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
-                      <h3>ÄÃ£ cáº­p nháº­t Æ°u Ä‘Ã£i</h3>
-                      <span className="pill">Sáºµn sÃ ng thanh toÃ¡n</span>
+                      <h3>Đã cập nhật ưu đãi</h3>
+                      <span className="pill">Sẵn sàng thanh toán</span>
                     </div>
                     <p>{voucherNotice}</p>
                   </div>
@@ -557,8 +557,8 @@ export default function BookingCheckoutPage() {
                         <strong>{voucher.title}</strong>
                         <p>{voucher.description}</p>
                         <small>
-                          {formatCurrency(voucher.discountAmount)} â€¢{" "}
-                          {formatVoucherStatus(voucher.status)} â€¢ Háº¿t háº¡n{" "}
+                          {formatCurrency(voucher.discountAmount)} •{" "}
+                          {formatVoucherStatus(voucher.status)} • Hết hạn{" "}
                           {formatDateTime(voucher.expiresAt)}
                         </small>
                         <div className="auth-action-row">
@@ -568,17 +568,17 @@ export default function BookingCheckoutPage() {
                             onClick={() => void handleApplyVoucher(voucher.voucherCode)}
                             disabled={isApplyingVoucher || isLoading}
                           >
-                            DÃ¹ng {voucher.voucherCode}
+                            Dùng {voucher.voucherCode}
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="support-compact-item">
-                      <strong>ChÆ°a cÃ³ voucher kháº£ dá»¥ng</strong>
+                      <strong>Chưa có voucher khả dụng</strong>
                       <p>
-                        Khi tÃ i khoáº£n há»™i viÃªn cÃ³ Æ°u Ä‘Ã£i má»›i hoáº·c voucher Ä‘ang Ä‘Æ°á»£c giá»¯ cho
-                        booking nÃ y, danh sÃ¡ch sáº½ hiá»ƒn thá»‹ táº¡i Ä‘Ã¢y.
+                        Khi tài khoản hội viên có ưu đãi mới hoặc voucher đang được giữ cho
+                        booking này, danh sách sẽ hiển thị tại đây.
                       </p>
                     </div>
                   )}
@@ -587,18 +587,18 @@ export default function BookingCheckoutPage() {
             ) : null}
 
             <SectionHeading
-              eyebrow="Äi tiáº¿p"
-              title="Sau khi thanh toÃ¡n thÃ nh cÃ´ng"
-              description="VÃ© Ä‘Æ°á»£c phÃ¡t hÃ nh cho tá»«ng hÃ nh khÃ¡ch vÃ  báº¡n sáº½ Ä‘Æ°á»£c chuyá»ƒn sang trang quáº£n lÃ½ Ä‘áº·t chá»— ngay sau khi Ä‘á»‘i soÃ¡t thÃ nh cÃ´ng."
+              eyebrow="Đi tiếp"
+              title="Sau khi thanh toán thành công"
+              description="Vé được phát hành cho từng hành khách và bạn sẽ được chuyển sang trang quản lý đặt chỗ ngay sau khi đối soát thành công."
             />
             <article className="surface-card booking-payment-card">
-              <h3>Quáº£n lÃ½ Ä‘áº·t chá»—</h3>
+              <h3>Quản lý đặt chỗ</h3>
               <p>
-                Sau khi thanh toÃ¡n thÃ nh cÃ´ng, trang quáº£n lÃ½ Ä‘áº·t chá»— sáº½ hiá»ƒn thá»‹ tráº¡ng thÃ¡i
-                vÃ©, danh sÃ¡ch hÃ nh khÃ¡ch vÃ  thÃ´ng tin lÃ m thá»§ tá»¥c.
+                Sau khi thanh toán thành công, trang quản lý đặt chỗ sẽ hiển thị trạng thái
+                vé, danh sách hành khách và thông tin làm thủ tục.
               </p>
               <Link href="/manage-booking" className="button button-secondary">
-                Má»Ÿ trang quáº£n lÃ½ Ä‘áº·t chá»—
+                Mở trang quản lý đặt chỗ
               </Link>
             </article>
           </div>

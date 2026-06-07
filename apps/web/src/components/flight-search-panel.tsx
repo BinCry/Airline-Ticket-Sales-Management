@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { startTransition, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -9,8 +9,8 @@ import { fetchAirportOptions } from "@/lib/airport-api";
 import { TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH, taoDuongDanTimChuyenBay } from "@/lib/flight-search-api";
 
 const tripLabels: Record<TripType, string> = {
-  one_way: "Má»™t chiá»u",
-  round_trip: "Khá»© há»“i",
+  one_way: "Một chiều",
+  round_trip: "Khứ hồi",
 };
 
 export function FlightSearchPanel() {
@@ -29,7 +29,7 @@ export function FlightSearchPanel() {
   const [dangTaiSanBayDi, setDangTaiSanBayDi] = useState(false);
   const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
 
-  const passengerSummary = `${adultCount} ngÆ°á»i lá»›n, ${childCount} tráº» em, ${infantCount} em bÃ©`;
+  const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
 
   useEffect(() => {
     const tuKhoa = from.trim();
@@ -139,17 +139,17 @@ export function FlightSearchPanel() {
     <form className="search-panel" onSubmit={xuLyTimChuyenBay}>
       <div className="search-panel-head">
         <div>
-          <span className="panel-kicker">TÃ¬m chuyáº¿n bay</span>
-          <h2>Äáº·t vÃ© nhanh cho hÃ nh trÃ¬nh ná»™i Ä‘á»‹a</h2>
+          <span className="panel-kicker">Tìm chuyến bay</span>
+          <h2>Đặt vé nhanh cho hành trình nội địa</h2>
         </div>
         <div className="search-mini-metrics">
           <div>
             <strong>15&apos;</strong>
-            <span>Giá»¯ chá»—</span>
+            <span>Giữ chỗ</span>
           </div>
           <div>
             <strong>24h</strong>
-            <span>Má»Ÿ lÃ m thá»§ tá»¥c</span>
+            <span>Mở làm thủ tục</span>
           </div>
         </div>
       </div>
@@ -166,16 +166,16 @@ export function FlightSearchPanel() {
         ))}
       </div>
       <div className="search-note">
-        Báº¡n Ä‘ang chá»n <strong>{tripLabels[tripType]}</strong>. Hiá»‡n cÃ³ thá»ƒ tÃ¬m vÃ© cho má»™t chiá»u vÃ  khá»©
-        há»“i; hÃ nh trÃ¬nh nhiá»u cháº·ng sáº½ Ä‘Æ°á»£c bá»• sung sau.
+        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hiện có thể tìm vé cho một chiều và khứ
+        hồi; hành trình nhiều chặng sẽ được bổ sung sau.
       </div>
       <div className="route-pair">
         <label className="field route-field">
-          <span>Äiá»ƒm Ä‘i</span>
+          <span>Điểm đi</span>
           <input
             value={from}
             onChange={(event) => setFrom(event.target.value)}
-            placeholder="VD: SGN hoáº·c HÃ  Ná»™i"
+            placeholder="VD: SGN hoặc Hà Nội"
             list="goi-y-san-bay-di"
           />
           <datalist id="goi-y-san-bay-di">
@@ -187,24 +187,24 @@ export function FlightSearchPanel() {
           </datalist>
           <small>
             {dangTaiSanBayDi
-              ? "Äang táº£i gá»£i Ã½ sÃ¢n bay..."
-              : "Nháº­p mÃ£ hoáº·c tÃªn thÃ nh phá»‘ Ä‘á»ƒ nháº­n gá»£i Ã½ sÃ¢n bay."}
+              ? "Đang tải gợi ý sân bay..."
+              : "Nhập mã hoặc tên thành phố để nhận gợi ý sân bay."}
           </small>
         </label>
         <button
           type="button"
           className="swap-button"
-          aria-label="Äáº£o chiá»u"
+          aria-label="Đảo chiều"
           onClick={xuLyDoiChieu}
         >
-          â‡„
+          ⇄
         </button>
         <label className="field route-field">
-          <span>Äiá»ƒm Ä‘áº¿n</span>
+          <span>Điểm đến</span>
           <input
             value={to}
             onChange={(event) => setTo(event.target.value)}
-            placeholder="VD: HAN hoáº·c ÄÃ  Náºµng"
+            placeholder="VD: HAN hoặc Đà Nẵng"
             list="goi-y-san-bay-den"
           />
           <datalist id="goi-y-san-bay-den">
@@ -216,14 +216,14 @@ export function FlightSearchPanel() {
           </datalist>
           <small>
             {dangTaiSanBayDen
-              ? "Äang táº£i gá»£i Ã½ sÃ¢n bay..."
-              : "Gá»£i Ã½ sÃ¢n bay sáº½ hiá»ƒn thá»‹ khi báº¡n nháº­p mÃ£ hoáº·c tÃªn thÃ nh phá»‘."}
+              ? "Đang tải gợi ý sân bay..."
+              : "Gợi ý sân bay sẽ hiển thị khi bạn nhập mã hoặc tên thành phố."}
           </small>
         </label>
       </div>
       <div className="field-grid">
         <label className="field">
-          <span>NgÃ y Ä‘i</span>
+          <span>Ngày đi</span>
           <input
             type="date"
             value={departureDate}
@@ -231,7 +231,7 @@ export function FlightSearchPanel() {
           />
         </label>
         <label className="field">
-          <span>NgÃ y vá»</span>
+          <span>Ngày về</span>
           <input
             type="date"
             value={tripType === "one_way" ? "" : returnDate}
@@ -240,10 +240,10 @@ export function FlightSearchPanel() {
           />
         </label>
         <div className="field field-inline">
-          <span>HÃ nh khÃ¡ch</span>
+          <span>Hành khách</span>
           <div className="counter-grid">
             <label>
-              NgÆ°á»i lá»›n
+              Người lớn
               <input
                 type="number"
                 min={1}
@@ -255,7 +255,7 @@ export function FlightSearchPanel() {
               />
             </label>
             <label>
-              Tráº» em
+              Trẻ em
               <input
                 type="number"
                 min={0}
@@ -267,7 +267,7 @@ export function FlightSearchPanel() {
               />
             </label>
             <label>
-              Em bÃ©
+              Em bé
               <input
                 type="number"
                 min={0}
@@ -282,16 +282,16 @@ export function FlightSearchPanel() {
         </div>
       </div>
       <div className="search-assurance">
-        <span className="assurance-chip">GiÃ¡ tÃ¬m tháº¥y luÃ´n má»Ÿ Ä‘áº§u tá»« Phá»• thÃ´ng tiáº¿t kiá»‡m</span>
-        <span className="assurance-chip">Äá»•i hoáº·c hoÃ n theo Ä‘iá»u kiá»‡n giÃ¡ vÃ©</span>
-        <span className="assurance-chip">Há»— trá»£ tháº», chuyá»ƒn khoáº£n vÃ  vÃ­ Ä‘iá»‡n tá»­</span>
-        <span className="assurance-chip">Gá»­i vÃ© Ä‘iá»‡n tá»­ vÃ  thÃ´ng tin hÃ nh trÃ¬nh tá»± Ä‘á»™ng</span>
+        <span className="assurance-chip">Giá tìm thấy luôn mở đầu từ Phổ thông tiết kiệm</span>
+        <span className="assurance-chip">Đổi hoặc hoàn theo điều kiện giá vé</span>
+        <span className="assurance-chip">Hỗ trợ thẻ, chuyển khoản và ví điện tử</span>
+        <span className="assurance-chip">Gửi vé điện tử và thông tin hành trình tự động</span>
       </div>
       <div className="search-footer">
         <div>
           <strong>{passengerSummary}</strong>
           <p>
-            Giá»¯ chá»— trong 15 phÃºt sau khi báº¡n chá»n Ä‘Æ°á»£c chuyáº¿n bay phÃ¹ há»£p.
+            Giữ chỗ trong 15 phút sau khi bạn chọn được chuyến bay phù hợp.
           </p>
         </div>
         <button
@@ -299,7 +299,7 @@ export function FlightSearchPanel() {
           className="button button-primary"
           disabled={dangChuyenTrang}
         >
-          {dangChuyenTrang ? "Äang má»Ÿ káº¿t quáº£" : "TÃ¬m chuyáº¿n bay"}
+          {dangChuyenTrang ? "Đang mở kết quả" : "Tìm chuyến bay"}
         </button>
       </div>
     </form>

@@ -44,7 +44,7 @@ public class NotificationOutboxService {
   private static final String EMPTY_SEGMENTS_MESSAGE = "- Chưa có thông tin chặng bay";
   private static final String EMPTY_TICKETS_MESSAGE = "- Chưa có số vé";
 
-  private static final String REFUND_STATUS_SUBJECT_PREFIX = "Káº¿t quáº£ hoÃ n vÃ© cho mÃ£ Ä‘áº·t chá»— ";
+  private static final String REFUND_STATUS_SUBJECT_PREFIX = "Kết quả hoàn vé cho mã đặt chỗ ";
   private static final String REFUND_STATUS_SUBJECT_SUFFIX = " | Vietnam Airlines";
 
   private final NotificationOutboxRepository notificationOutboxRepository;
