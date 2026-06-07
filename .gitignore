@@ -29,11 +29,15 @@ coverage/
 # Logs
 *.log
 
-# AI workflow
+# Quy trình AI
 .mcp.json
 .gitnexus/
 CLAUDE.md
-.claude/
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/gitnexus/
+!.claude/skills/gitnexus/**
 .gemini/
 .claude/skills/.venv/
 .claude/skills/.install-state.json

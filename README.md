@@ -41,6 +41,21 @@
   - [docs/setup/production-azure-coolify.md](docs/setup/production-azure-coolify.md)
   - [docs/architecture/ma-tran-vai-tro-production.md](docs/architecture/ma-tran-vai-tro-production.md)
 
+### GitNexus dùng chung
+- Kho mã chỉ theo dõi bộ hướng dẫn nhỏ ở `.claude/skills/gitnexus`.
+- Không đưa `.gitnexus/` vào Git vì đây là chỉ mục cục bộ và có kích thước lớn.
+- Mỗi thành viên tạo lại chỉ mục tại thư mục gốc khi cần:
+
+```powershell
+npx gitnexus analyze
+```
+
+- Kiểm tra trạng thái chỉ mục:
+
+```powershell
+npx gitnexus status
+```
+
 ## Chạy local
 
 ### 1. Chuẩn bị biến môi trường
