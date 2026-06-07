@@ -93,8 +93,44 @@ class CheckinServiceTest {
   }
 
   @Test
+  void completeCheckin_shouldRejectWhenJourneyAlreadyStarted() {
+    BookingEntity booking = ticketedBooking(
+        "A6C2P1",
+        "one_way",
+        false,
+        OffsetDateTime.now().minusMinutes(30),
+        "boarding"
+    );
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+
+    assertThatThrownBy(() -> checkinService.completeCheckin(
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+    )).isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  void completeCheckin_shouldRejectWhenFlightCancelled() {
+    BookingEntity booking = ticketedBooking(
+        "A6C2P1",
+        "one_way",
+        false,
+        OffsetDateTime.now().plusDays(1),
+        "cancelled"
+    );
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+
+    assertThatThrownBy(() -> checkinService.completeCheckin(
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+    )).isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
   void completeCheckin_shouldReuseSeatTheoDungFlightKhiBookingMotChieuCoNhieuFareSegment() {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
+    OffsetDateTime departureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime arrivalAt = departureAt.plusHours(2);
     BookingEntity booking = BookingEntity.createHold(
         "A6C2P1",
         "one_way",
@@ -136,8 +172,8 @@ class CheckinServiceTest {
         "Ha Noi",
         "SGN",
         "HAN",
-        OffsetDateTime.parse("2026-03-20T06:10:00+07:00"),
-        OffsetDateTime.parse("2026-03-20T08:20:00+07:00"),
+        departureAt,
+        arrivalAt,
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
         1490000L,
@@ -155,8 +191,8 @@ class CheckinServiceTest {
         "Ha Noi",
         "SGN",
         "HAN",
-        OffsetDateTime.parse("2026-03-20T06:10:00+07:00"),
-        OffsetDateTime.parse("2026-03-20T08:20:00+07:00"),
+        departureAt,
+        arrivalAt,
         "pho_thong_linh_hoat",
         "Pho thong linh hoat",
         1990000L,
@@ -198,6 +234,8 @@ class CheckinServiceTest {
 
   private BookingEntity heldBooking(String bookingCode) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(5);
+    OffsetDateTime departureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime arrivalAt = departureAt.plusHours(2);
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
         "one_way",
@@ -217,8 +255,8 @@ class CheckinServiceTest {
         "Ha Noi",
         "SGN",
         "HAN",
-        OffsetDateTime.parse("2026-03-20T06:10:00+07:00"),
-        OffsetDateTime.parse("2026-03-20T08:20:00+07:00"),
+        departureAt,
+        arrivalAt,
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
         1490000L,
@@ -231,7 +269,24 @@ class CheckinServiceTest {
   }
 
   private BookingEntity ticketedBooking(String bookingCode, String tripType, boolean checkedIn) {
+    return ticketedBooking(
+        bookingCode,
+        tripType,
+        checkedIn,
+        OffsetDateTime.now().plusDays(3),
+        "scheduled"
+    );
+  }
+
+  private BookingEntity ticketedBooking(
+      String bookingCode,
+      String tripType,
+      boolean checkedIn,
+      OffsetDateTime departureAt,
+      String flightStatus
+  ) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
+    OffsetDateTime arrivalAt = departureAt.plusHours(2);
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
         tripType,
@@ -254,16 +309,21 @@ class CheckinServiceTest {
     );
     booking.addPassenger(passenger);
 
+    FlightEntity flight = org.mockito.Mockito.mock(FlightEntity.class);
+    FlightFareInventoryEntity inventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
+    org.mockito.Mockito.lenient().when(flight.getStatus()).thenReturn(flightStatus);
+    org.mockito.Mockito.lenient().when(inventory.getFlight()).thenReturn(flight);
+
     booking.addSegment(BookingSegmentEntity.create(
         booking,
-        org.mockito.Mockito.mock(FlightFareInventoryEntity.class),
+        inventory,
         "AU201",
         "Thanh pho Ho Chi Minh",
         "Ha Noi",
         "SGN",
         "HAN",
-        OffsetDateTime.parse("2026-03-20T06:10:00+07:00"),
-        OffsetDateTime.parse("2026-03-20T08:20:00+07:00"),
+        departureAt,
+        arrivalAt,
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
         1490000L,
@@ -286,7 +346,7 @@ class CheckinServiceTest {
           ticket,
           "12A",
           "G3",
-          OffsetDateTime.parse("2026-03-20T05:25:00+07:00"),
+          departureAt.minusMinutes(45),
           "BP-A6C2P1-7380000000001",
           createdAt.plusMinutes(6)
       );

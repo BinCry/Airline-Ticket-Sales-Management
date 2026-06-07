@@ -32,11 +32,14 @@ class FinanceServiceTest {
   @Mock
   private RefundRequestRepository refundRequestRepository;
 
+  @Mock
+  private NotificationOutboxService notificationOutboxService;
+
   private FinanceService financeService;
 
   @BeforeEach
   void setUp() {
-    financeService = new FinanceService(refundRequestRepository);
+    financeService = new FinanceService(refundRequestRepository, notificationOutboxService);
   }
 
   @Test
@@ -52,6 +55,7 @@ class FinanceServiceTest {
     assertThat(fixture.booking.getStatus()).isEqualTo(BookingEntity.STATUS_CANCELLED);
     assertThat(fixture.ticket.getStatus()).isEqualTo(TicketEntity.STATUS_CANCELLED);
     verify(fixture.inventory).releaseSeats(1);
+    verify(notificationOutboxService).createAndSendRefundStatusEmail(fixture.booking, fixture.refundRequest);
   }
 
   @Test
@@ -66,6 +70,7 @@ class FinanceServiceTest {
     assertThat(fixture.refundRequest.getStatus()).isEqualTo(RefundRequestEntity.STATUS_REJECTED);
     assertThat(fixture.booking.getStatus()).isEqualTo(BookingEntity.STATUS_TICKETED);
     assertThat(fixture.ticket.getStatus()).isEqualTo(TicketEntity.STATUS_ISSUED);
+    verify(notificationOutboxService).createAndSendRefundStatusEmail(fixture.booking, fixture.refundRequest);
   }
 
   @Test

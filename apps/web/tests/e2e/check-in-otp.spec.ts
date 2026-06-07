@@ -2,13 +2,19 @@ import { expect, test, type Page } from "@playwright/test";
 
 const LOOKUP_TOKEN = "lookup-token-123";
 const QUERY_LOOKUP_TOKEN = "lookup-token-tu-query";
+const THOI_DIEM_HIEN_TAI = Date.now();
+const THOI_DIEM_HET_GIU_CHO = new Date(THOI_DIEM_HIEN_TAI + 5 * 60 * 1000).toISOString();
+const THOI_DIEM_XUAT_VE = new Date(THOI_DIEM_HIEN_TAI - 5 * 60 * 1000).toISOString();
+const THOI_DIEM_KHOI_HANH = new Date(THOI_DIEM_HIEN_TAI + 48 * 60 * 60 * 1000).toISOString();
+const THOI_DIEM_HA_CANH = new Date(THOI_DIEM_HIEN_TAI + 50 * 60 * 60 * 1000).toISOString();
+const THOI_DIEM_HET_OTP = new Date(THOI_DIEM_HIEN_TAI + 10 * 60 * 1000).toISOString();
 
 const bookingOverviewPayload = {
   bookingCode: "A6C2P1",
   status: "ticketed",
   paymentStatus: "paid",
-  holdExpiresAt: "2026-03-11T14:15:00+07:00",
-  ticketedAt: "2026-03-11T14:10:00+07:00",
+  holdExpiresAt: THOI_DIEM_HET_GIU_CHO,
+  ticketedAt: THOI_DIEM_XUAT_VE,
   tripType: "one_way",
   steps: ["Chon chuyen bay", "Giu cho thanh cong", "Thanh toan thanh cong"],
   segments: [
@@ -19,8 +25,8 @@ const bookingOverviewPayload = {
       to: "Ha Noi",
       originCode: "SGN",
       destinationCode: "HAN",
-      departureAt: "2026-03-20T06:10:00+07:00",
-      arrivalAt: "2026-03-20T08:20:00+07:00",
+      departureAt: THOI_DIEM_KHOI_HANH,
+      arrivalAt: THOI_DIEM_HA_CANH,
       fareFamily: "pho_thong_tiet_kiem",
       fareTitle: "Pho thong tiet kiem",
       pricePerPassenger: 1490000,
@@ -49,7 +55,7 @@ const bookingOverviewPayload = {
       ticketNumber: "7380000000001",
       passengerName: "Nguyen Van A",
       status: "issued",
-      issuedAt: "2026-03-11T14:10:00+07:00"
+      issuedAt: THOI_DIEM_XUAT_VE
     }
   ],
   boardingPasses: [],
@@ -90,7 +96,7 @@ test("check-in otp guest gui lookupToken sau xac minh thanh cong", async ({ page
       jsonResponse({
         status: "verified",
         lookupToken: LOOKUP_TOKEN,
-        expiresAt: "2026-05-22T09:30:00+07:00"
+        expiresAt: THOI_DIEM_HET_OTP
       })
     );
   });
@@ -120,7 +126,7 @@ test("check-in otp guest giu nguyen OTP khi tra cuu sau xac minh bi loi", async 
       jsonResponse({
         status: "verified",
         lookupToken: LOOKUP_TOKEN,
-        expiresAt: "2026-05-22T09:30:00+07:00"
+        expiresAt: THOI_DIEM_HET_OTP
       })
     );
   });

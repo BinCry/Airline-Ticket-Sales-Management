@@ -127,6 +127,43 @@ class NotificationOutboxServiceTest {
   }
 
   @Test
+  void createAndSendRefundStatusEmail_shouldUseRefundOutcomeContent() {
+    ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    notificationOutboxService = new NotificationOutboxService(
+        notificationOutboxRepository,
+        mailSender,
+        true,
+        "support@airplane.id.vn"
+    );
+    when(notificationOutboxRepository.save(any(NotificationOutboxEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    BookingEntity booking = createBooking("QC5004", "quanpm2006git@gmail.com");
+    var refundRequest = com.qlvmb.airticket.domain.entity.RefundRequestEntity.createPending(
+        booking,
+        "Khong con nhu cau",
+        1490000L,
+        OffsetDateTime.parse("2026-05-17T14:30:00Z")
+    );
+    refundRequest.markApproved(OffsetDateTime.parse("2026-05-17T15:00:00Z"));
+
+    NotificationOutboxResponse response = notificationOutboxService.createAndSendRefundStatusEmail(
+        booking,
+        refundRequest
+    );
+
+    verify(mailSender).send(messageCaptor.capture());
+    assertThat(response.status()).isEqualTo(NotificationOutboxEntity.STATUS_SENT);
+    assertThat(messageCaptor.getValue().getSubject())
+        .contains("QC5004")
+        .contains("Vietnam Airlines");
+    assertThat(messageCaptor.getValue().getText())
+        .contains("QC5004")
+        .contains("Khong con nhu cau")
+        .contains("Vietnam Airlines");
+  }
+
+  @Test
   void retryNotification_shouldSanitizeMailDeliveryFailure() {
     OffsetDateTime currentTime = OffsetDateTime.parse("2026-05-17T14:30:00Z");
     NotificationOutboxEntity outbox = NotificationOutboxEntity.createTicketEmail(
