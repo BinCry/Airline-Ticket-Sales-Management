@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -44,34 +44,33 @@ const toneMap = {
 } as const;
 
 const labelMap = {
-  scheduled: "Lên lịch",
-  on_time: "Đúng giờ",
-  boarding: "Đang lên máy bay",
-  delayed: "Trễ",
-  departed: "Đã khởi hành",
-  landed: "Đã hạ cánh",
-  cancelled: "Hủy"
+  scheduled: "LÃªn lá»‹ch",
+  on_time: "ÄÃºng giá»",
+  boarding: "Äang lÃªn mÃ¡y bay",
+  delayed: "Trá»…",
+  departed: "ÄÃ£ khá»Ÿi hÃ nh",
+  landed: "ÄÃ£ háº¡ cÃ¡nh",
+  cancelled: "Há»§y"
 } as const;
 
 const fareImageMap = {
   pho_thong_tiet_kiem: {
     src: "/images/pho-thong-tiet-kiem-vietnam-airline-3.jpg",
-    alt: "Hình minh họa cho gói phổ thông tiết kiệm"
+    alt: "HÃ¬nh minh há»a cho gÃ³i phá»• thÃ´ng tiáº¿t kiá»‡m"
   },
   pho_thong_linh_hoat: {
     src: "/images/phothonglinhhoat-classess.jpg",
-    alt: "Hình minh họa cho gói phổ thông linh hoạt"
+    alt: "HÃ¬nh minh há»a cho gÃ³i phá»• thÃ´ng linh hoáº¡t"
   },
   thuong_gia: {
     src: "/images/thuonggia-classess.jpg",
-    alt: "Hình minh họa cho gói thương gia"
+    alt: "HÃ¬nh minh há»a cho gÃ³i thÆ°Æ¡ng gia"
   }
 } as const;
 
 const tripLabels: Record<TripType, string> = {
-  one_way: "Một chiều",
-  round_trip: "Khứ hồi",
-  multi_city: "Nhiều chặng"
+  one_way: "Má»™t chiá»u",
+  round_trip: "Khá»© há»“i",
 };
 
 const timeSlotOptions: SearchTimeSlot[] = ["khuya", "sang", "chieu", "toi"];
@@ -100,15 +99,15 @@ const airportDisplayOrder = [
   "VKG"
 ];
 const routePresets = [
-  { from: "SGN", to: "HAN", label: "TP. Hồ Chí Minh → Hà Nội" },
-  { from: "SGN", to: "DAD", label: "TP. Hồ Chí Minh → Đà Nẵng" },
-  { from: "HAN", to: "PQC", label: "Hà Nội → Phú Quốc" },
-  { from: "DAD", to: "CXR", label: "Đà Nẵng → Nha Trang" },
-  { from: "SGN", to: "VCA", label: "TP. Hồ Chí Minh → Cần Thơ" },
-  { from: "HAN", to: "HUI", label: "Hà Nội → Huế" },
-  { from: "SGN", to: "UIH", label: "TP. Hồ Chí Minh → Quy Nhơn" },
-  { from: "HAN", to: "DLI", label: "Hà Nội → Đà Lạt" },
-  { from: "SGN", to: "HPH", label: "TP. Hồ Chí Minh → Hải Phòng" }
+  { from: "SGN", to: "HAN", label: "TP. Há»“ ChÃ­ Minh â†’ HÃ  Ná»™i" },
+  { from: "SGN", to: "DAD", label: "TP. Há»“ ChÃ­ Minh â†’ ÄÃ  Náºµng" },
+  { from: "HAN", to: "PQC", label: "HÃ  Ná»™i â†’ PhÃº Quá»‘c" },
+  { from: "DAD", to: "CXR", label: "ÄÃ  Náºµng â†’ Nha Trang" },
+  { from: "SGN", to: "VCA", label: "TP. Há»“ ChÃ­ Minh â†’ Cáº§n ThÆ¡" },
+  { from: "HAN", to: "HUI", label: "HÃ  Ná»™i â†’ Huáº¿" },
+  { from: "SGN", to: "UIH", label: "TP. Há»“ ChÃ­ Minh â†’ Quy NhÆ¡n" },
+  { from: "HAN", to: "DLI", label: "HÃ  Ná»™i â†’ ÄÃ  Láº¡t" },
+  { from: "SGN", to: "HPH", label: "TP. Há»“ ChÃ­ Minh â†’ Háº£i PhÃ²ng" }
 ] as const;
 
 type NhomHanhKhach = "adult" | "child" | "infant";
@@ -153,16 +152,16 @@ function PassengerCounterCard({
           className="passenger-stepper-button"
           onClick={onDecrease}
           disabled={disabledDecrease}
-          aria-label={`Giảm số lượng ${label.toLowerCase()}`}
+          aria-label={`Giáº£m sá»‘ lÆ°á»£ng ${label.toLowerCase()}`}
         >
-          −
+          âˆ’
         </button>
         <button
           type="button"
           className="passenger-stepper-button"
           onClick={onIncrease}
           disabled={disabledIncrease}
-          aria-label={`Tăng số lượng ${label.toLowerCase()}`}
+          aria-label={`TÄƒng sá»‘ lÆ°á»£ng ${label.toLowerCase()}`}
         >
           +
         </button>
@@ -189,12 +188,12 @@ function hienThiKhungNgay(criteria: ApiFlightSearchCriteria): string {
     return dinhDangNgay(criteria.departureDate);
   }
 
-  return `${dinhDangNgay(criteria.departureDate)} → ${dinhDangNgay(criteria.returnDate)}`;
+  return `${dinhDangNgay(criteria.departureDate)} â†’ ${dinhDangNgay(criteria.returnDate)}`;
 }
 
 function hienThiThongBaoDieuHuong(notice: string | null): string | null {
   if (notice === "chon-chuyen-bay-truoc") {
-    return "Hãy chọn ít nhất một chuyến bay một chiều hoặc khứ hồi trước khi chuyển sang bước nhập thông tin đặt vé.";
+    return "HÃ£y chá»n Ã­t nháº¥t má»™t chuyáº¿n bay má»™t chiá»u hoáº·c khá»© há»“i trÆ°á»›c khi chuyá»ƒn sang bÆ°á»›c nháº­p thÃ´ng tin Ä‘áº·t vÃ©.";
   }
 
   return null;
@@ -231,10 +230,10 @@ function taoDuongDanDatVe(
 
 function taoNhanSoGheToiThieu(value: 0 | 1 | 5 | 10): string {
   if (value === 0) {
-    return "Mọi mức";
+    return "Má»i má»©c";
   }
 
-  return `Từ ${value} ghế`;
+  return `Tá»« ${value} gháº¿`;
 }
 
 function taoLopDanhSachChipBoLoc(soLuongLuaChon: number): string {
@@ -275,7 +274,7 @@ function taoNhanSanBay(sanBay: AirportOption): string {
 }
 
 function taoMoTaSanBay(sanBay: AirportOption): string {
-  return `${sanBay.airportName} • ${sanBay.terminalLabel}`;
+  return `${sanBay.airportName} â€¢ ${sanBay.terminalLabel}`;
 }
 
 function taoTheKetQua(
@@ -285,8 +284,8 @@ function taoTheKetQua(
   selectedOutboundFlight: ApiFlightCard | null
 ) {
   const selectedNotice =
-    criteria.tripType === "round_trip" && tieuDe === "Chặng về" && selectedOutboundFlight
-      ? `Chiều đi đã chọn: ${selectedOutboundFlight.code} • ${selectedOutboundFlight.departureTime} - ${selectedOutboundFlight.arrivalTime}`
+    criteria.tripType === "round_trip" && tieuDe === "Cháº·ng vá»" && selectedOutboundFlight
+      ? `Chiá»u Ä‘i Ä‘Ã£ chá»n: ${selectedOutboundFlight.code} â€¢ ${selectedOutboundFlight.departureTime} - ${selectedOutboundFlight.arrivalTime}`
       : null;
 
   if (flights.length === 0) {
@@ -295,10 +294,10 @@ function taoTheKetQua(
         <div className="result-top">
           <div>
             <span className="section-eyebrow">{tieuDe}</span>
-            <h3>Không tìm thấy chuyến bay phù hợp</h3>
+            <h3>KhÃ´ng tÃ¬m tháº¥y chuyáº¿n bay phÃ¹ há»£p</h3>
             <p>
               {selectedNotice ??
-                "Hãy đổi ngày bay, tuyến hoặc nới bộ lọc để xem thêm lựa chọn phù hợp."}
+                "HÃ£y Ä‘á»•i ngÃ y bay, tuyáº¿n hoáº·c ná»›i bá»™ lá»c Ä‘á»ƒ xem thÃªm lá»±a chá»n phÃ¹ há»£p."}
             </p>
           </div>
         </div>
@@ -312,10 +311,10 @@ function taoTheKetQua(
         <div className="result-top">
           <div>
             <span className="section-eyebrow">{tieuDe}</span>
-            <h3>{flights.length} chuyến bay phù hợp</h3>
+            <h3>{flights.length} chuyáº¿n bay phÃ¹ há»£p</h3>
             <p>
               {selectedNotice ??
-                "Các lựa chọn đang còn chỗ và phù hợp với tiêu chí tìm kiếm hiện tại của bạn."}
+                "CÃ¡c lá»±a chá»n Ä‘ang cÃ²n chá»— vÃ  phÃ¹ há»£p vá»›i tiÃªu chÃ­ tÃ¬m kiáº¿m hiá»‡n táº¡i cá»§a báº¡n."}
             </p>
           </div>
         </div>
@@ -325,7 +324,7 @@ function taoTheKetQua(
         <article key={`${tieuDe}-${flight.flightId}`} className="surface-card result-card">
           <div className="result-top">
             <div>
-              <span className="section-eyebrow">Chuyến bay {flight.code}</span>
+              <span className="section-eyebrow">Chuyáº¿n bay {flight.code}</span>
               <h3>{hienThiHanhTrinh(flight.from, flight.to)}</h3>
               <p>{flight.duration}</p>
             </div>
@@ -334,12 +333,12 @@ function taoTheKetQua(
 
           <div className="result-timeline">
             <div className="timeline-stop">
-              <span>Khởi hành</span>
+              <span>Khá»Ÿi hÃ nh</span>
               <strong>{flight.departureTime}</strong>
             </div>
             <div className="timeline-line" />
             <div className="timeline-stop">
-              <span>Hạ cánh</span>
+              <span>Háº¡ cÃ¡nh</span>
               <strong>{flight.arrivalTime}</strong>
             </div>
           </div>
@@ -347,14 +346,14 @@ function taoTheKetQua(
           <div className="result-grid result-grid-rich">
             <div className="result-metric-card">
               <div>
-                <span>Giá mở đầu</span>
+                <span>GiÃ¡ má»Ÿ Ä‘áº§u</span>
                 <strong>{formatCurrency(flight.baseFare)}</strong>
               </div>
-              {/* Đổi hình sang invoice.jpg — minh họa giá/thanh toán, phù hợp với "Giá mở đầu" */}
+              {/* Äá»•i hÃ¬nh sang invoice.jpg â€” minh há»a giÃ¡/thanh toÃ¡n, phÃ¹ há»£p vá»›i "GiÃ¡ má»Ÿ Ä‘áº§u" */}
               <div className="result-metric-image">
                 <Image
                   src="/images/ticket.jpg"
-                  alt="Minh họa giá vé và thanh toán"
+                  alt="Minh há»a giÃ¡ vÃ© vÃ  thanh toÃ¡n"
                   fill
                   sizes="(max-width: 768px) 100vw, 32vw"
                 />
@@ -362,21 +361,21 @@ function taoTheKetQua(
             </div>
             <div className="result-metric-card">
               <div>
-                <span>Tổng ghế còn bán</span>
-                <strong>{flight.fares.reduce((tong, fare) => tong + fare.seatsLeft, 0)} ghế</strong>
+                <span>Tá»•ng gháº¿ cÃ²n bÃ¡n</span>
+                <strong>{flight.fares.reduce((tong, fare) => tong + fare.seatsLeft, 0)} gháº¿</strong>
               </div>
-              {/* Đổi hình sang khoang ghế máy bay — phù hợp với "Tổng ghế còn bán" */}
+              {/* Äá»•i hÃ¬nh sang khoang gháº¿ mÃ¡y bay â€” phÃ¹ há»£p vá»›i "Tá»•ng gháº¿ cÃ²n bÃ¡n" */}
               <div className="result-metric-image">
                 <Image
                   src="/images/pho-thong-tiet-kiem-vietnam-airline-3.jpg"
-                  alt="Khoang ghế máy bay minh họa cho số ghế còn bán"
+                  alt="Khoang gháº¿ mÃ¡y bay minh há»a cho sá»‘ gháº¿ cÃ²n bÃ¡n"
                   fill
                   sizes="(max-width: 768px) 100vw, 32vw"
                 />
               </div>
             </div>
             <div className="result-grid-fare-box">
-              <span>Theo 3 hạng vé</span>
+              <span>Theo 3 háº¡ng vÃ©</span>
               <ul className="list-clean result-fare-list">
                 {flight.fares.map((fare) => (
                   <li
@@ -385,7 +384,7 @@ function taoTheKetQua(
                   >
                     <strong>{hienThiTenGoiGia(fare.fareFamily)}</strong>
                     <span>
-                      {formatCurrency(fare.price)} • còn {fare.seatsLeft} ghế
+                      {formatCurrency(fare.price)} â€¢ cÃ²n {fare.seatsLeft} gháº¿
                     </span>
                   </li>
                 ))}
@@ -395,14 +394,14 @@ function taoTheKetQua(
 
           <div className="result-actions">
             <div className="assurance-row">
-              <span className="assurance-chip">Giữ chỗ 15 phút</span>
-              <span className="assurance-chip">Hiển thị điều kiện đổi hoặc hoàn</span>
+              <span className="assurance-chip">Giá»¯ chá»— 15 phÃºt</span>
+              <span className="assurance-chip">Hiá»ƒn thá»‹ Ä‘iá»u kiá»‡n Ä‘á»•i hoáº·c hoÃ n</span>
             </div>
             {criteria.tripType === "one_way" ? (
               <Link href={taoDuongDanDatVe(criteria, [flight])} className="button button-primary">
-                Chọn chuyến này
+                Chá»n chuyáº¿n nÃ y
               </Link>
-            ) : tieuDe === "Chặng đi" ? (
+            ) : tieuDe === "Cháº·ng Ä‘i" ? (
               <Link
                 href={taoDuongDanChonChieuDi(criteria, flight)}
                 scroll={false}
@@ -412,19 +411,19 @@ function taoTheKetQua(
                   }`}
               >
                 {selectedOutboundFlight?.flightId === flight.flightId
-                  ? "Đã chọn chiều đi"
-                  : "Chọn chiều đi"}
+                  ? "ÄÃ£ chá»n chiá»u Ä‘i"
+                  : "Chá»n chiá»u Ä‘i"}
               </Link>
             ) : !selectedOutboundFlight ? (
               <button type="button" className="button button-secondary" disabled>
-                Chọn chiều đi trước
+                Chá»n chiá»u Ä‘i trÆ°á»›c
               </button>
             ) : (
               <Link
                 href={taoDuongDanDatVe(criteria, [selectedOutboundFlight, flight])}
                 className="button button-primary"
               >
-                Chọn chiều về
+                Chá»n chiá»u vá»
               </Link>
             )}
           </div>
@@ -571,28 +570,28 @@ export function SearchResultsPageClient({
       ? null
       : outboundFlightsRaw.find((flight) => flight.flightId === selectedOutboundFlightId) ?? null;
   const thongBaoDieuHuong = hienThiThongBaoDieuHuong(notice);
-  const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
+  const passengerSummary = `${adultCount} ngÆ°á»i lá»›n, ${childCount} tráº» em, ${infantCount} em bÃ©`;
   const bestPrice =
-    allFlights.length > 0 ? formatCurrency(Math.min(...allFlights.map((flight) => flight.baseFare))) : "Chưa có";
+    allFlights.length > 0 ? formatCurrency(Math.min(...allFlights.map((flight) => flight.baseFare))) : "ChÆ°a cÃ³";
   const tongKhach = tongHanhKhach(adultCount, childCount, infantCount);
   const sanBayDiPhoBien = sanBayPhoBien.slice(0, 6);
   const sanBayDenPhoBien = sanBayPhoBien.filter((sanBay) => sanBay.code !== from).slice(0, 6);
 
   const insights = [
     {
-      label: "Tuyến đang xem",
+      label: "Tuyáº¿n Ä‘ang xem",
       value: hienThiHanhTrinh(criteria.from, criteria.to),
       compact: true,
       kind: "text" as const
     },
     {
-      label: "Khung ngày",
+      label: "Khung ngÃ y",
       value: hienThiKhungNgay(criteria),
       compact: true,
       kind: "date" as const
     },
     {
-      label: "Giá mở đầu tốt nhất",
+      label: "GiÃ¡ má»Ÿ Ä‘áº§u tá»‘t nháº¥t",
       value: bestPrice,
       compact: false,
       kind: "text" as const
@@ -696,10 +695,6 @@ export function SearchResultsPageClient({
 
   function xuLyTimChuyenBay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (tripType === "multi_city") {
-      return;
-    }
     setDangTaiKetQua(true);
 
     startTransition(() => {
@@ -734,11 +729,11 @@ export function SearchResultsPageClient({
       <div className="container">
         <div className="page-hero-card search-page-hero">
           <div>
-            <span className="section-eyebrow">Tìm chuyến bay</span>
-            <h1 className="page-title">Chọn chuyến bay phù hợp theo giờ khởi hành, giá mở đầu và số ghế còn bán.</h1>
+            <span className="section-eyebrow">TÃ¬m chuyáº¿n bay</span>
+            <h1 className="page-title">Chá»n chuyáº¿n bay phÃ¹ há»£p theo giá» khá»Ÿi hÃ nh, giÃ¡ má»Ÿ Ä‘áº§u vÃ  sá»‘ gháº¿ cÃ²n bÃ¡n.</h1>
             <p className="page-hero-copy">
-              So sánh nhanh giờ bay, thời lượng, giá Phổ thông tiết kiệm và tình trạng ghế của cả
-              ba hạng vé trước khi chuyển sang bước đặt chỗ.
+              So sÃ¡nh nhanh giá» bay, thá»i lÆ°á»£ng, giÃ¡ Phá»• thÃ´ng tiáº¿t kiá»‡m vÃ  tÃ¬nh tráº¡ng gháº¿ cá»§a cáº£
+              ba háº¡ng vÃ© trÆ°á»›c khi chuyá»ƒn sang bÆ°á»›c Ä‘áº·t chá»—.
             </p>
           </div>
           <div className="page-hero-stat-grid">
@@ -752,7 +747,7 @@ export function SearchResultsPageClient({
                   <strong className="stat-value-compact date-range-stack">
                     <span className="date-range-line">{dinhDangNgay(criteria.departureDate)}</span>
                     <span className="date-range-arrow" aria-hidden="true">
-                      ↓
+                      â†“
                     </span>
                     <span className="date-range-line">{dinhDangNgay(criteria.returnDate)}</span>
                   </strong>
@@ -768,7 +763,7 @@ export function SearchResultsPageClient({
         {thongBaoDieuHuong ? (
           <>
             <article className="surface-card booking-inline-info">
-              <strong>Bạn cần chọn chuyến bay trước</strong>
+              <strong>Báº¡n cáº§n chá»n chuyáº¿n bay trÆ°á»›c</strong>
               <p>{thongBaoDieuHuong}</p>
             </article>
             <div className="section-gap" />
@@ -778,8 +773,8 @@ export function SearchResultsPageClient({
         <form id="dat-ve" className="surface-card search-toolbar-card" onSubmit={xuLyTimChuyenBay}>
           <div className="search-toolbar-head">
             <div>
-              <span className="section-eyebrow">Cập nhật hành trình</span>
-              <h2>Tìm lại chuyến bay ngay trên trang kết quả</h2>
+              <span className="section-eyebrow">Cáº­p nháº­t hÃ nh trÃ¬nh</span>
+              <h2>TÃ¬m láº¡i chuyáº¿n bay ngay trÃªn trang káº¿t quáº£</h2>
             </div>
             <p>{passengerSummary}</p>
           </div>
@@ -801,11 +796,11 @@ export function SearchResultsPageClient({
             <div className="search-toolbar-main-fields">
               <div className="route-pair search-toolbar-route-pair">
                 <label className="field route-field">
-                  <span>Điểm đi</span>
+                  <span>Äiá»ƒm Ä‘i</span>
                   <input
                     value={from}
                     onChange={(event) => setFrom(event.target.value)}
-                    placeholder="VD: SGN hoặc Hà Nội"
+                    placeholder="VD: SGN hoáº·c HÃ  Ná»™i"
                     list="toolbar-goi-y-san-bay-di"
                   />
                   <datalist id="toolbar-goi-y-san-bay-di">
@@ -817,26 +812,26 @@ export function SearchResultsPageClient({
                   </datalist>
                   <small>
                     {dangTaiSanBayDi
-                      ? "Đang tải gợi ý sân bay..."
-                      : "Nhập mã hoặc tên thành phố để nhận gợi ý nhanh."}
+                      ? "Äang táº£i gá»£i Ã½ sÃ¢n bay..."
+                      : "Nháº­p mÃ£ hoáº·c tÃªn thÃ nh phá»‘ Ä‘á»ƒ nháº­n gá»£i Ã½ nhanh."}
                   </small>
                 </label>
 
                 <button
                   type="button"
                   className="swap-button search-toolbar-swap"
-                  aria-label="Đảo chiều hành trình"
+                  aria-label="Äáº£o chiá»u hÃ nh trÃ¬nh"
                   onClick={xuLyDoiChieu}
                 >
-                  ⇄
+                  â‡„
                 </button>
 
                 <label className="field route-field">
-                  <span>Điểm đến</span>
+                  <span>Äiá»ƒm Ä‘áº¿n</span>
                   <input
                     value={to}
                     onChange={(event) => setTo(event.target.value)}
-                    placeholder="VD: HAN hoặc Đà Nẵng"
+                    placeholder="VD: HAN hoáº·c ÄÃ  Náºµng"
                     list="toolbar-goi-y-san-bay-den"
                   />
                   <datalist id="toolbar-goi-y-san-bay-den">
@@ -848,15 +843,15 @@ export function SearchResultsPageClient({
                   </datalist>
                   <small>
                     {dangTaiSanBayDen
-                      ? "Đang tải gợi ý sân bay..."
-                      : "Có thể nhập mã sân bay hoặc tên thành phố."}
+                      ? "Äang táº£i gá»£i Ã½ sÃ¢n bay..."
+                      : "CÃ³ thá»ƒ nháº­p mÃ£ sÃ¢n bay hoáº·c tÃªn thÃ nh phá»‘."}
                   </small>
                 </label>
               </div>
 
               <div className="search-toolbar-detail-grid">
                 <label className="field">
-                  <span>Ngày đi</span>
+                  <span>NgÃ y Ä‘i</span>
                   <input
                     type="date"
                     value={departureDate}
@@ -865,7 +860,7 @@ export function SearchResultsPageClient({
                 </label>
 
                 <label className="field">
-                  <span>Ngày về</span>
+                  <span>NgÃ y vá»</span>
                   <input
                     type="date"
                     value={tripType === "one_way" ? "" : returnDate}
@@ -877,7 +872,7 @@ export function SearchResultsPageClient({
 
               <div className="search-toolbar-support-grid">
                 <div className="search-toolbar-support-card">
-                  <span className="search-toolbar-support-title">Điểm đi phổ biến</span>
+                  <span className="search-toolbar-support-title">Äiá»ƒm Ä‘i phá»• biáº¿n</span>
                   <div className="filter-chip-list">
                     {sanBayDiPhoBien.map((sanBay) => (
                       <button
@@ -898,7 +893,7 @@ export function SearchResultsPageClient({
                 </div>
 
                 <div className="search-toolbar-support-card">
-                  <span className="search-toolbar-support-title">Điểm đến phổ biến</span>
+                  <span className="search-toolbar-support-title">Äiá»ƒm Ä‘áº¿n phá»• biáº¿n</span>
                   <div className="filter-chip-list">
                     {sanBayDenPhoBien.map((sanBay) => (
                       <button
@@ -920,7 +915,7 @@ export function SearchResultsPageClient({
               </div>
 
               <div className="search-toolbar-route-presets">
-                <span className="search-toolbar-support-title">Tuyến phổ biến</span>
+                <span className="search-toolbar-support-title">Tuyáº¿n phá»• biáº¿n</span>
                 <div className="route-preset-grid">
                   {routePresets.map((route) => (
                     <button
@@ -934,7 +929,7 @@ export function SearchResultsPageClient({
                       onClick={() => xuLyChonTuyenNhanh(route)}
                     >
                       <strong>{route.label}</strong>
-                      <span>{route.from} → {route.to}</span>
+                      <span>{route.from} â†’ {route.to}</span>
                     </button>
                   ))}
                 </div>
@@ -944,16 +939,16 @@ export function SearchResultsPageClient({
             <div className="search-toolbar-passenger-panel">
               <div className="search-toolbar-passenger-head">
                 <div>
-                  <span className="search-toolbar-support-title">Hành khách</span>
-                  <strong>{tongKhach} khách</strong>
+                  <span className="search-toolbar-support-title">HÃ nh khÃ¡ch</span>
+                  <strong>{tongKhach} khÃ¡ch</strong>
                 </div>
-                <p>Tối đa 9 khách, số em bé không vượt quá số người lớn.</p>
+                <p>Tá»‘i Ä‘a 9 khÃ¡ch, sá»‘ em bÃ© khÃ´ng vÆ°á»£t quÃ¡ sá»‘ ngÆ°á»i lá»›n.</p>
               </div>
 
               <div className="passenger-counter-grid">
                 <PassengerCounterCard
-                  label="Người lớn"
-                  note="Từ 12 tuổi"
+                  label="NgÆ°á»i lá»›n"
+                  note="Tá»« 12 tuá»•i"
                   value={adultCount}
                   disabledDecrease={!coTheGiamHanhKhach("adult")}
                   disabledIncrease={!coTheTangHanhKhach("adult")}
@@ -961,8 +956,8 @@ export function SearchResultsPageClient({
                   onIncrease={() => capNhatHanhKhach("adult", 1)}
                 />
                 <PassengerCounterCard
-                  label="Trẻ em"
-                  note="Từ 2 đến dưới 12 tuổi"
+                  label="Tráº» em"
+                  note="Tá»« 2 Ä‘áº¿n dÆ°á»›i 12 tuá»•i"
                   value={childCount}
                   disabledDecrease={!coTheGiamHanhKhach("child")}
                   disabledIncrease={!coTheTangHanhKhach("child")}
@@ -970,8 +965,8 @@ export function SearchResultsPageClient({
                   onIncrease={() => capNhatHanhKhach("child", 1)}
                 />
                 <PassengerCounterCard
-                  label="Em bé"
-                  note="Dưới 2 tuổi"
+                  label="Em bÃ©"
+                  note="DÆ°á»›i 2 tuá»•i"
                   value={infantCount}
                   disabledDecrease={!coTheGiamHanhKhach("infant")}
                   disabledIncrease={!coTheTangHanhKhach("infant")}
@@ -984,23 +979,15 @@ export function SearchResultsPageClient({
 
           <div className="search-toolbar-action-row">
             <div className="search-toolbar-action-copy">
-              <strong>{tripType === "multi_city" ? "Nhiều chặng đang được chuẩn bị" : passengerSummary}</strong>
-              <p>
-                {tripType === "multi_city"
-                  ? "Màn này đang phục vụ đầy đủ cho hành trình một chiều và khứ hồi."
-                  : "Bạn có thể đổi nhanh tuyến, ngày bay và nhóm hành khách để xem thêm lựa chọn phù hợp."}
-              </p>
+              <strong>{passengerSummary}</strong>
+              <p>Báº¡n cÃ³ thá»ƒ Ä‘á»•i nhanh tuyáº¿n, ngÃ y bay vÃ  nhÃ³m hÃ nh khÃ¡ch Ä‘á»ƒ xem thÃªm lá»±a chá»n phÃ¹ há»£p.</p>
             </div>
             <button
               className="button button-primary search-toolbar-submit"
               type="submit"
-              disabled={tripType === "multi_city" || dangTaiKetQua}
+              disabled={dangTaiKetQua}
             >
-              {tripType === "multi_city"
-                ? "Tạm thời chưa khả dụng"
-                : dangTaiKetQua
-                  ? "Đang cập nhật"
-                  : "Cập nhật kết quả"}
+              {dangTaiKetQua ? "Äang cáº­p nháº­t" : "Cáº­p nháº­t káº¿t quáº£"}
             </button>
           </div>
         </form>
@@ -1010,21 +997,21 @@ export function SearchResultsPageClient({
           <section className="surface-card filter-card">
             <div className="filter-head">
               <div>
-                <h3>Bộ lọc kết quả</h3>
-                <p>Lọc ngay trên danh sách chuyến bay để rút ngắn thời gian so sánh và chọn vé.</p>
+                <h3>Bá»™ lá»c káº¿t quáº£</h3>
+                <p>Lá»c ngay trÃªn danh sÃ¡ch chuyáº¿n bay Ä‘á»ƒ rÃºt ngáº¯n thá»i gian so sÃ¡nh vÃ  chá»n vÃ©.</p>
               </div>
               <button
                 type="button"
                 className="text-button"
                 onClick={() => setFilterState(DEFAULT_FLIGHT_SEARCH_FILTER_STATE)}
               >
-                Xóa bộ lọc
+                XÃ³a bá»™ lá»c
               </button>
             </div>
 
             <div className="filter-toolbar-grid">
               <div className="search-filter-section">
-                <span className="search-filter-title">Giờ bay</span>
+                <span className="search-filter-title">Giá» bay</span>
                 <div className={taoLopDanhSachChipBoLoc(timeSlotOptions.length)}>
                   {timeSlotOptions.map((slot) => (
                     <button
@@ -1044,9 +1031,9 @@ export function SearchResultsPageClient({
               </div>
 
               <div className="search-filter-section">
-                <span className="search-filter-title">Ngân sách mở đầu</span>
+                <span className="search-filter-title">NgÃ¢n sÃ¡ch má»Ÿ Ä‘áº§u</span>
                 <p className="filter-note filter-note-inline">
-                  Tính theo giá Phổ thông tiết kiệm của từng chuyến bay.
+                  TÃ­nh theo giÃ¡ Phá»• thÃ´ng tiáº¿t kiá»‡m cá»§a tá»«ng chuyáº¿n bay.
                 </p>
                 <div className={taoLopDanhSachChipBoLoc(Math.max(budgetOptions.length, 1))}>
                   {budgetOptions.length > 0 ? (
@@ -1070,13 +1057,13 @@ export function SearchResultsPageClient({
                       </button>
                     ))
                   ) : (
-                    <p className="filter-note">Bộ giá sẽ hiện khi có chuyến bay phù hợp.</p>
+                    <p className="filter-note">Bá»™ giÃ¡ sáº½ hiá»‡n khi cÃ³ chuyáº¿n bay phÃ¹ há»£p.</p>
                   )}
                 </div>
               </div>
 
               <div className="search-filter-section">
-                <span className="search-filter-title">Còn ghế</span>
+                <span className="search-filter-title">CÃ²n gháº¿</span>
                 <div className={taoLopDanhSachChipBoLoc(minimumSeatOptions.length)}>
                   {minimumSeatOptions.map((value) => (
                     <button
@@ -1103,13 +1090,13 @@ export function SearchResultsPageClient({
 
             <div className="filter-summary-row">
               <div className="filter-note">
-                Mỗi chuyến bay đều có đủ Phổ thông tiết kiệm, Phổ thông linh hoạt và Thương gia.
+                Má»—i chuyáº¿n bay Ä‘á»u cÃ³ Ä‘á»§ Phá»• thÃ´ng tiáº¿t kiá»‡m, Phá»• thÃ´ng linh hoáº¡t vÃ  ThÆ°Æ¡ng gia.
               </div>
               {criteria.tripType === "round_trip" ? (
                 <div className="filter-note">
                   {selectedOutboundFlight
-                    ? `Đã chọn chiều đi: ${selectedOutboundFlight.code} • ${selectedOutboundFlight.departureTime}`
-                    : "Hãy chọn chiều đi trước khi chốt chiều về."}
+                    ? `ÄÃ£ chá»n chiá»u Ä‘i: ${selectedOutboundFlight.code} â€¢ ${selectedOutboundFlight.departureTime}`
+                    : "HÃ£y chá»n chiá»u Ä‘i trÆ°á»›c khi chá»‘t chiá»u vá»."}
                 </div>
               ) : null}
             </div>
@@ -1120,17 +1107,17 @@ export function SearchResultsPageClient({
               <article className="surface-card result-card">
                 <div className="result-top">
                   <div>
-                    <span className="section-eyebrow">Không thể tải dữ liệu</span>
-                    <h3>Không thể lấy kết quả tìm chuyến bay</h3>
+                    <span className="section-eyebrow">KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u</span>
+                    <h3>KhÃ´ng thá»ƒ láº¥y káº¿t quáº£ tÃ¬m chuyáº¿n bay</h3>
                     <p>{searchError}</p>
                   </div>
                 </div>
               </article>
             ) : (
               <>
-                {taoTheKetQua("Chặng đi", outboundFlights, criteria, selectedOutboundFlight)}
+                {taoTheKetQua("Cháº·ng Ä‘i", outboundFlights, criteria, selectedOutboundFlight)}
                 {criteria.tripType === "round_trip"
-                  ? taoTheKetQua("Chặng về", returnFlights, criteria, selectedOutboundFlight)
+                  ? taoTheKetQua("Cháº·ng vá»", returnFlights, criteria, selectedOutboundFlight)
                   : null}
               </>
             )}
@@ -1141,9 +1128,9 @@ export function SearchResultsPageClient({
           <>
             <div className="section-gap" />
             <SectionHeading
-              eyebrow="So sánh hạng vé"
-              title="So sánh ba hạng vé cố định trước khi chọn chỗ"
-              description="Mỗi chuyến bay đều có đủ Phổ thông tiết kiệm, Phổ thông linh hoạt và Thương gia để bạn cân đối nhu cầu và ngân sách ngay từ bước tìm chuyến."
+              eyebrow="So sÃ¡nh háº¡ng vÃ©"
+              title="So sÃ¡nh ba háº¡ng vÃ© cá»‘ Ä‘á»‹nh trÆ°á»›c khi chá»n chá»—"
+              description="Má»—i chuyáº¿n bay Ä‘á»u cÃ³ Ä‘á»§ Phá»• thÃ´ng tiáº¿t kiá»‡m, Phá»• thÃ´ng linh hoáº¡t vÃ  ThÆ°Æ¡ng gia Ä‘á»ƒ báº¡n cÃ¢n Ä‘á»‘i nhu cáº§u vÃ  ngÃ¢n sÃ¡ch ngay tá»« bÆ°á»›c tÃ¬m chuyáº¿n."
             />
             <div className="card-grid card-grid-3">
               {searchData.fares.map((fare) => (
@@ -1172,3 +1159,4 @@ export function SearchResultsPageClient({
     </section>
   );
 }
+

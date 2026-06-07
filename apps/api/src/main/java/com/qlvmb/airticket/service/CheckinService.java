@@ -35,6 +35,10 @@ public class CheckinService {
       "Kh\u00f4ng t\u00ecm th\u1ea5y v\u00e9 ph\u00f9 h\u1ee3p v\u1edbi m\u00e3 \u0111\u1eb7t ch\u1ed7 \u0111\u00e3 nh\u1eadp.";
   private static final String CHECKIN_TICKET_USED_MESSAGE =
       "V\u00e9 \u0111\u00e3 \u0111\u01b0\u1ee3c l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn tr\u01b0\u1edbc \u0111\u00f3 ho\u1eb7c kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7.";
+  private static final String CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE =
+      "Kh\u00f4ng th\u1ec3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn khi chuy\u1ebfn bay \u0111\u00e3 b\u1eaft \u0111\u1ea7u ho\u1eb7c kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7.";
+  private static final String CHECKIN_CANCELLED_MESSAGE =
+      "Kh\u00f4ng th\u1ec3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn cho chuy\u1ebfn bay \u0111\u00e3 h\u1ee7y.";
   private static final String CHECKIN_SEAT_INVALID_MESSAGE =
       "Gh\u1ebf \u0111\u01b0\u1ee3c ch\u1ecdn khi l\u00e0m th\u1ee7 t\u1ee5c kh\u00f4ng h\u1ee3p l\u1ec7.";
   private static final String CHECKIN_SEAT_UNAVAILABLE_MESSAGE =
@@ -75,6 +79,14 @@ public class CheckinService {
       throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
     }
 
+    OffsetDateTime currentTime = OffsetDateTime.now();
+    if (!BookingBusinessPolicy.coTheTuPhucVuLamThuTuc(booking.getSegments(), currentTime)) {
+      if (BookingBusinessPolicy.coPhanDoanBiHuy(booking.getSegments())) {
+        throw new BadRequestException(CHECKIN_CANCELLED_MESSAGE);
+      }
+      throw new BadRequestException(CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE);
+    }
+
     LinkedHashSet<String> normalizedTicketNumbers = new LinkedHashSet<>();
     for (String ticketNumber : request.ticketNumbers()) {
       String normalizedTicketNumber = ticketNumber == null ? "" : ticketNumber.trim().toUpperCase();
@@ -112,7 +124,6 @@ public class CheckinService {
     if (flight != null && "cancelled".equals(flight.getStatus())) {
       throw new BadRequestException("Không thể làm thủ tục trực tuyến cho chuyến bay đã hủy.");
     }
-    OffsetDateTime currentTime = OffsetDateTime.now();
     OffsetDateTime boardingTime = representativeSegment.getDepartureAt().minusMinutes(45);
     String gate = resolveGate(flight);
     List<CheckinCompleteResponse.BoardingPassItem> boardingPasses = new ArrayList<>();

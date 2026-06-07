@@ -26,9 +26,14 @@ public class FinanceService {
       "Yêu cầu hoàn vé đang chờ duyệt, chưa thể xóa khỏi danh sách.";
 
   private final RefundRequestRepository refundRequestRepository;
+  private final NotificationOutboxService notificationOutboxService;
 
-  public FinanceService(RefundRequestRepository refundRequestRepository) {
+  public FinanceService(
+      RefundRequestRepository refundRequestRepository,
+      NotificationOutboxService notificationOutboxService
+  ) {
     this.refundRequestRepository = refundRequestRepository;
+    this.notificationOutboxService = notificationOutboxService;
   }
 
   @Transactional(readOnly = true)
@@ -52,6 +57,7 @@ public class FinanceService {
     booking.markCancelled(currentTime);
     booking.getTickets().forEach(ticket -> ticket.markCancelled(currentTime));
     booking.getSegments().forEach(segment -> segment.getInventory().releaseSeats(segment.getPassengerCount()));
+    notificationOutboxService.createAndSendRefundStatusEmail(booking, refundRequest);
 
     return mapRefundItem(refundRequest);
   }
@@ -68,6 +74,7 @@ public class FinanceService {
     OffsetDateTime currentTime = OffsetDateTime.now();
     refundRequest.markRejected(currentTime);
     booking.markTicketedAgain(currentTime);
+    notificationOutboxService.createAndSendRefundStatusEmail(booking, refundRequest);
 
     return mapRefundItem(refundRequest);
   }

@@ -273,6 +273,48 @@ class BookingServiceTest {
   }
 
   @Test
+  void createHold_shouldRejectPassengerTypeMismatchAtDeparture() {
+    FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
+    when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
+    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
+
+    BookingHoldRequest request = new BookingHoldRequest(
+        "one_way",
+        new BookingHoldRequest.ContactRequest(
+            "Nguyen Van A",
+            "a@example.com",
+            "0912345678"
+        ),
+        List.of(
+            new BookingHoldRequest.PassengerRequest(
+                "Nguoi lon A",
+                "adult",
+                LocalDate.now().minusYears(30),
+                "CCCD",
+                "079123456788"
+            ),
+            new BookingHoldRequest.PassengerRequest(
+                "Em be B",
+                "child",
+                LocalDate.now().minusYears(1),
+                "Giay khai sinh",
+                "KS20250607"
+            )
+        ),
+        List.of(new BookingHoldRequest.SegmentRequest(null, 20101L)),
+        List.of(),
+        List.of(
+            new BookingHoldRequest.SeatSelectionRequest(20101L, 0, 0, "9A"),
+            new BookingHoldRequest.SeatSelectionRequest(20101L, 1, 0, "9B")
+        )
+    );
+
+    assertThatThrownBy(() -> bookingService.createHold(request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Hành khách trẻ em phải từ 2 đến dưới 12 tuổi tại ngày khởi hành đầu tiên.");
+  }
+
+  @Test
   void getBookingOverview_shouldReleaseSeatForExpiredHold() {
     FlightFareInventoryEntity inventory = mockInventory(20101L, 1, 1490000L, "pho_thong_tiet_kiem");
     BookingEntity booking = expiredBooking("A6C2P1", inventory);
@@ -323,6 +365,50 @@ class BookingServiceTest {
         "A6C2P1",
         new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest("Khong bay nua")
     )).isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  void requestRefund_shouldRejectWhenJourneyAlreadyStarted() {
+    BookingEntity booking = ticketedBooking(
+        "A6C2P1",
+        "one_way",
+        false,
+        false,
+        OffsetDateTime.now().minusHours(2),
+        "departed",
+        false
+    );
+    when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
+
+    assertThatThrownBy(() -> bookingService.requestRefund(
+        "A6C2P1",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest("Khong bay nua")
+    ))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Không thể gửi yêu cầu hoàn vé khi hành trình đã bắt đầu.");
+  }
+
+  @Test
+  void requestRefund_shouldAllowCancelledPaidBookingFromOperations() {
+    BookingEntity booking = ticketedBooking(
+        "A6C2P1",
+        "one_way",
+        false,
+        false,
+        OffsetDateTime.now().minusHours(2),
+        "cancelled",
+        true
+    );
+    when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2P1",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest("Chuyen bay bi huy")
+    );
+
+    assertThat(response.status()).isEqualTo("cancelled");
+    assertThat(response.refundRequest()).isNotNull();
+    assertThat(response.refundRequest().status()).isEqualTo("pending");
   }
 
   private BookingHoldRequest oneWayHoldRequest(
@@ -379,7 +465,7 @@ class BookingServiceTest {
             new BookingHoldRequest.PassengerRequest(
                 "Le Van C",
                 "child",
-                LocalDate.of(2015, 8, 20),
+                LocalDate.now().minusYears(10),
                 "Giấy khai sinh",
                 "KS20150820"
             )
@@ -413,7 +499,7 @@ class BookingServiceTest {
             new BookingHoldRequest.PassengerRequest(
                 "Le Thi B",
                 "child",
-                LocalDate.of(2014, 6, 9),
+                LocalDate.now().minusYears(8),
                 "Giấy khai sinh",
                 "KS20140609"
             )
@@ -489,8 +575,39 @@ class BookingServiceTest {
       boolean checkedIn,
       boolean hasPendingRefund
   ) {
+    return ticketedBooking(
+        bookingCode,
+        tripType,
+        checkedIn,
+        hasPendingRefund,
+        OffsetDateTime.now().plusDays(10),
+        "scheduled",
+        false
+    );
+  }
+
+  private BookingEntity ticketedBooking(
+      String bookingCode,
+      String tripType,
+      boolean checkedIn,
+      boolean hasPendingRefund,
+      OffsetDateTime departureAt,
+      String flightStatus,
+      boolean cancelledByOperations
+  ) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
-    FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
+    OffsetDateTime arrivalAt = departureAt.plusHours(2);
+    FlightFareInventoryEntity inventory = mockInventoryOnFlight(
+        20101L,
+        20101L,
+        "AU201",
+        5,
+        1490000L,
+        "pho_thong_tiet_kiem",
+        departureAt,
+        arrivalAt,
+        flightStatus
+    );
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
         tripType,
@@ -528,8 +645,8 @@ class BookingServiceTest {
         "Ha Noi",
         "SGN",
         "HAN",
-        OffsetDateTime.parse("2026-03-20T06:10:00+07:00"),
-        OffsetDateTime.parse("2026-03-20T08:20:00+07:00"),
+        departureAt,
+        arrivalAt,
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
         1490000L,
@@ -549,6 +666,10 @@ class BookingServiceTest {
     if (checkedIn) {
       ticket.markCheckedIn(createdAt.plusMinutes(6));
     }
+
+    if (cancelledByOperations) {
+      ticket.markCancelled(createdAt.plusMinutes(6));
+    }
     booking.addTicket(ticket);
 
     if (hasPendingRefund) {
@@ -560,6 +681,10 @@ class BookingServiceTest {
       ));
     }
 
+    if (cancelledByOperations) {
+      booking.markCancelled(createdAt.plusMinutes(6));
+    }
+
     return booking;
   }
 
@@ -569,7 +694,17 @@ class BookingServiceTest {
       long price,
       String fareFamily
   ) {
-    return mockInventoryOnFlight(inventoryId, inventoryId, "AU201", availableSeats, price, fareFamily);
+    return mockInventoryOnFlight(
+        inventoryId,
+        inventoryId,
+        "AU201",
+        availableSeats,
+        price,
+        fareFamily,
+        OffsetDateTime.now().plusDays(10),
+        OffsetDateTime.now().plusDays(10).plusHours(2),
+        "scheduled"
+    );
   }
 
   private FlightFareInventoryEntity mockInventoryOnFlight(
@@ -579,6 +714,30 @@ class BookingServiceTest {
       int availableSeats,
       long price,
       String fareFamily
+  ) {
+    return mockInventoryOnFlight(
+        inventoryId,
+        flightId,
+        flightCode,
+        availableSeats,
+        price,
+        fareFamily,
+        OffsetDateTime.now().plusDays(10),
+        OffsetDateTime.now().plusDays(10).plusHours(2),
+        "scheduled"
+    );
+  }
+
+  private FlightFareInventoryEntity mockInventoryOnFlight(
+      long inventoryId,
+      long flightId,
+      String flightCode,
+      int availableSeats,
+      long price,
+      String fareFamily,
+      OffsetDateTime departureAt,
+      OffsetDateTime arrivalAt,
+      String flightStatus
   ) {
     FlightFareInventoryEntity inventory = mock(FlightFareInventoryEntity.class);
     FlightEntity flight = mock(FlightEntity.class);
@@ -593,8 +752,9 @@ class BookingServiceTest {
     lenient().when(flight.getCode()).thenReturn(flightCode);
     lenient().when(flight.getOriginAirport()).thenReturn(originAirport);
     lenient().when(flight.getDestinationAirport()).thenReturn(destinationAirport);
-    lenient().when(flight.getDepartureAt()).thenReturn(OffsetDateTime.parse("2026-03-20T06:10:00+07:00"));
-    lenient().when(flight.getArrivalAt()).thenReturn(OffsetDateTime.parse("2026-03-20T08:20:00+07:00"));
+    lenient().when(flight.getDepartureAt()).thenReturn(departureAt);
+    lenient().when(flight.getArrivalAt()).thenReturn(arrivalAt);
+    lenient().when(flight.getStatus()).thenReturn(flightStatus);
 
     lenient().when(inventory.getId()).thenReturn(inventoryId);
     lenient().when(inventory.getAvailableSeats()).thenReturn(availableSeats);

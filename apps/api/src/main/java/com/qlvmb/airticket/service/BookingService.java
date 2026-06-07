@@ -58,6 +58,14 @@ public class BookingService {
   private static final String REFUND_AFTER_CHECKIN_MESSAGE = "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 sau khi \u0111\u00e3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn.";
   private static final String REFUND_PENDING_MESSAGE = "Y\u00eau c\u1ea7u ho\u00e0n v\u00e9 cho m\u00e3 \u0111\u1eb7t ch\u1ed7 n\u00e0y \u0111ang ch\u1edd x\u1eed l\u00fd.";
   private static final String VOUCHER_NOT_AVAILABLE_MESSAGE = "Booking hiện không ở trạng thái phù hợp để áp voucher.";
+  private static final String REFUND_AFTER_DEPARTURE_MESSAGE =
+      "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 khi h\u00e0nh tr\u00ecnh \u0111\u00e3 b\u1eaft \u0111\u1ea7u.";
+  private static final String ADULT_AGE_MISMATCH_MESSAGE =
+      "H\u00e0nh kh\u00e1ch ng\u01b0\u1eddi l\u1edbn ph\u1ea3i t\u1eeb \u0111\u1ee7 12 tu\u1ed5i t\u1ea1i ng\u00e0y kh\u1edfi h\u00e0nh \u0111\u1ea7u ti\u00ean.";
+  private static final String CHILD_AGE_MISMATCH_MESSAGE =
+      "H\u00e0nh kh\u00e1ch tr\u1ebb em ph\u1ea3i t\u1eeb 2 \u0111\u1ebfn d\u01b0\u1edbi 12 tu\u1ed5i t\u1ea1i ng\u00e0y kh\u1edfi h\u00e0nh \u0111\u1ea7u ti\u00ean.";
+  private static final String INFANT_AGE_MISMATCH_MESSAGE =
+      "H\u00e0nh kh\u00e1ch em b\u00e9 ph\u1ea3i d\u01b0\u1edbi 2 tu\u1ed5i t\u1ea1i ng\u00e0y kh\u1edfi h\u00e0nh \u0111\u1ea7u ti\u00ean.";
   private static final List<String> PAYMENT_METHODS = List.of("Chuy\u1ec3n kho\u1ea3n SePay");
   private static final Set<String> SUPPORTED_TRIP_TYPES = Set.of("one_way", "round_trip");
   private static final Set<String> SUPPORTED_PASSENGER_TYPES = Set.of("adult", "child", "infant");
@@ -105,6 +113,7 @@ public class BookingService {
 
     Map<Long, FlightFareInventoryEntity> inventoryById = reconcileExpiredHolds(currentTime, lockedInventories);
     List<PreparedTripSegment> preparedTripSegments = buildPreparedTripSegments(request.segments(), inventoryById);
+    validatePassengerAges(request.passengers(), preparedTripSegments);
 
     List<PreparedAncillary> preparedAncillaries = request.ancillaries().stream()
         .map(this::buildPreparedAncillary)
@@ -266,6 +275,11 @@ public class BookingService {
     boolean hasPendingRefund = booking.getRefundRequests().stream().anyMatch(RefundRequestEntity::isPending);
     if (hasPendingRefund || booking.isRefundPending()) {
       throw new BadRequestException(REFUND_PENDING_MESSAGE);
+    }
+
+    if (!cancelledByOperations
+        && !BookingBusinessPolicy.coTheTuPhucVuHoanVe(booking.getSegments(), currentTime)) {
+      throw new BadRequestException(REFUND_AFTER_DEPARTURE_MESSAGE);
     }
 
     RefundRequestEntity refundRequest = RefundRequestEntity.createPending(
@@ -1051,6 +1065,41 @@ public class BookingService {
     if (seatSelectionCount != expectedSeatSelectionCount) {
       throw new BadRequestException(SEAT_SELECTION_MISMATCH_MESSAGE);
     }
+  }
+
+  private void validatePassengerAges(
+      List<BookingHoldRequest.PassengerRequest> passengers,
+      List<PreparedTripSegment> preparedTripSegments
+  ) {
+    if (preparedTripSegments.isEmpty()) {
+      return;
+    }
+
+    LocalDate departureDate = preparedTripSegments.stream()
+        .map(PreparedTripSegment::departureAt)
+        .min(Comparator.naturalOrder())
+        .orElseThrow()
+        .toLocalDate();
+
+    passengers.forEach(passengerRequest -> {
+      String passengerType = normalizePassengerType(passengerRequest.passengerType());
+      if (!BookingBusinessPolicy.dungNhomHanhKhachTheoNgayKhoiHanh(
+          passengerType,
+          passengerRequest.dateOfBirth(),
+          departureDate
+      )) {
+        throw new BadRequestException(resolvePassengerAgeMismatchMessage(passengerType));
+      }
+    });
+  }
+
+  private String resolvePassengerAgeMismatchMessage(String passengerType) {
+    return switch (passengerType) {
+      case "adult" -> ADULT_AGE_MISMATCH_MESSAGE;
+      case "child" -> CHILD_AGE_MISMATCH_MESSAGE;
+      case "infant" -> INFANT_AGE_MISMATCH_MESSAGE;
+      default -> "Lo\u1ea1i h\u00e0nh kh\u00e1ch kh\u00f4ng h\u1ee3p l\u1ec7.";
+    };
   }
 
   private String normalizeTripType(String tripType) {

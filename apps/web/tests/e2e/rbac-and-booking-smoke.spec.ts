@@ -4,6 +4,24 @@ function encodeBase64Url(value: string) {
   return Buffer.from(value).toString("base64url");
 }
 
+function taoThoiDiemTuongLaiTheoUtc(soNgayCong: number, gio: number, phut: number) {
+  const hienTai = new Date();
+  return new Date(
+    Date.UTC(
+      hienTai.getUTCFullYear(),
+      hienTai.getUTCMonth(),
+      hienTai.getUTCDate() + soNgayCong,
+      gio,
+      phut,
+      0,
+      0
+    )
+  ).toISOString();
+}
+
+const THOI_DIEM_KHOI_HANH_HANDOFF = taoThoiDiemTuongLaiTheoUtc(7, 1, 30);
+const THOI_DIEM_HA_CANH_HANDOFF = taoThoiDiemTuongLaiTheoUtc(7, 3, 40);
+
 function createAccessToken(roles: string[], permissions: string[]) {
   const header = encodeBase64Url(JSON.stringify({
     alg: "none",
@@ -83,8 +101,8 @@ test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ p
         destinationCode: "HAN",
         from: "Thành phố Hồ Chí Minh",
         to: "Hà Nội",
-        departureAt: "2026-05-23T01:30:00Z",
-        arrivalAt: "2026-05-23T03:40:00Z",
+        departureAt: THOI_DIEM_KHOI_HANH_HANDOFF,
+        arrivalAt: THOI_DIEM_HA_CANH_HANDOFF,
         baseFare: 1490000,
         fareOptions: [
           {
@@ -130,8 +148,8 @@ test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ p
     + "&segment1To=H%C3%A0%20N%E1%BB%99i"
     + "&segment1OriginCode=SGN"
     + "&segment1DestinationCode=HAN"
-    + "&segment1DepartureAt=2026-05-23T01:30:00Z"
-    + "&segment1ArrivalAt=2026-05-23T03:40:00Z"
+    + `&segment1DepartureAt=${encodeURIComponent(THOI_DIEM_KHOI_HANH_HANDOFF)}`
+    + `&segment1ArrivalAt=${encodeURIComponent(THOI_DIEM_HA_CANH_HANDOFF)}`
     + "&segment1DepartureTime=08:30"
     + "&segment1ArrivalTime=10:40"
     + "&segment1BaseFare=1490000";

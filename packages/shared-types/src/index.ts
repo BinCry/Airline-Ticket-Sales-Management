@@ -15,7 +15,7 @@ export const STAFF_ROLES = [
 
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-export const TRIP_TYPES = ["one_way", "round_trip", "multi_city"] as const;
+export const TRIP_TYPES = ["one_way", "round_trip"] as const;
 export type TripType = (typeof TRIP_TYPES)[number];
 
 export const PASSENGER_TYPES = ["adult", "child", "infant"] as const;
@@ -210,7 +210,7 @@ export interface ApiFlightSearchCriteria {
   to: string;
   departureDate: string;
   returnDate: string | null;
-  tripType: Exclude<TripType, "multi_city">;
+  tripType: TripType;
   adultCount: number;
   childCount: number;
   infantCount: number;
@@ -250,7 +250,7 @@ export interface ApiFareCard {
 }
 
 export interface ApiFlightSearchResponse {
-  tripType: Exclude<TripType, "multi_city">;
+  tripType: TripType;
   from: string;
   to: string;
   filters: string[];
@@ -347,7 +347,7 @@ export interface ApiFlightBookingOptionsResponse {
 }
 
 export interface ApiCreateBookingHoldRequest {
-  tripType: Exclude<TripType, "multi_city">;
+  tripType: TripType;
   contact: ApiBookingContactInput;
   passengers: ApiBookingPassengerInput[];
   segments: ApiBookingSegmentInput[];
@@ -394,7 +394,7 @@ export interface ApiBookingHoldResponse {
   status: Extract<BookingStatus, "held">;
   expiresAt: string;
   createdAt: string;
-  tripType: Exclude<TripType, "multi_city">;
+  tripType: TripType;
   contact: ApiBookingContactInput;
   passengers: ApiBookingPassengerInput[];
   selectedSegments: ApiBookingSelectedSegment[];
@@ -550,7 +550,7 @@ export interface ApiManageBookingOverview {
   paymentStatus: Extract<PaymentStatus, "pending" | "paid" | "failed" | "expired">;
   holdExpiresAt: string | null;
   ticketedAt: string | null;
-  tripType: Exclude<TripType, "multi_city">;
+  tripType: TripType;
   steps: string[];
   segments: ApiManageBookingSegment[];
   contact: ApiManageBookingContact | null;
