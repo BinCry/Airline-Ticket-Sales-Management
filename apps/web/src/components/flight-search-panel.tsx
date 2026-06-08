@@ -6,23 +6,32 @@ import { useRouter } from "next/navigation";
 import { TRIP_TYPES, type AirportOption, type TripType } from "@qlvmb/shared-types";
 
 import { fetchAirportOptions } from "@/lib/airport-api";
-import { TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH, taoDuongDanTimChuyenBay } from "@/lib/flight-search-api";
+import {
+  taoDuongDanTimChuyenBay,
+  taoTieuChiTimChuyenBayMacDinh
+} from "@/lib/flight-search-api";
+import {
+  getVietnamTodayIso,
+  resolveRoundTripReturnDate
+} from "@/lib/public-flight-date";
 
 const tripLabels: Record<TripType, string> = {
   one_way: "Một chiều",
-  round_trip: "Khứ hồi",
+  round_trip: "Khứ hồi"
 };
 
 export function FlightSearchPanel() {
   const router = useRouter();
-  const [tripType, setTripType] = useState<TripType>(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.tripType);
-  const [from, setFrom] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from);
-  const [to, setTo] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to);
-  const [departureDate, setDepartureDate] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate);
-  const [returnDate, setReturnDate] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate ?? "");
-  const [adultCount, setAdultCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.adultCount);
-  const [childCount, setChildCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.childCount);
-  const [infantCount, setInfantCount] = useState(TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.infantCount);
+  const [tieuChiMacDinh] = useState(() => taoTieuChiTimChuyenBayMacDinh());
+  const [ngayHienTai] = useState(() => getVietnamTodayIso());
+  const [tripType, setTripType] = useState<TripType>(tieuChiMacDinh.tripType);
+  const [from, setFrom] = useState(tieuChiMacDinh.from);
+  const [to, setTo] = useState(tieuChiMacDinh.to);
+  const [departureDate, setDepartureDate] = useState(tieuChiMacDinh.departureDate);
+  const [returnDate, setReturnDate] = useState(tieuChiMacDinh.returnDate ?? "");
+  const [adultCount, setAdultCount] = useState(tieuChiMacDinh.adultCount);
+  const [childCount, setChildCount] = useState(tieuChiMacDinh.childCount);
+  const [infantCount, setInfantCount] = useState(tieuChiMacDinh.infantCount);
   const [dangChuyenTrang, setDangChuyenTrang] = useState(false);
   const [goiYSanBayDi, setGoiYSanBayDi] = useState<AirportOption[]>([]);
   const [goiYSanBayDen, setGoiYSanBayDen] = useState<AirportOption[]>([]);
@@ -97,6 +106,25 @@ export function FlightSearchPanel() {
     };
   }, [to]);
 
+  useEffect(() => {
+    if (departureDate && departureDate >= ngayHienTai) {
+      return;
+    }
+
+    setDepartureDate(ngayHienTai);
+  }, [departureDate, ngayHienTai]);
+
+  useEffect(() => {
+    if (tripType !== "round_trip") {
+      return;
+    }
+
+    const ngayKhoiHanh = departureDate || ngayHienTai;
+    setReturnDate((currentReturnDate) =>
+      resolveRoundTripReturnDate(ngayKhoiHanh, currentReturnDate)
+    );
+  }, [departureDate, ngayHienTai, tripType]);
+
   function dieuChinhSoLuong(
     giaTri: number,
     giaTriMacDinh: number,
@@ -115,14 +143,31 @@ export function FlightSearchPanel() {
     setTo(from);
   }
 
+  function capNhatLoaiHanhTrinh(loaiHanhTrinh: TripType) {
+    setTripType(loaiHanhTrinh);
+
+    if (loaiHanhTrinh !== "round_trip") {
+      return;
+    }
+
+    const ngayKhoiHanh = departureDate || tieuChiMacDinh.departureDate;
+    setReturnDate((currentReturnDate) =>
+      resolveRoundTripReturnDate(ngayKhoiHanh, currentReturnDate)
+    );
+  }
+
   function xuLyTimChuyenBay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const ngayKhoiHanh = departureDate || tieuChiMacDinh.departureDate;
     const duongDan = taoDuongDanTimChuyenBay({
-      from: from.trim().toUpperCase(),
-      to: to.trim().toUpperCase(),
-      departureDate,
-      returnDate: tripType === "round_trip" ? returnDate : null,
+      from: from.trim().toUpperCase() || tieuChiMacDinh.from,
+      to: to.trim().toUpperCase() || tieuChiMacDinh.to,
+      departureDate: ngayKhoiHanh,
+      returnDate:
+        tripType === "round_trip"
+          ? resolveRoundTripReturnDate(ngayKhoiHanh, returnDate)
+          : null,
       tripType,
       adultCount,
       childCount,
@@ -159,15 +204,15 @@ export function FlightSearchPanel() {
             key={item}
             type="button"
             className={tripType === item ? "toggle active" : "toggle"}
-            onClick={() => setTripType(item)}
+            onClick={() => capNhatLoaiHanhTrinh(item)}
           >
             {tripLabels[item]}
           </button>
         ))}
       </div>
       <div className="search-note">
-        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hiện có thể tìm vé cho một chiều và khứ
-        hồi; hành trình nhiều chặng sẽ được bổ sung sau.
+        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hiện có thể tìm vé cho một chiều và
+        khứ hồi; hành trình nhiều chặng sẽ được bổ sung sau.
       </div>
       <div className="route-pair">
         <label className="field route-field">
@@ -226,6 +271,7 @@ export function FlightSearchPanel() {
           <span>Ngày đi</span>
           <input
             type="date"
+            min={ngayHienTai}
             value={departureDate}
             onChange={(event) => setDepartureDate(event.target.value)}
           />
@@ -234,6 +280,7 @@ export function FlightSearchPanel() {
           <span>Ngày về</span>
           <input
             type="date"
+            min={departureDate || ngayHienTai}
             value={tripType === "one_way" ? "" : returnDate}
             disabled={tripType === "one_way"}
             onChange={(event) => setReturnDate(event.target.value)}
@@ -290,9 +337,7 @@ export function FlightSearchPanel() {
       <div className="search-footer">
         <div>
           <strong>{passengerSummary}</strong>
-          <p>
-            Giữ chỗ trong 15 phút sau khi bạn chọn được chuyến bay phù hợp.
-          </p>
+          <p>Giữ chỗ trong 15 phút sau khi bạn chọn được chuyến bay phù hợp.</p>
         </div>
         <button
           type="submit"
@@ -305,5 +350,3 @@ export function FlightSearchPanel() {
     </form>
   );
 }
-
-

@@ -23,16 +23,20 @@ const THOI_DIEM_KHOI_HANH_HANDOFF = taoThoiDiemTuongLaiTheoUtc(7, 1, 30);
 const THOI_DIEM_HA_CANH_HANDOFF = taoThoiDiemTuongLaiTheoUtc(7, 3, 40);
 
 function createAccessToken(roles: string[], permissions: string[]) {
-  const header = encodeBase64Url(JSON.stringify({
-    alg: "none",
-    typ: "JWT"
-  }));
-  const payload = encodeBase64Url(JSON.stringify({
-    type: "access",
-    exp: Math.floor(Date.now() / 1000) + 60 * 30,
-    roles,
-    permissions
-  }));
+  const header = encodeBase64Url(
+    JSON.stringify({
+      alg: "none",
+      typ: "JWT"
+    })
+  );
+  const payload = encodeBase64Url(
+    JSON.stringify({
+      type: "access",
+      exp: Math.floor(Date.now() / 1000) + 60 * 30,
+      roles,
+      permissions
+    })
+  );
   return `${header}.${payload}.signature`;
 }
 
@@ -53,6 +57,21 @@ async function setAccessTokenCookie(
       expires: Math.floor(Date.now() / 1000) + 60 * 30
     }
   ]);
+}
+
+function taoDuongDanHandoff() {
+  return "/booking?adultCount=1&childCount=0&infantCount=0&tripType=one_way"
+    + "&segment1FlightId=18"
+    + "&segment1Code=VN5201"
+    + "&segment1From=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh"
+    + "&segment1To=H%C3%A0%20N%E1%BB%99i"
+    + "&segment1OriginCode=SGN"
+    + "&segment1DestinationCode=HAN"
+    + `&segment1DepartureAt=${encodeURIComponent(THOI_DIEM_KHOI_HANH_HANDOFF)}`
+    + `&segment1ArrivalAt=${encodeURIComponent(THOI_DIEM_HA_CANH_HANDOFF)}`
+    + "&segment1DepartureTime=08:30"
+    + "&segment1ArrivalTime=10:40"
+    + "&segment1BaseFare=1490000";
 }
 
 test("guest bị chuyển về đăng nhập khi mở trang account", async ({ page }) => {
@@ -87,6 +106,29 @@ test("operations_staff vào được admin và operations", async ({ page }) => 
 
   await page.goto("/backoffice/operations");
   await expect(page).toHaveURL(/\/backoffice\/operations/);
+});
+
+test("trang chủ mặc định chọn một chiều", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "Một chiều" })).toHaveClass(/active/);
+  await expect(page.getByRole("button", { name: "Khứ hồi" })).not.toHaveClass(/active/);
+  await expect(page.locator('input[type="date"]').nth(1)).toBeDisabled();
+});
+
+test("trang hỗ trợ không render highlight FAQ", async ({ page }) => {
+  await page.goto("/support");
+
+  await page.getByRole("searchbox").fill("hoàn vé");
+  await expect(page.locator("mark")).toHaveCount(0);
+
+  await page
+    .locator(".support-faq-suggestion-list button", {
+      hasText: "Tôi muốn hoàn vé hoặc hủy đặt chỗ thì cần làm gì?"
+    })
+    .first()
+    .click();
+  await expect(page.locator("mark")).toHaveCount(0);
 });
 
 test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ page }) => {
@@ -141,21 +183,25 @@ test("màn booking hiển thị seat map khi có handoff hợp lệ", async ({ p
     });
   });
 
-  const handoffUrl = "/booking?adultCount=1&childCount=0&infantCount=0&tripType=one_way"
-    + "&segment1FlightId=18"
-    + "&segment1Code=VN5201"
-    + "&segment1From=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh"
-    + "&segment1To=H%C3%A0%20N%E1%BB%99i"
-    + "&segment1OriginCode=SGN"
-    + "&segment1DestinationCode=HAN"
-    + `&segment1DepartureAt=${encodeURIComponent(THOI_DIEM_KHOI_HANH_HANDOFF)}`
-    + `&segment1ArrivalAt=${encodeURIComponent(THOI_DIEM_HA_CANH_HANDOFF)}`
-    + "&segment1DepartureTime=08:30"
-    + "&segment1ArrivalTime=10:40"
-    + "&segment1BaseFare=1490000";
-
-  await page.goto(handoffUrl);
+  await page.goto(taoDuongDanHandoff());
   await expect(page.locator(".seat-map-cabin")).toBeVisible();
   await expect(page.locator(".seat-map-wing-left")).toBeVisible();
   await expect(page.locator(".seat-map-wing-right")).toBeVisible();
+});
+
+test("màn booking báo rõ khi chuyến bay đã quá ngưỡng mở bán công khai", async ({ page }) => {
+  await page.route("**/api/flights/18/booking-options", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 400,
+      body: JSON.stringify({
+        message: "Chuyến bay hiện không còn mở bán."
+      })
+    });
+  });
+
+  await page.goto(taoDuongDanHandoff());
+  const theLoi = page.locator(".booking-inline-error").first();
+  await expect(theLoi.getByText("Không thể tải lựa chọn chuyến bay")).toBeVisible();
+  await expect(theLoi.getByText("Chuyến bay hiện không còn mở bán.")).toBeVisible();
 });

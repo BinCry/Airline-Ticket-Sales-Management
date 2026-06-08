@@ -1894,13 +1894,6 @@ img {
   padding-right: 50px;
 }
 
-.support-faq-highlight {
-  padding: 0 2px;
-  border-radius: 4px;
-  background: rgba(202, 164, 95, 0.28);
-  color: inherit;
-}
-
 .booking-summary-card {
   padding: 22px;
   border-radius: var(--radius-lg);

@@ -3,12 +3,14 @@ package com.qlvmb.airticket.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.qlvmb.airticket.domain.dto.FlightBookingOptionsResponse;
 import com.qlvmb.airticket.domain.dto.FlightSearchResponse;
 import com.qlvmb.airticket.domain.entity.AirportEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
@@ -22,6 +24,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +40,9 @@ class FlightSearchServiceTest {
   private AirportRepository airportRepository;
 
   @Mock
+  private BookingService bookingService;
+
+  @Mock
   private FlightRepository flightRepository;
 
   @Mock
@@ -48,6 +54,7 @@ class FlightSearchServiceTest {
   void setUp() {
     flightSearchService = new FlightSearchService(
         airportRepository,
+        bookingService,
         bookingSeatSelectionRepository,
         flightRepository,
         new ProductCatalogService(),
@@ -57,6 +64,7 @@ class FlightSearchServiceTest {
 
   @Test
   void searchFlights_shouldReturnOutboundFlightsForOneWayTrip() {
+    LocalDate ngayDi = ngayTuongLai(7);
     mockAirportExists("SGN", "HAN");
     FlightEntity outboundFlight = mockFlight(
         201L,
@@ -65,8 +73,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T06:10:00+07:00",
-        "2026-03-20T08:20:00+07:00",
+        thoiDiem(ngayDi, 6, 10),
+        thoiDiem(ngayDi, 8, 20),
         "on_time",
         List.of(mockInventory(2001L, "pho_thong_tiet_kiem", 8, 1490000L))
     );
@@ -75,7 +83,7 @@ class FlightSearchServiceTest {
     FlightSearchResponse response = flightSearchService.searchFlights(
         "sgn",
         "han",
-        LocalDate.of(2026, 3, 20),
+        ngayDi,
         null,
         "one_way",
         1,
@@ -93,6 +101,8 @@ class FlightSearchServiceTest {
 
   @Test
   void searchFlights_shouldReturnRoundTripFlights() {
+    LocalDate ngayDi = ngayTuongLai(7);
+    LocalDate ngayVe = ngayTuongLai(10);
     mockAirportExists("SGN", "HAN");
     FlightEntity outboundFlight = mockFlight(
         215L,
@@ -101,8 +111,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T09:45:00+07:00",
-        "2026-03-20T11:55:00+07:00",
+        thoiDiem(ngayDi, 9, 45),
+        thoiDiem(ngayDi, 11, 55),
         "boarding",
         List.of(mockInventory(2002L, "pho_thong_linh_hoat", 5, 1890000L))
     );
@@ -113,8 +123,8 @@ class FlightSearchServiceTest {
         "Ha Noi",
         "SGN",
         "Thanh pho Ho Chi Minh",
-        "2026-03-23T14:20:00+07:00",
-        "2026-03-23T16:30:00+07:00",
+        thoiDiem(ngayVe, 14, 20),
+        thoiDiem(ngayVe, 16, 30),
         "on_time",
         List.of(mockInventory(2003L, "pho_thong_linh_hoat", 4, 1920000L))
     );
@@ -124,8 +134,8 @@ class FlightSearchServiceTest {
     FlightSearchResponse response = flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
-        LocalDate.of(2026, 3, 23),
+        ngayDi,
+        ngayVe,
         "round_trip",
         1,
         0,
@@ -136,11 +146,12 @@ class FlightSearchServiceTest {
     assertThat(response.returnFlights()).hasSize(1);
     assertThat(response.flights()).hasSize(2);
     assertThat(response.fares()).hasSize(3);
-    assertThat(response.criteria().returnDate()).isEqualTo("2026-03-23");
+    assertThat(response.criteria().returnDate()).isEqualTo(ngayVe.toString());
   }
 
   @Test
   void searchFlights_shouldReturnFareOptionsTheoChuyenBay() {
+    LocalDate ngayDi = ngayTuongLai(7);
     mockAirportExists("SGN", "HAN");
     FlightEntity outboundFlight = mockFlight(
         233L,
@@ -149,8 +160,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T18:20:00+07:00",
-        "2026-03-20T20:35:00+07:00",
+        thoiDiem(ngayDi, 18, 20),
+        thoiDiem(ngayDi, 20, 35),
         "scheduled",
         List.of(
             mockInventory(2004L, "pho_thong_tiet_kiem", 9, 1490000L),
@@ -162,7 +173,7 @@ class FlightSearchServiceTest {
     FlightSearchResponse response = flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayDi,
         null,
         "one_way",
         1,
@@ -179,6 +190,7 @@ class FlightSearchServiceTest {
 
   @Test
   void searchFlights_shouldReturnGiaThapNhatChoTungHangVe() {
+    LocalDate ngayDi = ngayTuongLai(7);
     mockAirportExists("SGN", "HAN");
     FlightEntity firstFlight = mockFlight(
         701L,
@@ -187,8 +199,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T07:00:00+07:00",
-        "2026-03-20T09:10:00+07:00",
+        thoiDiem(ngayDi, 7, 0),
+        thoiDiem(ngayDi, 9, 10),
         "scheduled",
         List.of(
             mockInventory(2701L, "pho_thong_tiet_kiem", 12, 1490000L),
@@ -203,8 +215,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T11:30:00+07:00",
-        "2026-03-20T13:40:00+07:00",
+        thoiDiem(ngayDi, 11, 30),
+        thoiDiem(ngayDi, 13, 40),
         "scheduled",
         List.of(
             mockInventory(2711L, "pho_thong_tiet_kiem", 9, 1590000L),
@@ -218,7 +230,7 @@ class FlightSearchServiceTest {
     FlightSearchResponse response = flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayDi,
         null,
         "one_way",
         1,
@@ -242,7 +254,7 @@ class FlightSearchServiceTest {
     assertThatThrownBy(() -> flightSearchService.searchFlights(
         "XXX",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayTuongLai(7),
         null,
         "one_way",
         1,
@@ -255,13 +267,14 @@ class FlightSearchServiceTest {
 
   @Test
   void searchFlights_shouldRejectReturnDateBeforeDepartureDate() {
+    LocalDate ngayDi = ngayTuongLai(7);
     mockAirportExists("SGN", "HAN");
 
     assertThatThrownBy(() -> flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
-        LocalDate.of(2026, 3, 19),
+        ngayDi,
+        ngayDi.minusDays(1),
         "round_trip",
         1,
         0,
@@ -278,7 +291,7 @@ class FlightSearchServiceTest {
     assertThatThrownBy(() -> flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayTuongLai(7),
         null,
         "one_way",
         4,
@@ -296,7 +309,7 @@ class FlightSearchServiceTest {
     assertThatThrownBy(() -> flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayTuongLai(7),
         null,
         "one_way",
         1,
@@ -309,6 +322,7 @@ class FlightSearchServiceTest {
 
   @Test
   void searchFlights_shouldUseAvailableSeatsInsteadOfTotalSeats() {
+    LocalDate ngayDi = ngayTuongLai(7);
     mockAirportExists("SGN", "HAN");
     FlightEntity outboundFlight = mockFlight(
         450L,
@@ -317,8 +331,8 @@ class FlightSearchServiceTest {
         "Thanh pho Ho Chi Minh",
         "HAN",
         "Ha Noi",
-        "2026-03-20T21:00:00+07:00",
-        "2026-03-20T23:10:00+07:00",
+        thoiDiem(ngayDi, 21, 0),
+        thoiDiem(ngayDi, 23, 10),
         "scheduled",
         List.of(mockInventory(2450L, "pho_thong_tiet_kiem", 2, 18, 1590000L))
     );
@@ -327,7 +341,7 @@ class FlightSearchServiceTest {
     FlightSearchResponse response = flightSearchService.searchFlights(
         "SGN",
         "HAN",
-        LocalDate.of(2026, 3, 20),
+        ngayDi,
         null,
         "one_way",
         1,
@@ -338,6 +352,133 @@ class FlightSearchServiceTest {
     assertThat(response.outboundFlights()).hasSize(1);
     assertThat(response.outboundFlights().getFirst().fares()).hasSize(1);
     assertThat(response.outboundFlights().getFirst().fares().getFirst().seatsLeft()).isEqualTo(2);
+  }
+
+  @Test
+  void searchFlights_shouldReconcileExpiredHoldsBeforeReturningFlights() {
+    LocalDate ngayDi = ngayTuongLai(7);
+    mockAirportExists("SGN", "HAN");
+    FlightEntity outboundFlight = mockFlight(
+        901L,
+        "VN901",
+        "SGN",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "Ha Noi",
+        thoiDiem(ngayDi, 10, 0),
+        thoiDiem(ngayDi, 12, 10),
+        "scheduled",
+        List.of(
+            mockInventory(2901L, "pho_thong_tiet_kiem", 8, 1490000L),
+            mockInventory(2902L, "pho_thong_linh_hoat", 4, 1990000L)
+        )
+    );
+    when(flightRepository.searchRoute(eq("SGN"), eq("HAN"), any(), any())).thenReturn(List.of(outboundFlight));
+
+    flightSearchService.searchFlights("SGN", "HAN", ngayDi, null, "one_way", 1, 0, 0);
+
+    verify(bookingService).reconcileExpiredHoldsForInventories(
+        argThat(ids -> ids.containsAll(List.of(2901L, 2902L))),
+        any()
+    );
+  }
+
+  @Test
+  void searchFlights_shouldHideFlightsPastPublicCutoff() {
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
+    LocalDate ngayDi = currentTime.toLocalDate();
+    mockAirportExists("SGN", "HAN");
+    FlightEntity outboundFlight = mockFlight(
+        902L,
+        "VN902",
+        "SGN",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "Ha Noi",
+        currentTime.plusMinutes(20).toString(),
+        currentTime.plusHours(2).plusMinutes(20).toString(),
+        "scheduled",
+        List.of(mockInventory(2903L, "pho_thong_tiet_kiem", 8, 1490000L))
+    );
+    when(flightRepository.searchRoute(eq("SGN"), eq("HAN"), any(), any())).thenReturn(List.of(outboundFlight));
+
+    FlightSearchResponse response = flightSearchService.searchFlights(
+        "SGN",
+        "HAN",
+        ngayDi,
+        null,
+        "one_way",
+        1,
+        0,
+        0
+    );
+
+    assertThat(response.outboundFlights()).isEmpty();
+  }
+
+  @Test
+  void getBookingOptions_shouldReconcileExpiredHoldsAndReturnOccupiedSeats() {
+    LocalDate ngayDi = ngayTuongLai(7);
+    FlightEntity flight = mockFlight(
+        903L,
+        "VN903",
+        "SGN",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "Ha Noi",
+        thoiDiem(ngayDi, 11, 0),
+        thoiDiem(ngayDi, 13, 10),
+        "scheduled",
+        List.of(
+            mockInventory(3901L, "pho_thong_tiet_kiem", 8, 1490000L),
+            mockInventory(3902L, "pho_thong_linh_hoat", 4, 1990000L)
+        )
+    );
+    when(flightRepository.findDetailedById(903L)).thenReturn(Optional.of(flight));
+    when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(eq(903L), any()))
+        .thenReturn(List.of("9A", "3C"));
+
+    FlightBookingOptionsResponse response = flightSearchService.getBookingOptions(903L);
+
+    assertThat(response.fareOptions()).hasSize(2);
+    assertThat(response.seats())
+        .filteredOn(FlightBookingOptionsResponse.SeatItem::occupied)
+        .extracting(FlightBookingOptionsResponse.SeatItem::seatNumber)
+        .containsExactlyInAnyOrder("9A", "3C");
+    verify(bookingService).reconcileExpiredHoldsForInventories(
+        argThat(ids -> ids.containsAll(List.of(3901L, 3902L))),
+        any()
+    );
+  }
+
+  @Test
+  void getBookingOptions_shouldRejectFlightsPastPublicCutoff() {
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
+    FlightEntity flight = mockFlight(
+        904L,
+        "VN904",
+        "SGN",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "Ha Noi",
+        currentTime.plusMinutes(10).toString(),
+        currentTime.plusHours(2).plusMinutes(10).toString(),
+        "scheduled",
+        List.of(mockInventory(4901L, "pho_thong_tiet_kiem", 8, 1490000L))
+    );
+    when(flightRepository.findDetailedById(904L)).thenReturn(Optional.of(flight));
+
+    assertThatThrownBy(() -> flightSearchService.getBookingOptions(904L))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Chuyến bay hiện không còn mở bán.");
+  }
+
+  private LocalDate ngayTuongLai(int soNgayCong) {
+    return PublicFlightWindowPolicy.currentTime().toLocalDate().plusDays(soNgayCong);
+  }
+
+  private String thoiDiem(LocalDate ngay, int gio, int phut) {
+    return String.format("%sT%02d:%02d:00+07:00", ngay, gio, phut);
   }
 
   private void mockAirportExists(String... airportCodes) {
@@ -378,12 +519,17 @@ class FlightSearchServiceTest {
 
   private AirportEntity mockAirport(String code, String cityName) {
     AirportEntity airport = org.mockito.Mockito.mock(AirportEntity.class);
-    when(airport.getCode()).thenReturn(code);
-    when(airport.getCityName()).thenReturn(cityName);
+    lenient().when(airport.getCode()).thenReturn(code);
+    lenient().when(airport.getCityName()).thenReturn(cityName);
     return airport;
   }
 
-  private FlightFareInventoryEntity mockInventory(long id, String fareFamily, int availableSeats, long price) {
+  private FlightFareInventoryEntity mockInventory(
+      long id,
+      String fareFamily,
+      int availableSeats,
+      long price
+  ) {
     return mockInventory(id, fareFamily, availableSeats, availableSeats, price);
   }
 
@@ -395,11 +541,11 @@ class FlightSearchServiceTest {
       long price
   ) {
     FlightFareInventoryEntity inventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
-    when(inventory.getId()).thenReturn(id);
-    when(inventory.getFareFamily()).thenReturn(fareFamily);
+    lenient().when(inventory.getId()).thenReturn(id);
+    lenient().when(inventory.getFareFamily()).thenReturn(fareFamily);
     lenient().when(inventory.getTotalSeats()).thenReturn(totalSeats);
-    when(inventory.getAvailableSeats()).thenReturn(availableSeats);
-    when(inventory.getPrice()).thenReturn(price);
+    lenient().when(inventory.getAvailableSeats()).thenReturn(availableSeats);
+    lenient().when(inventory.getPrice()).thenReturn(price);
     return inventory;
   }
 }

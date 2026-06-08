@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,14 +29,17 @@ public class FlightStatusService {
 
   @Transactional(readOnly = true)
   public FlightStatusResponse getFlightStatus(String code, LocalDate date) {
-    String normalizedCode = code == null ? "" : code.trim().toUpperCase();
+    String normalizedCode = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
 
     if (!normalizedCode.isBlank()) {
       FlightEntity flight = flightRepository.findStatusByCode(normalizedCode)
           .orElseThrow(() -> new NotFoundException("Không tìm thấy chuyến bay theo mã đã nhập."));
 
-      if (date != null && !flight.getDepartureAt().atZoneSameInstant(ZONE_ID).toLocalDate().equals(date)) {
-        return new FlightStatusResponse(normalizedCode, date.toString(), List.of());
+      boolean dateMismatch = date != null
+          && !flight.getDepartureAt().atZoneSameInstant(ZONE_ID).toLocalDate().equals(date);
+      if (dateMismatch || !PublicFlightWindowPolicy.isVisibleOnPublicSurfaces(flight, currentTime)) {
+        return new FlightStatusResponse(normalizedCode, date == null ? null : date.toString(), List.of());
       }
 
       return new FlightStatusResponse(
@@ -46,7 +50,7 @@ public class FlightStatusService {
     }
 
     OffsetDateTime start = date == null
-        ? OffsetDateTime.now(ZONE_ID).minusHours(2)
+        ? currentTime.minusHours(2)
         : date.atStartOfDay(ZONE_ID).toOffsetDateTime();
     OffsetDateTime end = date == null
         ? start.plusDays(DEFAULT_LOOKAHEAD_DAYS)
@@ -55,6 +59,7 @@ public class FlightStatusService {
     List<FlightStatusResponse.FlightStatusItem> flights = flightRepository
         .findStatusesByDepartureWindow(start, end)
         .stream()
+        .filter(flight -> PublicFlightWindowPolicy.isVisibleOnPublicSurfaces(flight, currentTime))
         .limit(DEFAULT_LIMIT)
         .map(this::mapFlight)
         .toList();
@@ -86,7 +91,7 @@ public class FlightStatusService {
 
   private String resolveGate(FlightEntity flight) {
     if (flight.getGate() != null && !flight.getGate().isBlank()) {
-      return flight.getGate().trim().toUpperCase();
+      return flight.getGate().trim().toUpperCase(Locale.ROOT);
     }
     long flightId = flight.getId() == null ? 1L : flight.getId();
     return "G" + ((flightId % 8) + 1);

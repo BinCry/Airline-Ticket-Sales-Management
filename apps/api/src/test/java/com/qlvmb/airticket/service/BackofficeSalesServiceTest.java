@@ -1,8 +1,10 @@
 package com.qlvmb.airticket.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,7 @@ import com.qlvmb.airticket.domain.dto.PaymentCallbackRequest;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.UserAccountEntity;
+import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.AuditLogRepository;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.UserAccountRepository;
@@ -124,6 +127,19 @@ class BackofficeSalesServiceTest {
 
     assertThat(response.bookingCode()).isEqualTo("QC6001");
     verify(auditLogRepository).save(any(AuditLogEntity.class));
+  }
+
+  @Test
+  void createBooking_shouldRejectWhenFlightPastPublicCutoff() {
+    BookingHoldRequest request = createHoldRequest();
+    when(userAccountRepository.findOneWithRolesById(201L)).thenReturn(Optional.of(createActorAccount()));
+    when(bookingService.createHold(request))
+        .thenThrow(new BadRequestException("Chuyến bay hiện không còn mở bán công khai."));
+
+    assertThatThrownBy(() -> backofficeSalesService.createBooking(actor(), request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Chuyến bay hiện không còn mở bán công khai.");
+    verify(auditLogRepository, never()).save(any(AuditLogEntity.class));
   }
 
   @Test

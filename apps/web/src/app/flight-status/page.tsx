@@ -5,6 +5,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { fetchFlightStatus, taoDuongDanTinhTrangChuyenBay } from "@/lib/flight-status-api";
+import { getVietnamTodayIso } from "@/lib/public-flight-date";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +43,17 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const code = layGiaTriDauTien(resolvedSearchParams.code).trim().toUpperCase();
   const date = layGiaTriDauTien(resolvedSearchParams.date).trim();
+  const ngayHienTai = getVietnamTodayIso();
   let errorMessage: string | null = null;
   let data: ApiFlightStatusResponse | null = null;
 
   try {
     data = await fetchFlightStatus({ code, date });
   } catch (error) {
-    errorMessage = resolveApiClientErrorMessage(error, "Không thể tải tình trạng chuyến bay lúc này.");
+    errorMessage = resolveApiClientErrorMessage(
+      error,
+      "Không thể tải tình trạng chuyến bay lúc này."
+    );
   }
 
   const flights = data?.flights ?? [];
@@ -59,16 +64,22 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
         <div className="page-hero-card">
           <div>
             <span className="section-eyebrow">Tình trạng chuyến bay</span>
-            <h1 className="page-title">Theo dõi giờ bay, cửa ra tàu và trạng thái mới nhất của chuyến bay.</h1>
+            <h1 className="page-title">
+              Theo dõi giờ bay, cửa ra tàu và trạng thái mới nhất của chuyến bay.
+            </h1>
             <p className="page-hero-copy">
-              Nhập mã chuyến bay hoặc chọn ngày để kiểm tra lịch khởi hành, giờ đến và thông tin cần chuẩn bị trước khi ra sân bay.
+              Nhập mã chuyến bay hoặc chọn ngày để kiểm tra lịch khởi hành, giờ đến và thông
+              tin cần chuẩn bị trước khi ra sân bay.
             </p>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Tra cứu nhanh</span>
-            <h3>VN5201</h3>
-            <p>Tuyến Thành phố Hồ Chí Minh - Hà Nội ngày 23/05/2026.</p>
-            <Link href={taoDuongDanTinhTrangChuyenBay({ code: "VN5201", date: "2026-05-23" })} className="button button-secondary">
+            <h3>Chuyến bay hôm nay</h3>
+            <p>Xem nhanh các chuyến bay công khai còn hiển thị trong ngày theo giờ Việt Nam.</p>
+            <Link
+              href={taoDuongDanTinhTrangChuyenBay({ date: ngayHienTai })}
+              className="button button-secondary"
+            >
               Tra cứu nhanh
             </Link>
           </div>
@@ -83,7 +94,12 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
             </label>
             <label className="field">
               <span>Ngày bay</span>
-              <input name="date" defaultValue={date} type="date" />
+              <input
+                name="date"
+                defaultValue={date || ngayHienTai}
+                min={ngayHienTai}
+                type="date"
+              />
             </label>
             <button className="button button-primary" type="submit">
               Tra cứu chuyến bay
@@ -111,8 +127,12 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
                 <div className="result-top">
                   <div>
                     <span className="section-eyebrow">Chuyến bay {flight.code}</span>
-                    <h3>{flight.from} → {flight.to}</h3>
-                    <p>{flight.originCode} đến {flight.destinationCode}</p>
+                    <h3>
+                      {flight.from} → {flight.to}
+                    </h3>
+                    <p>
+                      {flight.originCode} đến {flight.destinationCode}
+                    </p>
                   </div>
                   <StatusChip tone={toneMap[flight.status]} label={flight.statusLabel} />
                 </div>

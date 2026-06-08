@@ -6,19 +6,16 @@ import {
 } from "@qlvmb/shared-types";
 
 import { ApiClientError, requestApi } from "@/lib/api-client";
+import {
+  createDefaultFlightSearchCriteria,
+  resolveRoundTripReturnDate
+} from "@/lib/public-flight-date";
 
 type RawSearchParam = string | string[] | undefined;
 
-export const TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH: ApiFlightSearchCriteria = {
-  from: "SGN",
-  to: "HAN",
-  departureDate: "2026-05-23",
-  returnDate: "2026-05-26",
-  tripType: "round_trip",
-  adultCount: 1,
-  childCount: 0,
-  infantCount: 0
-};
+export function taoTieuChiTimChuyenBayMacDinh(referenceDate: Date = new Date()) {
+  return createDefaultFlightSearchCriteria(referenceDate);
+}
 
 export class FlightSearchApiError extends ApiClientError {
   constructor(
@@ -80,7 +77,7 @@ function chuanHoaSoLuong(giaTri: RawSearchParam, macDinh: number, soToiThieu: nu
 }
 
 function chuanHoaLoaiHanhTrinh(giaTri: RawSearchParam): ApiFlightSearchCriteria["tripType"] {
-  return layGiaTriDauTien(giaTri) === "one_way" ? "one_way" : "round_trip";
+  return layGiaTriDauTien(giaTri) === "round_trip" ? "round_trip" : "one_way";
 }
 
 function laMangChuyenBayHopLe(giaTri: unknown): giaTri is ApiFlightCard[] {
@@ -94,39 +91,25 @@ function laMangGoiGiaHopLe(giaTri: unknown): giaTri is ApiFareCard[] {
 export function chuanHoaTieuChiTimChuyenBay(
   searchParams: Record<string, RawSearchParam>
 ): ApiFlightSearchCriteria {
+  const tieuChiMacDinh = taoTieuChiTimChuyenBayMacDinh();
   const tripType = chuanHoaLoaiHanhTrinh(searchParams.tripType);
-  const departureDate = chuanHoaNgay(
-    searchParams.departureDate,
-    TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate
-  );
+  const departureDate = chuanHoaNgay(searchParams.departureDate, tieuChiMacDinh.departureDate);
   const returnDate = tripType === "one_way"
     ? null
-    : chuanHoaNgay(
-        searchParams.returnDate,
-        TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate ?? TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate
+    : resolveRoundTripReturnDate(
+        departureDate,
+        layGiaTriDauTien(searchParams.returnDate)
       );
 
   return {
-    from: chuanHoaMaSanBay(searchParams.from, TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from),
-    to: chuanHoaMaSanBay(searchParams.to, TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to),
+    from: chuanHoaMaSanBay(searchParams.from, tieuChiMacDinh.from),
+    to: chuanHoaMaSanBay(searchParams.to, tieuChiMacDinh.to),
     departureDate,
     returnDate,
     tripType,
-    adultCount: chuanHoaSoLuong(
-      searchParams.adultCount,
-      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.adultCount,
-      1
-    ),
-    childCount: chuanHoaSoLuong(
-      searchParams.childCount,
-      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.childCount,
-      0
-    ),
-    infantCount: chuanHoaSoLuong(
-      searchParams.infantCount,
-      TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.infantCount,
-      0
-    )
+    adultCount: chuanHoaSoLuong(searchParams.adultCount, tieuChiMacDinh.adultCount, 1),
+    childCount: chuanHoaSoLuong(searchParams.childCount, tieuChiMacDinh.childCount, 0),
+    infantCount: chuanHoaSoLuong(searchParams.infantCount, tieuChiMacDinh.infantCount, 0)
   };
 }
 

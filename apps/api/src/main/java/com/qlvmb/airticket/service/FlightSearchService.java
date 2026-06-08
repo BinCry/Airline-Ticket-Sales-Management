@@ -25,6 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class FlightSearchService {
 
   private static final ZoneId ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
+  private static final String BOOKING_OPTIONS_NOT_FOUND_MESSAGE =
+      "Không tìm thấy chuyến bay được chọn.";
+  private static final String PUBLIC_BOOKING_CLOSED_MESSAGE =
+      "Chuyến bay hiện không còn mở bán.";
   private static final List<String> SEARCH_FILTERS = List.of(
       "Giờ bay",
       "Ngân sách",
@@ -32,6 +36,7 @@ public class FlightSearchService {
   );
 
   private final AirportRepository airportRepository;
+  private final BookingService bookingService;
   private final BookingSeatSelectionRepository bookingSeatSelectionRepository;
   private final FlightRepository flightRepository;
   private final ProductCatalogService productCatalogService;
@@ -39,19 +44,21 @@ public class FlightSearchService {
 
   public FlightSearchService(
       AirportRepository airportRepository,
+      BookingService bookingService,
       BookingSeatSelectionRepository bookingSeatSelectionRepository,
       FlightRepository flightRepository,
       ProductCatalogService productCatalogService,
       FlightSearchMapper flightSearchMapper
   ) {
     this.airportRepository = airportRepository;
+    this.bookingService = bookingService;
     this.bookingSeatSelectionRepository = bookingSeatSelectionRepository;
     this.flightRepository = flightRepository;
     this.productCatalogService = productCatalogService;
     this.flightSearchMapper = flightSearchMapper;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public FlightSearchResponse searchFlights(
       String from,
       String to,
@@ -109,17 +116,21 @@ public class FlightSearchService {
     );
   }
 
+  @Transactional
   public FlightBookingOptionsResponse getBookingOptions(Long flightId) {
     FlightEntity flight = flightRepository.findDetailedById(flightId)
-        .orElseThrow(() -> new BadRequestException("Không tìm thấy chuyến bay được chọn."));
+        .orElseThrow(() -> new BadRequestException(BOOKING_OPTIONS_NOT_FOUND_MESSAGE));
 
-    if (!flight.isSalesOpen() || "cancelled".equals(flight.getStatus())) {
-      throw new BadRequestException("Chuyến bay hiện không còn mở bán.");
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
+    reconcileExpiredHoldsForFlight(flight, currentTime);
+
+    if (!PublicFlightWindowPolicy.isPublicBookingOpen(flight, currentTime)) {
+      throw new BadRequestException(PUBLIC_BOOKING_CLOSED_MESSAGE);
     }
 
     List<FlightBookingOptionsResponse.FareOptionItem> fareOptions = buildBookingFareOptions(flight);
     Set<String> occupiedSeats = new LinkedHashSet<>(
-        bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(flightId, OffsetDateTime.now())
+        bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(flightId, currentTime)
     );
 
     return new FlightBookingOptionsResponse(
@@ -149,11 +160,14 @@ public class FlightSearchService {
       String to,
       LocalDate date
   ) {
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
     OffsetDateTime start = date.atStartOfDay(ZONE_ID).toOffsetDateTime();
     OffsetDateTime end = date.plusDays(1).atStartOfDay(ZONE_ID).toOffsetDateTime();
-    return flightRepository.searchRoute(from, to, start, end).stream()
-        .filter(FlightEntity::isSalesOpen)
-        .filter(flight -> !"cancelled".equals(flight.getStatus()))
+    List<FlightEntity> flights = flightRepository.searchRoute(from, to, start, end);
+    reconcileExpiredHoldsForFlights(flights, currentTime);
+
+    return flights.stream()
+        .filter(flight -> PublicFlightWindowPolicy.isPublicBookingOpen(flight, currentTime))
         .map(flight -> {
           List<FlightSearchResponse.FareOption> fareOptions = buildFareOptions(flight);
           if (fareOptions.isEmpty()) {
@@ -168,6 +182,30 @@ public class FlightSearchService {
         .filter(Objects::nonNull)
         .sorted(Comparator.comparing(FlightSearchResponse.FlightCard::departureAt))
         .toList();
+  }
+
+  private void reconcileExpiredHoldsForFlights(
+      Collection<FlightEntity> flights,
+      OffsetDateTime currentTime
+  ) {
+    List<Long> inventoryIds = flights.stream()
+        .flatMap(flight -> flight.getFareInventories().stream())
+        .map(FlightFareInventoryEntity::getId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+    bookingService.reconcileExpiredHoldsForInventories(inventoryIds, currentTime);
+  }
+
+  private void reconcileExpiredHoldsForFlight(
+      FlightEntity flight,
+      OffsetDateTime currentTime
+  ) {
+    List<Long> inventoryIds = flight.getFareInventories().stream()
+        .map(FlightFareInventoryEntity::getId)
+        .filter(Objects::nonNull)
+        .toList();
+    bookingService.reconcileExpiredHoldsForInventories(inventoryIds, currentTime);
   }
 
   private List<FlightSearchResponse.FareOption> buildFareOptions(FlightEntity flight) {
@@ -275,7 +313,7 @@ public class FlightSearchService {
 
   private String normalizeTripType(String tripType) {
     if (tripType == null || tripType.isBlank()) {
-      return "round_trip";
+      return "one_way";
     }
     String normalizedTripType = tripType.trim().toLowerCase();
     if (!List.of("one_way", "round_trip").contains(normalizedTripType)) {

@@ -30,8 +30,15 @@ import {
   locDanhSachChuyenBay,
   taoKhoangGiaDong
 } from "@/lib/flight-search-filters";
-import { TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH, taoDuongDanTimChuyenBay } from "@/lib/flight-search-api";
+import {
+  taoDuongDanTimChuyenBay,
+  taoTieuChiTimChuyenBayMacDinh
+} from "@/lib/flight-search-api";
 import { formatCurrency } from "@/lib/format";
+import {
+  getVietnamTodayIso,
+  resolveRoundTripReturnDate
+} from "@/lib/public-flight-date";
 
 const toneMap = {
   scheduled: "neutral",
@@ -441,11 +448,17 @@ export function SearchResultsPageClient({
   selectedOutboundFlightId
 }: SearchResultsPageClientProps) {
   const router = useRouter();
+  const [tieuChiMacDinh] = useState(() => taoTieuChiTimChuyenBayMacDinh());
+  const [ngayHienTai] = useState(() => getVietnamTodayIso());
   const [tripType, setTripType] = useState<TripType>(criteria.tripType);
   const [from, setFrom] = useState(criteria.from);
   const [to, setTo] = useState(criteria.to);
   const [departureDate, setDepartureDate] = useState(criteria.departureDate);
-  const [returnDate, setReturnDate] = useState(criteria.returnDate ?? "");
+  const [returnDate, setReturnDate] = useState(
+    criteria.tripType === "round_trip"
+      ? resolveRoundTripReturnDate(criteria.departureDate, criteria.returnDate)
+      : ""
+  );
   const [adultCount, setAdultCount] = useState(criteria.adultCount);
   const [childCount, setChildCount] = useState(criteria.childCount);
   const [infantCount, setInfantCount] = useState(criteria.infantCount);
@@ -464,13 +477,36 @@ export function SearchResultsPageClient({
     setFrom(criteria.from);
     setTo(criteria.to);
     setDepartureDate(criteria.departureDate);
-    setReturnDate(criteria.returnDate ?? "");
+    setReturnDate(
+      criteria.tripType === "round_trip"
+        ? resolveRoundTripReturnDate(criteria.departureDate, criteria.returnDate)
+        : ""
+    );
     setAdultCount(criteria.adultCount);
     setChildCount(criteria.childCount);
     setInfantCount(criteria.infantCount);
     setDangTaiKetQua(false);
     setFilterState(DEFAULT_FLIGHT_SEARCH_FILTER_STATE);
   }, [criteria]);
+
+  useEffect(() => {
+    if (departureDate && departureDate >= ngayHienTai) {
+      return;
+    }
+
+    setDepartureDate(ngayHienTai);
+  }, [departureDate, ngayHienTai]);
+
+  useEffect(() => {
+    if (tripType !== "round_trip") {
+      return;
+    }
+
+    const ngayKhoiHanh = departureDate || ngayHienTai;
+    setReturnDate((currentReturnDate) =>
+      resolveRoundTripReturnDate(ngayKhoiHanh, currentReturnDate)
+    );
+  }, [departureDate, ngayHienTai, tripType]);
 
   useEffect(() => {
     const boDieuKhien = new AbortController();
@@ -693,20 +729,35 @@ export function SearchResultsPageClient({
     setTo(route.to);
   }
 
+  function capNhatLoaiHanhTrinh(loaiHanhTrinh: TripType) {
+    setTripType(loaiHanhTrinh);
+
+    if (loaiHanhTrinh !== "round_trip") {
+      return;
+    }
+
+    const ngayKhoiHanh = departureDate || tieuChiMacDinh.departureDate;
+    setReturnDate((currentReturnDate) =>
+      resolveRoundTripReturnDate(ngayKhoiHanh, currentReturnDate)
+    );
+  }
+
   function xuLyTimChuyenBay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setDangTaiKetQua(true);
+    const ngayKhoiHanh = departureDate || tieuChiMacDinh.departureDate;
+    const ngayVe =
+      tripType === "round_trip"
+        ? resolveRoundTripReturnDate(ngayKhoiHanh, returnDate)
+        : null;
 
     startTransition(() => {
       router.push(
         taoDuongDanTimChuyenBay({
-          from: from.trim().toUpperCase() || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.from,
-          to: to.trim().toUpperCase() || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.to,
-          departureDate: departureDate || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.departureDate,
-          returnDate:
-            tripType === "round_trip"
-              ? returnDate || TIEU_CHI_TIM_CHUYEN_BAY_MAC_DINH.returnDate
-              : null,
+          from: from.trim().toUpperCase() || tieuChiMacDinh.from,
+          to: to.trim().toUpperCase() || tieuChiMacDinh.to,
+          departureDate: ngayKhoiHanh,
+          returnDate: ngayVe,
           tripType,
           adultCount,
           childCount,
@@ -785,7 +836,7 @@ export function SearchResultsPageClient({
                 key={item}
                 type="button"
                 className={tripType === item ? "toggle active" : "toggle"}
-                onClick={() => setTripType(item)}
+                onClick={() => capNhatLoaiHanhTrinh(item)}
               >
                 {tripLabels[item]}
               </button>
@@ -854,6 +905,7 @@ export function SearchResultsPageClient({
                   <span>Ngày đi</span>
                   <input
                     type="date"
+                    min={ngayHienTai}
                     value={departureDate}
                     onChange={(event) => setDepartureDate(event.target.value)}
                   />
@@ -863,6 +915,7 @@ export function SearchResultsPageClient({
                   <span>Ngày về</span>
                   <input
                     type="date"
+                    min={departureDate || ngayHienTai}
                     value={tripType === "one_way" ? "" : returnDate}
                     disabled={tripType === "one_way"}
                     onChange={(event) => setReturnDate(event.target.value)}

@@ -6,9 +6,7 @@ import type { FaqEntry } from "@/lib/public-content";
 import {
   findMatchingFaqs,
   getFaqQueryTokens,
-  isCloseSupportToken,
-  normalizeSupportText,
-  tokenizeSupportText
+  normalizeSupportText
 } from "@/lib/support-faq-utils";
 
 interface SupportFaqSearchProps {
@@ -18,36 +16,6 @@ interface SupportFaqSearchProps {
 
 function getFaqId(faq: FaqEntry) {
   return `faq-${normalizeSupportText(faq.question).replace(/\s+/g, "-").slice(0, 64)}`;
-}
-
-function shouldHighlightPart(part: string, queryTokens: string[]) {
-  if (queryTokens.length === 0 || !part.trim()) {
-    return false;
-  }
-
-  const partTokens = tokenizeSupportText(part);
-
-  return partTokens.some((partToken) =>
-    queryTokens.some((queryToken) => isCloseSupportToken(queryToken, partToken))
-  );
-}
-
-function renderHighlightedText(text: string, queryTokens: string[]) {
-  if (queryTokens.length === 0) {
-    return text;
-  }
-
-  return text.split(/(\s+)/).map((part, index) => {
-    if (!shouldHighlightPart(part, queryTokens)) {
-      return part;
-    }
-
-    return (
-      <mark key={`${part}-${index}`} className="support-faq-highlight">
-        {part}
-      </mark>
-    );
-  });
 }
 
 export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
@@ -72,8 +40,6 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
 
     return findMatchingFaqs(categoryFaqs, query).map((result) => result.faq);
   }, [faqs, query, selectedCategory]);
-
-  const queryTokens = useMemo(() => getFaqQueryTokens(query), [query]);
 
   useEffect(() => {
     setOpenQuestion((currentQuestion) => {
@@ -148,16 +114,14 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
                 >
                   <span className="support-faq-title-wrap">
                     <span className="pill">{faq.category}</span>
-                    <h3>{renderHighlightedText(faq.question, queryTokens)}</h3>
+                    <h3>{faq.question}</h3>
                   </span>
                   <span className="support-faq-toggle-icon" aria-hidden="true">
                     {isOpen ? "-" : "+"}
                   </span>
                 </button>
                 {isOpen ? (
-                  <p id={`${faqId}-answer`}>
-                    {renderHighlightedText(faq.answer, queryTokens)}
-                  </p>
+                  <p id={`${faqId}-answer`}>{faq.answer}</p>
                 ) : null}
               </article>
             );

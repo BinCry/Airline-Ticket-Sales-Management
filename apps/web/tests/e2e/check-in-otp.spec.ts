@@ -109,7 +109,8 @@ test("check-in otp guest gui lookupToken sau xac minh thanh cong", async ({ page
 
   await page.goto("/check-in");
   await fillGuestLookupForm(page);
-  await page.getByRole("button", { name: /OTP/ }).click();
+  await expect(page.getByRole("button", { name: "Xác minh OTP" })).toBeEnabled();
+  await page.getByRole("button", { name: "Xác minh OTP" }).click();
 
   await expect.poll(() => soLanTraCuu).toBe(1);
   await expect.poll(() => lookupTokenHeader).toBe(LOOKUP_TOKEN);
@@ -147,7 +148,8 @@ test("check-in otp guest giu nguyen OTP khi tra cuu sau xac minh bi loi", async 
 
   await page.goto("/check-in");
   await fillGuestLookupForm(page);
-  await page.getByRole("button", { name: /OTP/ }).click();
+  await expect(page.getByRole("button", { name: "Xác minh OTP" })).toBeEnabled();
+  await page.getByRole("button", { name: "Xác minh OTP" }).click();
 
   await expect.poll(() => soLanTraCuu).toBe(1);
   await expect.poll(() => lookupTokenHeader).toBe(LOOKUP_TOKEN);

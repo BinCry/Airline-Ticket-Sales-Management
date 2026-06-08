@@ -46,6 +46,8 @@ public class BookingService {
   public static final int HOLD_MINUTES = 15;
 
   private static final String CURRENCY = "VND";
+  private static final String PUBLIC_BOOKING_CLOSED_MESSAGE =
+      "Chuy\u1ebfn bay hi\u1ec7n kh\u00f4ng c\u00f2n m\u1edf b\u00e1n c\u00f4ng khai.";
   private static final String BOOKING_NOT_FOUND_MESSAGE = "Kh\u00f4ng t\u00ecm th\u1ea5y \u0111\u1eb7t ch\u1ed7 t\u01b0\u01a1ng \u1ee9ng v\u1edbi m\u00e3 \u0111\u00e3 nh\u1eadp.";
   private static final String BOOKING_EXPIRED_MESSAGE = "M\u00e3 \u0111\u1eb7t ch\u1ed7 kh\u00f4ng h\u1ee3p l\u1ec7 ho\u1eb7c \u0111\u00e3 h\u1ebft h\u1ea1n gi\u1eef ch\u1ed7.";
   private static final String WAITING_PAYMENT_MESSAGE = "\u0110\u1eb7t ch\u1ed7 kh\u00f4ng \u1edf tr\u1ea1ng th\u00e1i ch\u1edd thanh to\u00e1n.";
@@ -101,7 +103,7 @@ public class BookingService {
     validateRequestShape(tripType, request);
 
     int passengerCount = request.passengers().size();
-    OffsetDateTime currentTime = OffsetDateTime.now();
+    OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
     List<Long> inventoryIds = collectReferencedInventoryIds(request);
 
     List<FlightFareInventoryEntity> lockedInventories =
@@ -112,7 +114,8 @@ public class BookingService {
     }
 
     Map<Long, FlightFareInventoryEntity> inventoryById = reconcileExpiredHolds(currentTime, lockedInventories);
-    List<PreparedTripSegment> preparedTripSegments = buildPreparedTripSegments(request.segments(), inventoryById);
+    List<PreparedTripSegment> preparedTripSegments =
+        buildPreparedTripSegments(request.segments(), inventoryById, currentTime);
     validatePassengerAges(request.passengers(), preparedTripSegments);
 
     List<PreparedAncillary> preparedAncillaries = request.ancillaries().stream()
@@ -232,6 +235,20 @@ public class BookingService {
 
     BookingEntity savedBooking = bookingRepository.save(booking);
     return mapHoldResponse(savedBooking);
+  }
+
+  @Transactional
+  public void reconcileExpiredHoldsForInventories(
+      Collection<Long> inventoryIds,
+      OffsetDateTime currentTime
+  ) {
+    if (inventoryIds == null || inventoryIds.isEmpty()) {
+      return;
+    }
+
+    List<FlightFareInventoryEntity> lockedInventories =
+        new ArrayList<>(flightFareInventoryRepository.lockByIds(inventoryIds));
+    reconcileExpiredHolds(currentTime, lockedInventories);
   }
 
   @Transactional
@@ -593,7 +610,8 @@ public class BookingService {
 
   private List<PreparedTripSegment> buildPreparedTripSegments(
       List<BookingHoldRequest.SegmentRequest> segmentRequests,
-      Map<Long, FlightFareInventoryEntity> inventoryById
+      Map<Long, FlightFareInventoryEntity> inventoryById,
+      OffsetDateTime currentTime
   ) {
     List<PreparedTripSegment> preparedTripSegments = new ArrayList<>();
     Set<Long> selectedFlightIds = new LinkedHashSet<>();
@@ -632,6 +650,10 @@ public class BookingService {
               .findFirst()
               .orElseThrow(() -> new BadRequestException(INVENTORY_NOT_FOUND_MESSAGE))
           : representativeInventory.getFlight();
+
+      if (!PublicFlightWindowPolicy.isPublicBookingOpen(flight, currentTime)) {
+        throw new BadRequestException(PUBLIC_BOOKING_CLOSED_MESSAGE);
+      }
 
       preparedTripSegments.add(new PreparedTripSegment(
           index,

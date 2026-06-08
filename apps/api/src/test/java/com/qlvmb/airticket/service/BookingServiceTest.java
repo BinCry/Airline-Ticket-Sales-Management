@@ -100,6 +100,41 @@ class BookingServiceTest {
   }
 
   @Test
+  void createHold_shouldRejectWhenFlightPastPublicCutoff() {
+    OffsetDateTime khoiHanh = PublicFlightWindowPolicy.currentTime().plusMinutes(20);
+    FlightFareInventoryEntity inventory = mockInventoryOnFlight(
+        20101L,
+        501L,
+        "VN501",
+        5,
+        1490000L,
+        "pho_thong_tiet_kiem",
+        khoiHanh,
+        khoiHanh.plusHours(2),
+        "scheduled"
+    );
+    when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
+    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
+
+    assertThatThrownBy(() -> bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L))))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Chuyến bay hiện không còn mở bán công khai.");
+  }
+
+  @Test
+  void createHold_shouldRejectWhenSeatAlreadyHeldByAnotherKhach() {
+    FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
+    when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
+    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
+    when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any()))
+        .thenReturn(List.of("9A"));
+
+    assertThatThrownBy(() -> bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L))))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Không được chọn trùng ghế cho cùng một chặng bay.");
+  }
+
+  @Test
   void createHold_shouldRetryWhenBookingCodeCollisionOccurs() {
     FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
     when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
@@ -755,6 +790,8 @@ class BookingServiceTest {
     lenient().when(flight.getDepartureAt()).thenReturn(departureAt);
     lenient().when(flight.getArrivalAt()).thenReturn(arrivalAt);
     lenient().when(flight.getStatus()).thenReturn(flightStatus);
+    lenient().when(flight.isSalesOpen()).thenReturn(true);
+    lenient().when(flight.isCancelled()).thenReturn("cancelled".equals(flightStatus));
 
     lenient().when(inventory.getId()).thenReturn(inventoryId);
     lenient().when(inventory.getAvailableSeats()).thenReturn(availableSeats);
