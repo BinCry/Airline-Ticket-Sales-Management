@@ -55,7 +55,7 @@ export async function fetchBackofficeRevenueDashboard(
   period?: string
 ): Promise<BackofficeRevenueDashboard> {
   const searchParams = new URLSearchParams({ granularity });
-  if (granularity === "day" && period) {
+  if (period) {
     searchParams.set("period", period);
   }
 

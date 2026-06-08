@@ -43,6 +43,10 @@ function getCurrentMonthValue() {
   return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function getCurrentYearValue() {
+  return String(new Date().getFullYear());
+}
+
 function createFallbackDashboard(granularity: BackofficeRevenueGranularity): BackofficeRevenueDashboard {
   return {
     buckets: [],
@@ -63,6 +67,7 @@ export function BackofficeRevenuePageClient() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<BackofficeRevenueGranularity>("day");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
+  const [selectedYear, setSelectedYear] = useState(getCurrentYearValue);
   const [dashboard, setDashboard] = useState<BackofficeRevenueDashboard>(() =>
     createFallbackDashboard("day")
   );
@@ -76,8 +81,8 @@ export function BackofficeRevenuePageClient() {
       return;
     }
 
-    void loadDashboard(accessToken, granularity, selectedMonth);
-  }, [accessToken, granularity, selectedMonth]);
+    void loadDashboard(accessToken, granularity, resolveSelectedPeriod());
+  }, [accessToken, granularity, selectedMonth, selectedYear]);
 
   const maxBarValue = useMemo(() => {
     const maxBucketValue = Math.max(
@@ -90,7 +95,7 @@ export function BackofficeRevenuePageClient() {
   async function loadDashboard(
     nextAccessToken: string,
     nextGranularity: BackofficeRevenueGranularity,
-    nextSelectedMonth: string
+    nextPeriod: string
   ) {
     setState("loading");
     setErrorMessage(null);
@@ -99,7 +104,7 @@ export function BackofficeRevenuePageClient() {
       const nextDashboard = await fetchBackofficeRevenueDashboard(
         nextAccessToken,
         nextGranularity,
-        nextSelectedMonth
+        nextPeriod
       );
       setDashboard(nextDashboard);
       setState("success");
@@ -110,6 +115,10 @@ export function BackofficeRevenuePageClient() {
       );
       setState("error");
     }
+  }
+
+  function resolveSelectedPeriod() {
+    return granularity === "month" ? selectedYear : selectedMonth;
   }
 
   return (
@@ -152,12 +161,24 @@ export function BackofficeRevenuePageClient() {
                 onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
               />
             </label>
-          ) : null}
+          ) : (
+            <label className="revenue-month-picker">
+              <span>Chọn năm</span>
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                step="1"
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(event.target.value || getCurrentYearValue())}
+              />
+            </label>
+          )}
           <button
             type="button"
             className="button button-secondary"
             disabled={!accessToken || state === "loading"}
-            onClick={() => accessToken ? void loadDashboard(accessToken, granularity, selectedMonth) : undefined}
+            onClick={() => accessToken ? void loadDashboard(accessToken, granularity, resolveSelectedPeriod()) : undefined}
           >
             {state === "loading" ? "Đang tải..." : "Tải lại"}
           </button>

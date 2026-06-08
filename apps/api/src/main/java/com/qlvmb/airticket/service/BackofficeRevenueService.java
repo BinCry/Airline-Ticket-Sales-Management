@@ -186,14 +186,14 @@ public class BackofficeRevenueService {
 
     static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime, String period) {
       if (granularity == RevenueGranularity.MONTH) {
-        Year currentYear = Year.from(currentTime);
-        OffsetDateTime from = currentYear.atMonth(Month.JANUARY).atDay(1)
+        Year selectedYear = resolveYearPeriod(period, currentTime);
+        OffsetDateTime from = selectedYear.atMonth(Month.JANUARY).atDay(1)
             .atStartOfDay(REPORT_ZONE_ID)
             .toOffsetDateTime();
-        OffsetDateTime to = currentYear.plusYears(1).atMonth(Month.JANUARY).atDay(1)
+        OffsetDateTime to = selectedYear.plusYears(1).atMonth(Month.JANUARY).atDay(1)
             .atStartOfDay(REPORT_ZONE_ID)
             .toOffsetDateTime();
-        return new RevenueWindow(granularity, from, to, "Năm " + currentYear.getValue());
+        return new RevenueWindow(granularity, from, to, "Năm " + selectedYear.getValue());
       }
 
       YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
@@ -217,6 +217,18 @@ public class BackofficeRevenueService {
         return YearMonth.parse(period.trim(), MONTHLY_KEY_FORMATTER);
       } catch (RuntimeException exception) {
         return YearMonth.from(currentTime);
+      }
+    }
+
+    private static Year resolveYearPeriod(String period, OffsetDateTime currentTime) {
+      if (period == null || period.isBlank()) {
+        return Year.from(currentTime);
+      }
+
+      try {
+        return Year.parse(period.trim());
+      } catch (RuntimeException exception) {
+        return Year.from(currentTime);
       }
     }
   }
