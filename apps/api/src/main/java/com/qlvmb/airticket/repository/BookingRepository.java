@@ -121,6 +121,19 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
       """)
   List<BookingEntity> findAllDetailedByFlightId(@Param("flightId") Long flightId);
 
+  @Query("""
+      select distinct booking from BookingEntity booking
+      left join fetch booking.tickets
+      where booking.paymentStatus = :paymentStatus
+        and booking.ticketedAt >= :from
+        and booking.ticketedAt < :to
+      """)
+  List<BookingEntity> findPaidRevenueBookings(
+      @Param("paymentStatus") String paymentStatus,
+      @Param("from") OffsetDateTime from,
+      @Param("to") OffsetDateTime to
+  );
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("""
       select distinct booking from BookingEntity booking

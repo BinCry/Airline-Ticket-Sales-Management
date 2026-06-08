@@ -12,6 +12,7 @@ export const BACKOFFICE_ROLE_BY_MODULE = {
   sales: "customer_support",
   support: "customer_support",
   operations: "operations_staff",
+  revenue: "operations_staff",
   finance: "customer_support",
   cms: "customer_support",
   admin: "operations_staff"
@@ -21,6 +22,7 @@ export const BACKOFFICE_PERMISSION_BY_MODULE = {
   sales: "backoffice.sales",
   support: "backoffice.support",
   operations: "backoffice.operations",
+  revenue: "backoffice.operations",
   finance: "backoffice.finance",
   cms: "backoffice.cms",
   admin: "backoffice.admin"

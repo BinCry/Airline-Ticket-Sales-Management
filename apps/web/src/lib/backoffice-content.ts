@@ -71,6 +71,18 @@ export const backofficeModules: BackofficeModuleSummary[] = [
     roles: ["operations_staff"]
   },
   {
+    key: "revenue",
+    title: "Quản lý doanh thu",
+    summary: "Theo dõi doanh thu thực, số vé bán và số vé hoàn theo từng nhóm thời gian.",
+    href: "/backoffice/revenue",
+    highlights: [
+      "Tổng hợp doanh thu đã thanh toán",
+      "Trừ hoàn tiền đã duyệt",
+      "Xem biểu đồ cột theo ngày hoặc tháng"
+    ],
+    roles: ["operations_staff"]
+  },
+  {
     key: "admin",
     title: "Quản trị hệ thống",
     summary: "Theo dõi số liệu thật, nhật ký thao tác và quản lý role, trạng thái tài khoản nội bộ.",

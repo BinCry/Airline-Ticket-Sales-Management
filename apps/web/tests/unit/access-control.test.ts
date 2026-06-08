@@ -31,6 +31,7 @@ describe("access-control", () => {
       ])
     ).toEqual([
       "operations",
+      "revenue",
       "admin"
     ]);
   });

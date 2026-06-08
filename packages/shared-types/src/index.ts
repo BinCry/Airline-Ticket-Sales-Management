@@ -535,6 +535,30 @@ export interface ApiBackofficeRefundItem {
   createdAt: string;
 }
 
+export type ApiBackofficeRevenueGranularity = "day" | "month";
+
+export interface ApiBackofficeRevenueBucket {
+  key: string;
+  label: string;
+  paidAmount: number;
+  refundedAmount: number;
+  netRevenue: number;
+  soldTicketCount: number;
+  refundedTicketCount: number;
+}
+
+export interface ApiBackofficeRevenueDashboard {
+  granularity: ApiBackofficeRevenueGranularity;
+  periodLabel: string;
+  generatedAt: string;
+  totalRevenue: number;
+  paidAmount: number;
+  refundedAmount: number;
+  soldTicketCount: number;
+  refundedTicketCount: number;
+  buckets: ApiBackofficeRevenueBucket[];
+}
+
 export interface ApiManageBookingPriceSummary {
   baseAmount: number;
   ancillaryAmount: number;

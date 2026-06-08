@@ -74,6 +74,7 @@ const BACKOFFICE_MODULE_LABELS: Record<BackofficeModuleKey, string> = {
   finance: "Tài chính và hoàn tiền",
   cms: "Nội dung công khai",
   operations: "Điều hành chuyến bay và voucher",
+  revenue: "Quản lý doanh thu",
   admin: "Quản trị hệ thống"
 };
 
@@ -83,6 +84,7 @@ const BACKOFFICE_MODULE_DESCRIPTIONS: Record<BackofficeModuleKey, string> = {
   finance: "Kiểm tra yêu cầu hoàn tiền và phối hợp xử lý các giao dịch liên quan.",
   cms: "Cập nhật nội dung công khai, câu hỏi thường gặp và thông tin hỗ trợ.",
   operations: "Cập nhật trạng thái chuyến bay, xử lý vận hành và quản lý voucher hội viên.",
+  revenue: "Theo dõi doanh thu thực, số vé bán, số vé hoàn và biến động theo thời gian.",
   admin: "Quản lý tài khoản, vai trò, trạng thái và nhật ký thay đổi hệ thống."
 };
 
