@@ -399,6 +399,15 @@ export default function BookingCheckoutPage() {
 
   return (
     <section className="section">
+      {session && isHoldingSession ? (
+        <div className="checkout-floating-countdown">
+          <HoldCountdown
+            expiresAt={session.expiresAt}
+            isActive={isHoldingSession}
+            onExpire={() => void handleHoldCountdownExpired()}
+          />
+        </div>
+      ) : null}
       <div className="container">
         <div className="page-hero-card booking-flow-hero">
           <div>
@@ -419,13 +428,6 @@ export default function BookingCheckoutPage() {
                 ? `Hết hạn lúc ${formatDateTime(session.expiresAt)}`
                 : "Đang chuẩn bị mã thanh toán cho booking này."}
             </p>
-            {session && isHoldingSession ? (
-              <HoldCountdown
-                expiresAt={session.expiresAt}
-                isActive={isHoldingSession}
-                onExpire={() => void handleHoldCountdownExpired()}
-              />
-            ) : null}
             <strong>
               {session ? formatCurrency(session.amount) : "Đang chuẩn bị thông tin thanh toán"}
             </strong>
@@ -487,15 +489,6 @@ export default function BookingCheckoutPage() {
                         <span>Hết hạn giữ chỗ</span>
                         <strong>{formatDateTime(session.expiresAt)}</strong>
                       </div>
-                      {isHoldingSession ? (
-                        <div className="result-grid-span-full">
-                          <HoldCountdown
-                            expiresAt={session.expiresAt}
-                            isActive={isHoldingSession}
-                            onExpire={() => void handleHoldCountdownExpired()}
-                          />
-                        </div>
-                      ) : null}
                       <div>
                         <span>Số tiền</span>
                         <strong>{formatCurrency(session.amount)}</strong>

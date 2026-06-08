@@ -1928,6 +1928,37 @@ img {
   color: rgba(255, 248, 239, 0.8);
 }
 
+.booking-summary-card .assurance-row {
+  margin-top: 18px;
+}
+
+.booking-summary-countdown {
+  display: flex;
+  margin-top: 16px;
+}
+
+.booking-summary-countdown .hold-countdown {
+  gap: 12px;
+  margin-top: 0;
+  padding: 12px 18px;
+  border-color: rgba(255, 244, 214, 0.34);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 248, 239, 0.22), rgba(230, 194, 113, 0.24));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 16px 28px rgba(5, 18, 33, 0.22);
+}
+
+.booking-summary-countdown .hold-countdown span {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.booking-summary-countdown .hold-countdown strong {
+  font-size: clamp(1.22rem, 2.1vw, 1.56rem);
+}
+
 .hold-countdown {
   display: inline-grid;
   grid-template-columns: auto auto;
@@ -1974,6 +2005,44 @@ img {
 .result-grid .hold-countdown-urgent {
   border-color: rgba(184, 58, 58, 0.18);
   background: rgba(184, 58, 58, 0.08);
+  color: #923131;
+}
+
+.checkout-floating-countdown {
+  position: fixed;
+  top: 92px;
+  right: 28px;
+  z-index: 90;
+  pointer-events: none;
+}
+
+.checkout-floating-countdown .hold-countdown {
+  margin-top: 0;
+  padding: 13px 18px;
+  border-color: rgba(18, 61, 105, 0.16);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 246, 251, 0.92));
+  color: var(--primary);
+  box-shadow:
+    0 22px 48px rgba(5, 18, 33, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.checkout-floating-countdown .hold-countdown span {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.checkout-floating-countdown .hold-countdown strong {
+  font-size: clamp(1.2rem, 1.8vw, 1.52rem);
+}
+
+.checkout-floating-countdown .hold-countdown-urgent {
+  border-color: rgba(184, 58, 58, 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 248, 0.96), rgba(255, 234, 228, 0.92));
   color: #923131;
 }
 
@@ -5688,6 +5757,15 @@ th {
 
   .booking-payment-detail-list {
     padding-left: 0;
+  }
+
+  .checkout-floating-countdown {
+    top: 76px;
+    right: 14px;
+  }
+
+  .checkout-floating-countdown .hold-countdown {
+    padding: 10px 13px;
   }
 
   .booking-modal-actions,

@@ -289,16 +289,18 @@ export function ManageBookingPageClient() {
                 ? `${formatBookingStatus(bookingOverview.status)} • ${formatPaymentStatus(bookingOverview.paymentStatus)}`
                 : "Nhập mã đặt chỗ để xem thông tin hành trình."}
             </p>
-            {bookingOverview?.holdExpiresAt && isHoldingBooking ? (
-              <HoldCountdown
-                expiresAt={bookingOverview.holdExpiresAt}
-                isActive={isHoldingBooking}
-              />
-            ) : null}
             <div className="assurance-row">
               <span className="assurance-chip">Theo dõi trạng thái vé</span>
               <span className="assurance-chip">Tự gửi yêu cầu hoàn vé</span>
             </div>
+            {bookingOverview?.holdExpiresAt && isHoldingBooking ? (
+              <div className="booking-summary-countdown">
+                <HoldCountdown
+                  expiresAt={bookingOverview.holdExpiresAt}
+                  isActive={isHoldingBooking}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -416,14 +418,6 @@ export function ManageBookingPageClient() {
                     <span>Giữ chỗ đến</span>
                     <strong>{formatDateTime(bookingOverview.holdExpiresAt)}</strong>
                   </div>
-                  {bookingOverview.holdExpiresAt && isHoldingBooking ? (
-                    <div className="result-grid-span-full">
-                      <HoldCountdown
-                        expiresAt={bookingOverview.holdExpiresAt}
-                        isActive={isHoldingBooking}
-                      />
-                    </div>
-                  ) : null}
                 </div>
                 <div className="result-grid result-grid-rich">
                   <div>
