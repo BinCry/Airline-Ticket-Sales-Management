@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
@@ -111,6 +112,8 @@ export function ManageBookingPageClient() {
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [refundReason, setRefundReason] = useState("Không thể tiếp tục hành trình.");
   const [isRefunding, setIsRefunding] = useState(false);
+  const isHoldingBooking =
+    bookingOverview?.status === "held" && bookingOverview.paymentStatus === "pending";
 
   useEffect(() => {
     setAccessToken(loadActiveAuthSession()?.accessToken);
@@ -286,6 +289,12 @@ export function ManageBookingPageClient() {
                 ? `${formatBookingStatus(bookingOverview.status)} • ${formatPaymentStatus(bookingOverview.paymentStatus)}`
                 : "Nhập mã đặt chỗ để xem thông tin hành trình."}
             </p>
+            {bookingOverview?.holdExpiresAt && isHoldingBooking ? (
+              <HoldCountdown
+                expiresAt={bookingOverview.holdExpiresAt}
+                isActive={isHoldingBooking}
+              />
+            ) : null}
             <div className="assurance-row">
               <span className="assurance-chip">Theo dõi trạng thái vé</span>
               <span className="assurance-chip">Tự gửi yêu cầu hoàn vé</span>
@@ -407,6 +416,14 @@ export function ManageBookingPageClient() {
                     <span>Giữ chỗ đến</span>
                     <strong>{formatDateTime(bookingOverview.holdExpiresAt)}</strong>
                   </div>
+                  {bookingOverview.holdExpiresAt && isHoldingBooking ? (
+                    <div className="result-grid-span-full">
+                      <HoldCountdown
+                        expiresAt={bookingOverview.holdExpiresAt}
+                        isActive={isHoldingBooking}
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 <div className="result-grid result-grid-rich">
                   <div>

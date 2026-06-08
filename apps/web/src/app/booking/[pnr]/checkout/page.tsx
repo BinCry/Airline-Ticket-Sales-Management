@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ApiPaymentSessionResponse } from "@qlvmb/shared-types";
 
+import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
-import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   applyVoucherToBooking,
@@ -29,6 +30,26 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(parsedDate);
+}
+
+const HOLD_EXPIRED_NOTICE =
+  "Thời gian giữ chỗ đã hết. Booking này không còn nhận thanh toán, vui lòng tra cứu lại đặt chỗ hoặc chọn chuyến bay mới.";
+
+function isClosedPaymentStatus(status: string | undefined) {
+  return status === "expired" || status === "cancelled" || status === "failed";
+}
+
+function isHoldExpiredError(error: unknown) {
+  if (!(error instanceof ApiClientError)) {
+    return false;
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+  return (
+    error.status === 404 ||
+    normalizedMessage.includes("hết hạn") ||
+    normalizedMessage.includes("không ở trạng thái chờ thanh toán")
+  );
 }
 
 function formatVoucherStatus(status: string) {
@@ -112,6 +133,8 @@ export default function BookingCheckoutPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
+  const [holdExpiredMessage, setHoldExpiredMessage] = useState<string | null>(null);
+  const isRefreshingExpiredHoldRef = useRef(false);
 
   useEffect(() => {
     if (params?.pnr) {
@@ -135,6 +158,7 @@ export default function BookingCheckoutPage() {
     async function initSession() {
       setIsLoading(true);
       setErrorMessage(null);
+      setHoldExpiredMessage(null);
 
       try {
         const nextSession = await createPaymentSession(bookingCode, accessToken);
@@ -142,14 +166,20 @@ export default function BookingCheckoutPage() {
           return;
         }
         setSession(nextSession);
+        setHoldExpiredMessage(
+          isClosedPaymentStatus(nextSession.paymentStatus) ? HOLD_EXPIRED_NOTICE : null
+        );
       } catch (error) {
         if (!isMounted) {
           return;
         }
         setSession(null);
-        setErrorMessage(
-          resolveApiClientErrorMessage(error, "Không thể chuẩn bị thông tin thanh toán.")
+        const resolvedMessage = resolveApiClientErrorMessage(
+          error,
+          "Không thể chuẩn bị thông tin thanh toán."
         );
+        setErrorMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : resolvedMessage);
+        setHoldExpiredMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : null);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -165,7 +195,7 @@ export default function BookingCheckoutPage() {
   }, [accessToken, bookingCode]);
 
   useEffect(() => {
-    if (!bookingCode || !session || session.paymentStatus === "paid") {
+    if (!bookingCode || !session || session.paymentStatus === "paid" || holdExpiredMessage) {
       return;
     }
 
@@ -177,9 +207,14 @@ export default function BookingCheckoutPage() {
             return;
           }
           setSession(nextSession);
+          if (isClosedPaymentStatus(nextSession.paymentStatus)) {
+            setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+          }
         })
-        .catch(() => {
-          // Bỏ qua lỗi tạm thời khi tự làm mới trạng thái thanh toán.
+        .catch((error) => {
+          if (isMounted && isHoldExpiredError(error)) {
+            setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+          }
         });
     }, 15000);
 
@@ -187,7 +222,7 @@ export default function BookingCheckoutPage() {
       isMounted = false;
       window.clearInterval(intervalId);
     };
-  }, [accessToken, bookingCode, session]);
+  }, [accessToken, bookingCode, holdExpiredMessage, session]);
 
   useEffect(() => {
     if (!accessToken || !isMemberSession) {
@@ -237,16 +272,45 @@ export default function BookingCheckoutPage() {
     }
   }, [session?.appliedVoucherCode]);
 
+  const handleHoldCountdownExpired = useCallback(async () => {
+    if (!bookingCode || isRefreshingExpiredHoldRef.current) {
+      return;
+    }
+
+    isRefreshingExpiredHoldRef.current = true;
+    try {
+      const nextSession = await createPaymentSession(bookingCode, accessToken);
+      setSession(nextSession);
+      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
+        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+      }
+    } catch (error) {
+      if (isHoldExpiredError(error)) {
+        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+        setVoucherErrorMessage(null);
+        return;
+      }
+
+      setHoldExpiredMessage(
+        "Đồng hồ giữ chỗ đã về 0 nhưng chưa thể xác minh trạng thái mới. Vui lòng tải lại hoặc tra cứu lại mã đặt chỗ trước khi thanh toán."
+      );
+    } finally {
+      isRefreshingExpiredHoldRef.current = false;
+    }
+  }, [accessToken, bookingCode]);
+
   const availableVouchers = memberVouchers.filter(
     (voucher) =>
       voucher.status === "AVAILABLE" ||
       (voucher.status === "RESERVED" && voucher.bookingCode === bookingCode)
   );
-  const paymentQrCodeUrl = resolveFallbackQrCodeUrl(session);
-  const coTheXacNhanThuCong = coTheXacNhanThanhToanThuCong(session);
+  const isPaymentClosed = Boolean(holdExpiredMessage) || isClosedPaymentStatus(session?.paymentStatus);
+  const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
+  const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
+  const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
 
   async function handleLocalPaymentConfirmation() {
-    if (!bookingCode || isPaying || session?.sessionMode !== "local") {
+    if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local") {
       return;
     }
 
@@ -284,7 +348,8 @@ export default function BookingCheckoutPage() {
       !accessToken ||
       !isMemberSession ||
       !normalizedVoucherCode ||
-      isApplyingVoucher
+      isApplyingVoucher ||
+      isPaymentClosed
     ) {
       return;
     }
@@ -308,6 +373,10 @@ export default function BookingCheckoutPage() {
       ]);
 
       setSession(nextSession);
+      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
+        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+        return;
+      }
       setMemberVouchers(nextVouchers);
       setVoucherCode(nextSession.appliedVoucherCode ?? normalizedVoucherCode);
       setVoucherNotice(
@@ -350,6 +419,13 @@ export default function BookingCheckoutPage() {
                 ? `Hết hạn lúc ${formatDateTime(session.expiresAt)}`
                 : "Đang chuẩn bị mã thanh toán cho booking này."}
             </p>
+            {session && isHoldingSession ? (
+              <HoldCountdown
+                expiresAt={session.expiresAt}
+                isActive={isHoldingSession}
+                onExpire={() => void handleHoldCountdownExpired()}
+              />
+            ) : null}
             <strong>
               {session ? formatCurrency(session.amount) : "Đang chuẩn bị thông tin thanh toán"}
             </strong>
@@ -411,6 +487,15 @@ export default function BookingCheckoutPage() {
                         <span>Hết hạn giữ chỗ</span>
                         <strong>{formatDateTime(session.expiresAt)}</strong>
                       </div>
+                      {isHoldingSession ? (
+                        <div className="result-grid-span-full">
+                          <HoldCountdown
+                            expiresAt={session.expiresAt}
+                            isActive={isHoldingSession}
+                            onExpire={() => void handleHoldCountdownExpired()}
+                          />
+                        </div>
+                      ) : null}
                       <div>
                         <span>Số tiền</span>
                         <strong>{formatCurrency(session.amount)}</strong>
@@ -455,6 +540,15 @@ export default function BookingCheckoutPage() {
                       </p>
                     </div>
                   ) : null}
+                  {holdExpiredMessage ? (
+                    <div className="auth-note-card">
+                      <div className="auth-note-head">
+                        <h3>Đã hết thời gian giữ chỗ</h3>
+                        <span className="pill">Thanh toán đã khóa</span>
+                      </div>
+                      <p>{holdExpiredMessage}</p>
+                    </div>
+                  ) : null}
                   <div className="booking-submit-row">
                     <div>
                       <span className="section-eyebrow">Phương thức</span>
@@ -480,12 +574,21 @@ export default function BookingCheckoutPage() {
                           type="button"
                           className="button button-primary"
                           onClick={() => void handleLocalPaymentConfirmation()}
-                          disabled={isPaying}
+                          disabled={isPaying || isPaymentClosed}
                         >
                           {isPaying ? "Đang xác nhận..." : "Tôi đã hoàn tất thanh toán"}
                         </button>
                       ) : null}
-                      {!paymentQrCodeUrl && !coTheXacNhanThuCong ? (
+                      {isPaymentClosed ? (
+                        <button
+                          type="button"
+                          className="button button-primary"
+                          disabled
+                        >
+                          Đã hết hạn giữ chỗ
+                        </button>
+                      ) : null}
+                      {!isPaymentClosed && !paymentQrCodeUrl && !coTheXacNhanThuCong ? (
                         <button
                           type="button"
                           className="button button-primary"
@@ -527,7 +630,7 @@ export default function BookingCheckoutPage() {
                     type="button"
                     className="button button-primary"
                     onClick={() => void handleApplyVoucher()}
-                    disabled={!voucherCode.trim() || isApplyingVoucher || isLoading}
+                    disabled={!voucherCode.trim() || isApplyingVoucher || isLoading || isPaymentClosed}
                   >
                     {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
                   </button>
@@ -566,7 +669,7 @@ export default function BookingCheckoutPage() {
                             type="button"
                             className="button button-secondary"
                             onClick={() => void handleApplyVoucher(voucher.voucherCode)}
-                            disabled={isApplyingVoucher || isLoading}
+                            disabled={isApplyingVoucher || isLoading || isPaymentClosed}
                           >
                             Dùng {voucher.voucherCode}
                           </button>

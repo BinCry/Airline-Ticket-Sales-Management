@@ -1928,6 +1928,55 @@ img {
   color: rgba(255, 248, 239, 0.8);
 }
 
+.hold-countdown {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(230, 194, 113, 0.28);
+  border-radius: 16px;
+  background: rgba(255, 248, 239, 0.11);
+  color: #fff8ef;
+}
+
+.result-grid .hold-countdown {
+  margin-top: 0;
+  border-color: rgba(18, 61, 105, 0.14);
+  background: rgba(18, 61, 105, 0.06);
+  color: var(--primary);
+}
+
+.hold-countdown span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: currentColor;
+  opacity: 0.78;
+}
+
+.hold-countdown strong {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.08rem, 1.7vw, 1.36rem);
+  line-height: 1;
+  color: currentColor;
+}
+
+.hold-countdown-urgent {
+  border-color: rgba(184, 58, 58, 0.34);
+  background: rgba(184, 58, 58, 0.11);
+  color: #ffe9e2;
+}
+
+.result-grid .hold-countdown-urgent {
+  border-color: rgba(184, 58, 58, 0.18);
+  background: rgba(184, 58, 58, 0.08);
+  color: #923131;
+}
+
 .booking-empty-card,
 .booking-form-wrap,
 .booking-payment-card {
