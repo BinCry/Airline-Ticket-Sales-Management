@@ -51,10 +51,16 @@ function isRevenueDashboard(value: unknown): value is BackofficeRevenueDashboard
 
 export async function fetchBackofficeRevenueDashboard(
   accessToken: string,
-  granularity: BackofficeRevenueGranularity
+  granularity: BackofficeRevenueGranularity,
+  period?: string
 ): Promise<BackofficeRevenueDashboard> {
+  const searchParams = new URLSearchParams({ granularity });
+  if (granularity === "day" && period) {
+    searchParams.set("period", period);
+  }
+
   const payload = await requestApi<unknown>(
-    `/api/backoffice/operations/revenue?granularity=${granularity}`,
+    `/api/backoffice/operations/revenue?${searchParams.toString()}`,
     {
       accessToken,
       fallbackMessage: "Không thể tải dashboard doanh thu lúc này."

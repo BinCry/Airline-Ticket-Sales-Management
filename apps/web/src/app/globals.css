@@ -5229,7 +5229,7 @@ th {
 
 .revenue-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
@@ -5280,6 +5280,26 @@ th {
   color: var(--primary);
   background: #fff;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.revenue-month-picker {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.revenue-month-picker input {
+  min-height: 40px;
+  min-width: 148px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
 }
 
 .revenue-metric-grid {
@@ -5334,7 +5354,7 @@ th {
 }
 
 .revenue-chart-month {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 .revenue-chart-column {
@@ -5403,9 +5423,17 @@ th {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.revenue-chart-column:nth-child(10n) .revenue-chart-tooltip,
-.revenue-chart-column:nth-child(10n - 1) .revenue-chart-tooltip,
-.revenue-chart-column:nth-child(10n - 2) .revenue-chart-tooltip {
+.revenue-chart-day .revenue-chart-column:nth-child(10n + 6) .revenue-chart-tooltip,
+.revenue-chart-day .revenue-chart-column:nth-child(10n + 7) .revenue-chart-tooltip,
+.revenue-chart-day .revenue-chart-column:nth-child(10n + 8) .revenue-chart-tooltip,
+.revenue-chart-day .revenue-chart-column:nth-child(10n + 9) .revenue-chart-tooltip,
+.revenue-chart-day .revenue-chart-column:nth-child(10n + 10) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 7) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 8) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 9) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 10) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 11) .revenue-chart-tooltip,
+.revenue-chart-month .revenue-chart-column:nth-child(12n + 12) .revenue-chart-tooltip {
   right: calc(50% + 26px);
   left: auto;
 }
@@ -5579,9 +5607,17 @@ th {
   }
 
   .revenue-chart-tooltip,
-  .revenue-chart-column:nth-child(10n) .revenue-chart-tooltip,
-  .revenue-chart-column:nth-child(10n - 1) .revenue-chart-tooltip,
-  .revenue-chart-column:nth-child(10n - 2) .revenue-chart-tooltip {
+  .revenue-chart-day .revenue-chart-column:nth-child(10n + 6) .revenue-chart-tooltip,
+  .revenue-chart-day .revenue-chart-column:nth-child(10n + 7) .revenue-chart-tooltip,
+  .revenue-chart-day .revenue-chart-column:nth-child(10n + 8) .revenue-chart-tooltip,
+  .revenue-chart-day .revenue-chart-column:nth-child(10n + 9) .revenue-chart-tooltip,
+  .revenue-chart-day .revenue-chart-column:nth-child(10n + 10) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 7) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 8) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 9) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 10) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 11) .revenue-chart-tooltip,
+  .revenue-chart-month .revenue-chart-column:nth-child(12n + 12) .revenue-chart-tooltip {
     right: auto;
     left: 50%;
     transform: translate(-50%, 8px);

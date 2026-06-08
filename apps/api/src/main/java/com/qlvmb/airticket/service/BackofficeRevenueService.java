@@ -39,9 +39,14 @@ public class BackofficeRevenueService {
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity) {
+    return getRevenueDashboard(granularity, null);
+  }
+
+  @Transactional(readOnly = true)
+  public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity, String period) {
     RevenueGranularity revenueGranularity = RevenueGranularity.from(granularity);
     OffsetDateTime generatedAt = OffsetDateTime.now(REPORT_ZONE_ID);
-    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt);
+    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period);
     Map<String, MutableRevenueBucket> buckets = createEmptyBuckets(window);
 
     bookingRepository.findPaidRevenueBookings(
@@ -179,7 +184,7 @@ public class BackofficeRevenueService {
       String label
   ) {
 
-    static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime) {
+    static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime, String period) {
       if (granularity == RevenueGranularity.MONTH) {
         Year currentYear = Year.from(currentTime);
         OffsetDateTime from = currentYear.atMonth(Month.JANUARY).atDay(1)
@@ -191,7 +196,7 @@ public class BackofficeRevenueService {
         return new RevenueWindow(granularity, from, to, "Năm " + currentYear.getValue());
       }
 
-      YearMonth currentMonth = YearMonth.from(currentTime);
+      YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
       OffsetDateTime from = currentMonth.atDay(1)
           .atStartOfDay(REPORT_ZONE_ID)
           .toOffsetDateTime();
@@ -201,6 +206,18 @@ public class BackofficeRevenueService {
           .toOffsetDateTime();
       String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
       return new RevenueWindow(granularity, from, to, label);
+    }
+
+    private static YearMonth resolveMonthPeriod(String period, OffsetDateTime currentTime) {
+      if (period == null || period.isBlank()) {
+        return YearMonth.from(currentTime);
+      }
+
+      try {
+        return YearMonth.parse(period.trim(), MONTHLY_KEY_FORMATTER);
+      } catch (RuntimeException exception) {
+        return YearMonth.from(currentTime);
+      }
     }
   }
 

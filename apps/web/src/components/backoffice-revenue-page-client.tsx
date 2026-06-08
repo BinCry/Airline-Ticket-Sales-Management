@@ -38,6 +38,11 @@ function formatCompactCurrency(value: number) {
   return formatCurrency(value);
 }
 
+function getCurrentMonthValue() {
+  const currentDate = new Date();
+  return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function createFallbackDashboard(granularity: BackofficeRevenueGranularity): BackofficeRevenueDashboard {
   return {
     buckets: [],
@@ -57,6 +62,7 @@ export function BackofficeRevenuePageClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<BackofficeRevenueGranularity>("day");
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
   const [dashboard, setDashboard] = useState<BackofficeRevenueDashboard>(() =>
     createFallbackDashboard("day")
   );
@@ -70,8 +76,8 @@ export function BackofficeRevenuePageClient() {
       return;
     }
 
-    void loadDashboard(accessToken, granularity);
-  }, [accessToken, granularity]);
+    void loadDashboard(accessToken, granularity, selectedMonth);
+  }, [accessToken, granularity, selectedMonth]);
 
   const maxBarValue = useMemo(() => {
     const maxBucketValue = Math.max(
@@ -83,13 +89,18 @@ export function BackofficeRevenuePageClient() {
 
   async function loadDashboard(
     nextAccessToken: string,
-    nextGranularity: BackofficeRevenueGranularity
+    nextGranularity: BackofficeRevenueGranularity,
+    nextSelectedMonth: string
   ) {
     setState("loading");
     setErrorMessage(null);
 
     try {
-      const nextDashboard = await fetchBackofficeRevenueDashboard(nextAccessToken, nextGranularity);
+      const nextDashboard = await fetchBackofficeRevenueDashboard(
+        nextAccessToken,
+        nextGranularity,
+        nextSelectedMonth
+      );
       setDashboard(nextDashboard);
       setState("success");
     } catch (error) {
@@ -132,11 +143,21 @@ export function BackofficeRevenuePageClient() {
               Theo tháng
             </button>
           </div>
+          {granularity === "day" ? (
+            <label className="revenue-month-picker">
+              <span>Chọn tháng</span>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
+              />
+            </label>
+          ) : null}
           <button
             type="button"
             className="button button-secondary"
             disabled={!accessToken || state === "loading"}
-            onClick={() => accessToken ? void loadDashboard(accessToken, granularity) : undefined}
+            onClick={() => accessToken ? void loadDashboard(accessToken, granularity, selectedMonth) : undefined}
           >
             {state === "loading" ? "Đang tải..." : "Tải lại"}
           </button>
