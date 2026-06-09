@@ -14,6 +14,10 @@ import { formatCurrency } from "@/lib/format";
 
 type RevenueState = "idle" | "loading" | "success" | "error";
 
+const LINE_CHART_WIDTH = 960;
+const LINE_CHART_HEIGHT = 320;
+const LINE_CHART_PADDING = 36;
+
 function formatDateTime(value: string) {
   const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
@@ -45,6 +49,25 @@ function getCurrentMonthValue() {
 
 function getCurrentYearValue() {
   return String(new Date().getFullYear());
+}
+
+function shiftMonthValue(value: string, monthOffset: number) {
+  const [yearPart, monthPart] = value.split("-");
+  const year = Number(yearPart);
+  const monthIndex = Number(monthPart) - 1;
+
+  if (!Number.isInteger(year) || !Number.isInteger(monthIndex)) {
+    return getCurrentMonthValue();
+  }
+
+  const nextDate = new Date(year, monthIndex + monthOffset, 1);
+  return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function buildLinePath(points: Array<{ x: number; y: number }>) {
+  return points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
 }
 
 function createFallbackDashboard(granularity: BackofficeRevenueGranularity): BackofficeRevenueDashboard {
@@ -86,12 +109,41 @@ export function BackofficeRevenuePageClient() {
     void loadDashboard(accessToken, granularity, resolveAppliedPeriod());
   }, [accessToken, granularity, selectedMonth, appliedYear, reloadKey]);
 
-  const maxBarValue = useMemo(() => {
-    const maxBucketValue = Math.max(
-      ...dashboard.buckets.map((bucket) => Math.abs(bucket.netRevenue)),
-      0
-    );
-    return Math.max(maxBucketValue, 1);
+  const lineChart = useMemo(() => {
+    const values = dashboard.buckets.map((bucket) => bucket.netRevenue);
+    const minValue = Math.min(...values, 0);
+    const maxValue = Math.max(...values, 0);
+    const valueRange = Math.max(maxValue - minValue, 1);
+    const plotWidth = LINE_CHART_WIDTH - LINE_CHART_PADDING * 2;
+    const plotHeight = LINE_CHART_HEIGHT - LINE_CHART_PADDING * 2;
+    const points = dashboard.buckets.map((bucket, index) => {
+      const x = LINE_CHART_PADDING + (
+        dashboard.buckets.length <= 1
+          ? plotWidth / 2
+          : (index / (dashboard.buckets.length - 1)) * plotWidth
+      );
+      const y = LINE_CHART_PADDING + ((maxValue - bucket.netRevenue) / valueRange) * plotHeight;
+
+      return {
+        bucket,
+        x: Math.round(x),
+        y: Math.round(y)
+      };
+    });
+    const linePath = buildLinePath(points);
+    const areaPath = points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${LINE_CHART_HEIGHT - LINE_CHART_PADDING} L ${points[0].x} ${
+        LINE_CHART_HEIGHT - LINE_CHART_PADDING
+      } Z`
+      : "";
+    const zeroY = Math.round(LINE_CHART_PADDING + (maxValue / valueRange) * plotHeight);
+
+    return {
+      areaPath,
+      linePath,
+      points,
+      zeroY
+    };
   }, [dashboard.buckets]);
 
   async function loadDashboard(
@@ -140,6 +192,14 @@ export function BackofficeRevenuePageClient() {
     setReloadKey((currentReloadKey) => currentReloadKey + 1);
   }
 
+  function changeSelectedMonth(monthOffset: number) {
+    setSelectedMonth((currentMonth) => shiftMonthValue(currentMonth, monthOffset));
+  }
+
+  const revenueSummaryLabel = granularity === "day"
+    ? "Tổng doanh thu tháng này"
+    : "Tổng doanh thu năm này";
+
   return (
     <section className="section">
       <div className="container">
@@ -172,14 +232,32 @@ export function BackofficeRevenuePageClient() {
             </button>
           </div>
           {granularity === "day" ? (
-            <label className="revenue-month-picker">
-              <span>Chọn tháng</span>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
-              />
-            </label>
+            <div className="revenue-month-switcher">
+              <button
+                type="button"
+                className="revenue-month-button"
+                aria-label="Tháng trước"
+                onClick={() => changeSelectedMonth(-1)}
+              >
+                ‹
+              </button>
+              <label className="revenue-month-picker">
+                <span>Chọn tháng</span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
+                />
+              </label>
+              <button
+                type="button"
+                className="revenue-month-button"
+                aria-label="Tháng sau"
+                onClick={() => changeSelectedMonth(1)}
+              >
+                ›
+              </button>
+            </div>
           ) : (
             <label className="revenue-month-picker">
               <span>Chọn năm</span>
@@ -236,10 +314,10 @@ export function BackofficeRevenuePageClient() {
         <article className="table-card revenue-chart-card">
           <div className="finance-table-head">
             <div>
-              <span className="section-eyebrow">Biểu đồ cột</span>
+              <span className="section-eyebrow">Biểu đồ đường</span>
               <h3>Biến động doanh thu thực</h3>
               <p>
-                Mỗi cột thể hiện doanh thu thực của một nhóm thời gian trong {dashboard.periodLabel.toLowerCase()}.
+                Mỗi điểm thể hiện doanh thu thực của một nhóm thời gian trong {dashboard.periodLabel.toLowerCase()}. {revenueSummaryLabel}: {formatCurrency(dashboard.totalRevenue)}.
               </p>
             </div>
             <span className="pill">Doanh thu thực</span>
@@ -247,33 +325,66 @@ export function BackofficeRevenuePageClient() {
 
           <div className={`revenue-chart revenue-chart-${dashboard.granularity}`}>
             {dashboard.buckets.length > 0 ? (
-              dashboard.buckets.map((bucket) => {
-                const barHeight = Math.max(6, Math.round((Math.abs(bucket.netRevenue) / maxBarValue) * 100));
-                const isNegative = bucket.netRevenue < 0;
-
-                return (
-                  <div key={bucket.key} className="revenue-chart-column">
-                    <div className="revenue-chart-value">
-                      {formatCompactCurrency(bucket.netRevenue)}
+              <>
+                <svg
+                  className="revenue-line-chart"
+                  viewBox={`0 0 ${LINE_CHART_WIDTH} ${LINE_CHART_HEIGHT}`}
+                  role="img"
+                  aria-label={`Biểu đồ đường doanh thu thực trong ${dashboard.periodLabel.toLowerCase()}`}
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="revenueLineFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#0f766e" stopOpacity="0.24" />
+                      <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <line
+                    className="revenue-line-zero"
+                    x1={LINE_CHART_PADDING}
+                    x2={LINE_CHART_WIDTH - LINE_CHART_PADDING}
+                    y1={lineChart.zeroY}
+                    y2={lineChart.zeroY}
+                  />
+                  <path className="revenue-line-area" d={lineChart.areaPath} />
+                  <path className="revenue-line-path" d={lineChart.linePath} />
+                </svg>
+                <div className="revenue-chart-points">
+                  {lineChart.points.map(({ bucket, x, y }) => (
+                    <div
+                      key={bucket.key}
+                      className="revenue-chart-point"
+                      style={{
+                        left: `${(x / LINE_CHART_WIDTH) * 100}%`,
+                        top: `${(y / LINE_CHART_HEIGHT) * 100}%`
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`${bucket.label}: ${formatCurrency(bucket.netRevenue)}`}
+                      >
+                        <span className="revenue-chart-dot" aria-hidden="true" />
+                      </button>
+                      <div className="revenue-chart-tooltip" role="status">
+                        <span>{bucket.label}</span>
+                        <strong>{formatCurrency(bucket.netRevenue)}</strong>
+                        <small>Đã thanh toán: {formatCurrency(bucket.paidAmount)}</small>
+                        <small>Đã hoàn tiền: {formatCurrency(bucket.refundedAmount)}</small>
+                        <small>Vé bán: {bucket.soldTicketCount}</small>
+                        <small>Vé hoàn: {bucket.refundedTicketCount}</small>
+                      </div>
                     </div>
-                    <div className="revenue-chart-track" aria-hidden="true">
-                      <div
-                        className={`revenue-chart-bar${isNegative ? " revenue-chart-bar-negative" : ""}`}
-                        style={{ height: `${barHeight}%` }}
-                      />
-                    </div>
-                    <strong>{bucket.label}</strong>
-                    <div className="revenue-chart-tooltip" role="status">
-                      <span>{bucket.label}</span>
-                      <strong>{formatCurrency(bucket.netRevenue)}</strong>
-                      <small>Đã thanh toán: {formatCurrency(bucket.paidAmount)}</small>
-                      <small>Đã hoàn tiền: {formatCurrency(bucket.refundedAmount)}</small>
-                      <small>Vé bán: {bucket.soldTicketCount}</small>
-                      <small>Vé hoàn: {bucket.refundedTicketCount}</small>
-                    </div>
-                  </div>
-                );
-              })
+                  ))}
+                </div>
+                <div className="revenue-chart-labels">
+                  {dashboard.buckets.map((bucket) => (
+                    <span key={bucket.key}>
+                      <strong>{bucket.label}</strong>
+                      <small>{formatCompactCurrency(bucket.netRevenue)}</small>
+                    </span>
+                  ))}
+                </div>
+              </>
             ) : (
               <article className="booking-inline-info revenue-empty-state">
                 <strong>{state === "loading" ? "Đang tải..." : "Chưa có dữ liệu doanh thu"}</strong>
