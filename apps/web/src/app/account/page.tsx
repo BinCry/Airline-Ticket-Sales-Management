@@ -514,6 +514,7 @@ export default function AccountPage() {
   const localizedRoleSummary = activeProfile ? formatRoleSummary(activeRoles) : "Khách hàng";
   const isMemberProfile = activeRoles.includes("member");
   const isStaffProfile = hasAnyRole(activeRoles, STAFF_ROLE_CODES);
+  const isOperationsStaffProfile = hasAnyRole(activeRoles, ["operations_staff"]);
   const canUsePassengerSelfService = hasAnyRole(activeRoles, PASSENGER_SELF_SERVICE_ROLES);
   const allowedBackofficeModules = getAllowedBackofficeModulesByPermissions(activePermissions);
   const loyaltyStats = memberLoyalty
@@ -639,15 +640,19 @@ export default function AccountPage() {
       : `Xin chào, ${activeProfile.displayName}`
     : "Tài khoản khách hàng";
   const heroTitle = activeProfile
-    ? isStaffProfile
-      ? "Trang nội bộ để cập nhật hồ sơ cá nhân và mở nhanh các công cụ được cấp quyền."
-      : "Bạn có thể tiếp tục theo dõi hành trình, hồ sơ và các thông báo quan trọng ngay trên thiết bị này."
-    : "Theo dõi hành trình sắp bay và thông báo quan trọng tại một nơi.";
+    ? isOperationsStaffProfile
+      ? "Trang nội bộ cập nhật hồ sơ cá nhân và truy cập nhanh công cụ."
+      : isStaffProfile
+        ? "Quản lý hồ sơ nội bộ và công cụ được cấp quyền."
+        : "Quản lý hồ sơ cá nhân và thông tin chuyến bay."
+    : "Theo dõi hồ sơ và chuyến bay tại một nơi.";
   const heroDescription = activeProfile
-    ? isStaffProfile
-      ? `Email đang dùng là ${activeProfile.email}. Số điện thoại: ${phoneSummary}. Vai trò hiện tại: ${localizedRoleSummary}. Bạn có thể cập nhật thông tin đăng nhập cá nhân và truy cập nhanh các module backoffice đã được cấp quyền.`
-      : `Email đang dùng là ${activeProfile.email}. Số điện thoại: ${phoneSummary}. Vai trò hiện tại: ${localizedRoleSummary}. Bạn có thể tiếp tục quản lý hồ sơ thường dùng và các cập nhật mới nhất liên quan đến chuyến bay đã đặt.`
-    : "Tài khoản giúp hành khách xem lại hồ sơ thường dùng, email vé và những cập nhật mới nhất liên quan đến chuyến bay đã đặt.";
+    ? isOperationsStaffProfile
+      ? "Nơi quản lý thông tin tài khoản và sử dụng các module backoffice được cấp quyền của bạn."
+      : isStaffProfile
+        ? "Cập nhật thông tin tài khoản và mở nhanh các module backoffice phù hợp với vai trò của bạn."
+        : "Cập nhật thông tin tài khoản, hành khách thường dùng và theo dõi thông báo chuyến bay của bạn."
+    : "Đăng nhập để quản lý hồ sơ, hành khách thường dùng và các cập nhật liên quan đến chuyến bay đã đặt.";
   const heroTag = isStaffProfile ? "Tài khoản nội bộ" : "Tài khoản hành khách";
   const heroMediaTitle = isStaffProfile ? "Bảng điều phối cá nhân" : "Hồ sơ chuyến đi";
   const heroMediaDescription = isStaffProfile
