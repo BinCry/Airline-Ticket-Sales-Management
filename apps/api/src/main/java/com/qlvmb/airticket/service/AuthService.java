@@ -227,6 +227,13 @@ public class AuthService {
     );
   }
 
+  @Transactional
+  public AuthSessionResponse createOAuthSession(UserAccountEntity userAccount, String userAgent, String ipAddress) {
+    validateUserState(userAccount);
+    userAccount.markLoggedIn(OffsetDateTime.now(ZoneOffset.UTC));
+    return createSession(userAccount, userAgent, ipAddress);
+  }
+
   private AuthSessionResponse createSession(UserAccountEntity userAccount, String userAgent, String ipAddress) {
     String tokenKey = UUID.randomUUID().toString();
     JwtTokenService.IssuedTokenPair tokenPair = jwtTokenService.issueTokenPair(userAccount, tokenKey);

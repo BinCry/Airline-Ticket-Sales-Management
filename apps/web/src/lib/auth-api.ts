@@ -103,6 +103,25 @@ export function logoutAuthSession(refreshToken: string): Promise<void> {
   );
 }
 
+export function buildGoogleOAuthLoginUrl(redirectTo?: string | null): string {
+  const searchParams = new URLSearchParams();
+  const safeRedirectTo = redirectTo?.trim();
+  if (safeRedirectTo && safeRedirectTo.startsWith("/") && !safeRedirectTo.startsWith("//")) {
+    searchParams.set("redirectTo", safeRedirectTo);
+  }
+
+  const queryString = searchParams.toString();
+  return `${getAuthApiBaseUrl()}/api/auth/oauth/google/start${queryString ? `?${queryString}` : ""}`;
+}
+
+export function exchangeOAuthCode(code: string): Promise<AuthSession> {
+  return postAuthJson<AuthSession>(
+    "/api/auth/oauth/exchange",
+    { code },
+    "Không thể hoàn tất đăng nhập Google."
+  );
+}
+
 export function requestForgotPasswordOtp(
   email: string
 ): Promise<ForgotPasswordOtpResponse> {

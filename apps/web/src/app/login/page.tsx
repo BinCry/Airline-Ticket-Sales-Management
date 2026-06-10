@@ -7,7 +7,11 @@ import { Suspense, useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { PasswordField } from "@/components/password-field";
 import { StatusChip } from "@/components/status-chip";
-import { loginWithPassword, resolveAuthErrorMessage } from "@/lib/auth-api";
+import {
+  buildGoogleOAuthLoginUrl,
+  loginWithPassword,
+  resolveAuthErrorMessage
+} from "@/lib/auth-api";
 import { persistAuthSession, type AuthSession } from "@/lib/auth-session";
 
 const loginStats = [
@@ -66,6 +70,11 @@ function LoginPageContent() {
 
     const redirectTo = searchParams.get("redirectTo")?.trim();
     router.push(redirectTo || "/account");
+  }
+
+  function handleGoogleLogin() {
+    const redirectTo = searchParams.get("redirectTo")?.trim();
+    window.location.href = buildGoogleOAuthLoginUrl(redirectTo || "/account");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -144,6 +153,40 @@ function LoginPageContent() {
         </article>
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-social-box">
+            <button
+              type="button"
+              className="auth-google-button"
+              onClick={handleGoogleLogin}
+              aria-label="Đăng nhập bằng Google"
+            >
+              <span className="auth-google-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="img">
+                  <path
+                    fill="#4285F4"
+                    d="M21.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.4c-.2 1.3-.9 2.4-2 3.1v2.6h3.3c1.9-1.8 3-4.4 3-7.7z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 22c2.7 0 5-.9 6.7-2.5l-3.3-2.6c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3v2.7C4.6 19.8 8 22 12 22z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M6.4 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.5H3C2.3 8.9 2 10.4 2 12s.3 3.1 1 4.5l3.4-2.7z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 6.1c1.5 0 2.8.5 3.8 1.5l2.9-2.9C17 3 14.7 2 12 2 8 2 4.6 4.2 3 7.5l3.4 2.7C7.2 7.8 9.4 6.1 12 6.1z"
+                  />
+                </svg>
+              </span>
+            </button>
+          </div>
+
+          <div className="auth-social-divider">
+            <span>Hoặc đăng nhập bằng mật khẩu</span>
+          </div>
+
           <div className="auth-field-grid">
             <label className="field auth-field">
               <span>Email đăng ký</span>

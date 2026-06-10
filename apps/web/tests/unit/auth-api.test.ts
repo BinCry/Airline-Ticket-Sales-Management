@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  buildGoogleOAuthLoginUrl,
+  exchangeOAuthCode,
   loginWithPassword,
   requestForgotPasswordOtp,
   resetForgottenPassword,
@@ -80,6 +82,55 @@ describe("auth-api", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:8080/api/auth/forgot-password/request-otp",
       expect.objectContaining({
+        method: "POST"
+      })
+    );
+  });
+
+  it("tao url google oauth va doi ma tam thoi", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: "access-token",
+          refreshToken: "refresh-token",
+          tokenType: "Bearer",
+          accessTokenExpiresAt: "2099-01-01T00:00:00Z",
+          user: {
+            id: 202,
+            email: "google-oauth@oauth.local",
+            displayName: "Khach Google",
+            phone: null,
+            avatarUrl: null,
+            emailVerified: true,
+            roles: ["customer"],
+            permissions: ["customer.self_service"]
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    global.fetch = fetchMock as typeof fetch;
+
+    expect(buildGoogleOAuthLoginUrl("/account")).toBe(
+      "http://localhost:8080/api/auth/oauth/google/start?redirectTo=%2Faccount"
+    );
+
+    await expect(exchangeOAuthCode("ma-tam")).resolves.toMatchObject({
+      user: {
+        displayName: "Khach Google"
+      }
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8080/api/auth/oauth/exchange",
+      expect.objectContaining({
+        body: JSON.stringify({ code: "ma-tam" }),
         method: "POST"
       })
     );
