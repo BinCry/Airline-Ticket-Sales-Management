@@ -215,13 +215,50 @@ public class OAuthLoginService {
           userAccount.markLoggedIn(now);
           return userAccount;
         })
-        .orElseGet(() -> createGoogleUser(userInfo, now));
+        .orElseGet(() -> findVerifiedLocalUserOrCreateGoogleUser(userInfo, now));
+  }
+
+  private UserAccountEntity findVerifiedLocalUserOrCreateGoogleUser(
+      GoogleUserInfoResponse userInfo,
+      OffsetDateTime now
+  ) {
+    String normalizedEmail = normalizeEmail(userInfo.email());
+    if (isGoogleEmailVerified(userInfo)) {
+      return userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
+          .map(userAccount -> linkGoogleIdentity(userAccount, userInfo, normalizedEmail, now))
+          .orElseGet(() -> createGoogleUser(userInfo, now));
+    }
+    return createGoogleUser(userInfo, now);
+  }
+
+  private UserAccountEntity linkGoogleIdentity(
+      UserAccountEntity userAccount,
+      GoogleUserInfoResponse userInfo,
+      String normalizedEmail,
+      OffsetDateTime now
+  ) {
+    String avatarUrl = trimToNull(userInfo.picture());
+    if (!userAccount.isEmailVerified()) {
+      userAccount.markEmailVerified(now);
+    }
+    if (userAccount.getAvatarUrl() == null && avatarUrl != null) {
+      userAccount.updateAvatar(avatarUrl, now);
+    }
+    userAccount.markLoggedIn(now);
+    providerIdentityRepository.save(AuthProviderIdentityEntity.createGoogle(
+        userAccount,
+        userInfo.sub(),
+        normalizedEmail,
+        avatarUrl,
+        now
+    ));
+    return userAccount;
   }
 
   private UserAccountEntity createGoogleUser(GoogleUserInfoResponse userInfo, OffsetDateTime now) {
     RoleEntity customerRole = roleRepository.findByCode(RoleCode.CUSTOMER)
         .orElseThrow(() -> new IllegalStateException("Thiếu dữ liệu vai trò khách hàng."));
-    String oauthEmail = buildInternalOAuthEmail(userInfo.sub());
+    String oauthEmail = resolveGoogleUserAccountEmail(userInfo);
     UserAccountEntity userAccount = UserAccountEntity.register(
         oauthEmail,
         passwordEncoder.encode(generateToken()),
@@ -230,7 +267,9 @@ public class OAuthLoginService {
         "active",
         now
     );
-    userAccount.markEmailVerified(now);
+    if (isGoogleEmailVerified(userInfo)) {
+      userAccount.markEmailVerified(now);
+    }
     String avatarUrl = trimToNull(userInfo.picture());
     if (avatarUrl != null) {
       userAccount.updateAvatar(avatarUrl, now);
@@ -276,6 +315,13 @@ public class OAuthLoginService {
     return "google-" + subjectHash + "@" + OAUTH_EMAIL_DOMAIN;
   }
 
+  private String resolveGoogleUserAccountEmail(GoogleUserInfoResponse userInfo) {
+    if (isGoogleEmailVerified(userInfo)) {
+      return normalizeEmail(userInfo.email());
+    }
+    return buildInternalOAuthEmail(userInfo.sub());
+  }
+
   private String normalizeEmail(String email) {
     return email.trim().toLowerCase(Locale.ROOT);
   }
@@ -286,6 +332,10 @@ public class OAuthLoginService {
       return displayName.length() > 160 ? displayName.substring(0, 160) : displayName;
     }
     return normalizeEmail(email);
+  }
+
+  private boolean isGoogleEmailVerified(GoogleUserInfoResponse userInfo) {
+    return Boolean.TRUE.equals(userInfo.emailVerified());
   }
 
   private String generateToken() {
@@ -326,7 +376,8 @@ public class OAuthLoginService {
       String sub,
       String email,
       String name,
-      String picture
+      String picture,
+      @JsonProperty("email_verified") Boolean emailVerified
   ) {
   }
 }
