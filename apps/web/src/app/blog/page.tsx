@@ -27,27 +27,6 @@ export default async function BlogPage() {
   return (
     <section className="section">
       <div className="container">
-        <div className="blog-hero">
-          <div className="blog-hero-copy">
-            <span className="section-eyebrow">Cẩm nang, hướng dẫn, khuyến mãi</span>
-            <h1 className="page-title">Cẩm nang hành trình, điểm đến và ưu đãi theo mùa cho hành khách nội địa.</h1>
-            <p className="page-hero-copy">
-              Từ gợi ý điểm đến, kinh nghiệm đi sân bay đến chương trình ưu đãi theo
-              mùa, nội dung được tổ chức để hỗ trợ hành khách lên kế hoạch và quay lại
-              bước đặt vé đúng lúc.
-            </p>
-          </div>
-          <div className="blog-hero-panel">
-            <span className="pill">Nội dung nổi bật</span>
-            <h3>Nội dung hỗ trợ quyết định đặt vé</h3>
-            <p>
-              Các bài viết và chương trình ưu đãi được sắp cạnh nhau để hành khách
-              vừa đọc thông tin, vừa nhanh chóng quay lại lựa chọn hành trình phù hợp.
-            </p>
-          </div>
-        </div>
-
-        <div className="section-gap" />
         <div id="bai-viet" />
         <SectionHeading
           eyebrow="Tin du lịch mới"
