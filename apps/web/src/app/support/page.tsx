@@ -1,115 +1,119 @@
-import Image from "next/image";
+import Link from "next/link";
 
 import { SectionHeading } from "@/components/section-heading";
 import { SupportFaqSearch } from "@/components/support-faq-search";
 import { supportChannels, supportFaqCategories, supportFaqs } from "@/lib/public-content";
 
-const airportCards = [
-  "Nội Bài: mở quầy trước 2 giờ, khu vực C và D có quầy làm thủ tục tự động.",
-  "Tân Sơn Nhất: cập nhật cửa ra tàu theo thời gian thực trên trang tình trạng chuyến bay.",
-  "Đà Nẵng: ưu tiên khách có yêu cầu hỗ trợ đặc biệt qua bộ phận chăm sóc khách hàng trước chuyến."
+const supportActions = [
+  {
+    href: "/manage-booking",
+    title: "Tra cứu đặt chỗ",
+    description: "Xem vé, gửi lại email vé và kiểm tra hành trình."
+  },
+  {
+    href: "/check-in",
+    title: "Làm thủ tục",
+    description: "Mở check-in trực tuyến và xem hướng dẫn trước giờ bay."
+  },
+  {
+    href: "/flight-status",
+    title: "Trạng thái chuyến bay",
+    description: "Kiểm tra giờ bay, cửa ra tàu và ghi chú vận hành."
+  }
 ];
 
-const policyCards = [
+const supportNotes = [
   {
     id: "dieu-kien-ve",
     title: "Điều kiện vé",
-    description: "Kiểm tra hạng vé, thời hạn giữ chỗ, quy định đổi hoặc hoàn trước khi xác nhận thanh toán."
+    description:
+      "Kiểm tra hạng vé, thời hạn giữ chỗ, quy định đổi hoặc hoàn trước khi xác nhận thanh toán."
   },
   {
     id: "hanh-ly",
     title: "Hành lý",
-    description: "Chuẩn bị hành lý xách tay, hành lý ký gửi và các vật dụng cần khai báo trước khi ra sân bay."
+    description:
+      "Chuẩn bị hành lý xách tay, hành lý ký gửi và các vật dụng cần khai báo trước khi ra sân bay."
+  },
+  {
+    id: "noi-bai",
+    title: "Nội Bài",
+    description: "Mở quầy trước 2 giờ, khu vực C và D có quầy làm thủ tục tự động."
+  },
+  {
+    id: "tan-son-nhat",
+    title: "Tân Sơn Nhất",
+    description: "Cập nhật cửa ra tàu theo thời gian thực trên trang tình trạng chuyến bay."
+  },
+  {
+    id: "da-nang",
+    title: "Đà Nẵng",
+    description:
+      "Ưu tiên khách có yêu cầu hỗ trợ đặc biệt qua bộ phận chăm sóc khách hàng trước chuyến."
   }
 ];
 
 export default function SupportPage() {
   return (
     <section className="section">
-      <div className="container">
-        <div className="support-hero-grid">
-          <div className="page-hero-card support-hero-card">
-            <div>
-              <span className="section-eyebrow">Trung tâm hỗ trợ</span>
-              <h1 className="page-title">Hỗ trợ hành khách xuyên suốt từ lúc đặt vé đến sau chuyến bay.</h1>
-              <p className="page-hero-copy">
-                Trợ lý trực tuyến, tổng đài, biểu mẫu hỗ trợ, câu hỏi thường gặp và
-                thông tin sân bay được gom về một nơi để hành khách dễ tra cứu và kết
-                nối nhanh với bộ phận chăm sóc khách hàng khi cần.
-              </p>
-            </div>
-            <div className="support-stat-panel">
-              <div className="page-hero-stat">
-                <span>Thời hạn xử lý ưu tiên</span>
-                <strong>25'</strong>
+      <div className="container support-page-stack">
+        <div className="page-hero-card support-summary-panel">
+          <div className="support-summary-copy">
+            <span className="section-eyebrow">Trung tâm hỗ trợ</span>
+            <h1 className="page-title">Hỗ trợ</h1>
+            <p className="page-hero-copy">
+              Chọn nhanh việc cần xử lý hoặc tra cứu câu hỏi thường gặp trước khi liên hệ tổng đài.
+            </p>
+          </div>
+
+          <nav className="support-action-list" aria-label="Tác vụ hỗ trợ nhanh">
+            {supportActions.map((action) => (
+              <Link key={action.href} href={action.href} className="support-action-link">
+                <strong>{action.title}</strong>
+                <span>{action.description}</span>
+              </Link>
+            ))}
+          </nav>
+
+          <aside className="support-contact-panel" aria-label="Kênh liên hệ">
+            <span className="section-eyebrow">Liên hệ</span>
+            <h2>Kênh hỗ trợ</h2>
+            {supportChannels.map((channel) => (
+              <div key={channel.title} className="support-contact-item">
+                <div>
+                  <h2>{channel.title}</h2>
+                  <p>{channel.description}</p>
+                </div>
+                <strong>{channel.channel}</strong>
               </div>
-              <div className="page-hero-stat">
-                <span>Tiếp nhận từ trợ lý hỗ trợ</span>
-                <strong>1 chạm</strong>
-              </div>
-            </div>
-          </div>
-          <div className="support-media-card">
-            <Image
-              src="/images/danang-coast.jpg"
-              alt="Hình nền du lịch hỗ trợ cho trang chăm sóc khách hàng"
-              fill
-              sizes="(max-width: 1180px) 100vw, 360px"
-            />
-            <div className="support-media-overlay">
-              <span className="pill">Hỗ trợ hành khách</span>
-              <h3>Chuẩn bị trước giờ bay dễ dàng hơn</h3>
-              <p>Thông tin sân bay, điều kiện giá vé và các kênh hỗ trợ được trình bày rõ để hành khách chủ động xử lý sớm.</p>
-            </div>
-          </div>
+            ))}
+          </aside>
         </div>
 
-        <div className="section-gap" />
-        <div id="lien-he" className="card-grid card-grid-3">
-          {supportChannels.map((channel) => (
-            <article key={channel.title} className="surface-card promo-card">
-              <h3>{channel.title}</h3>
-              <p>{channel.description}</p>
-              <strong>{channel.channel}</strong>
-            </article>
-          ))}
-        </div>
+        <section id="faq">
+          <SectionHeading
+            eyebrow="FAQ"
+            title="Câu hỏi thường gặp"
+            description="Tìm theo từ khóa hoặc nhóm vấn đề để tự xử lý nhanh các tình huống quen thuộc."
+          />
+          <SupportFaqSearch categories={supportFaqCategories} faqs={supportFaqs} />
+        </section>
 
-        <div className="section-gap" />
-        <div className="card-grid card-grid-2">
-          {policyCards.map((policy) => (
-            <article key={policy.id} id={policy.id} className="surface-card">
-              <h3>{policy.title}</h3>
-              <p>{policy.description}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="section-gap" />
-        <div className="section-split">
-          <div id="faq">
-            <SectionHeading
-              eyebrow="Câu hỏi thường gặp"
-              title="Những câu hỏi hành khách thường gặp trước ngày bay"
-              description="Câu trả lời rõ ràng giúp hành khách tự xử lý nhanh hơn và giảm thời gian chờ hỗ trợ ở các tình huống quen thuộc."
-            />
-            <SupportFaqSearch categories={supportFaqCategories} faqs={supportFaqs} />
+        <section id="luu-y">
+          <SectionHeading
+            eyebrow="Lưu ý"
+            title="Lưu ý trước giờ bay"
+            description="Các thông tin ngắn cần kiểm tra trước khi đổi vé, chuẩn bị hành lý hoặc đến sân bay."
+          />
+          <div className="stack-list support-note-list">
+            {supportNotes.map((note) => (
+              <article key={note.id} id={note.id} className="surface-card support-note-card">
+                <h3>{note.title}</h3>
+                <p>{note.description}</p>
+              </article>
+            ))}
           </div>
-          <div id="san-bay">
-            <SectionHeading
-              eyebrow="Thông tin sân bay"
-              title="Thông tin cần biết trước khi đến sân bay"
-              description="Các lưu ý về quầy làm thủ tục, cửa ra tàu và hỗ trợ đặc biệt giúp hành khách chuẩn bị tốt hơn cho ngày khởi hành."
-            />
-            <div className="stack-list">
-              {airportCards.map((card) => (
-                <article key={card} className="surface-card">
-                  <p>{card}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </section>
   );

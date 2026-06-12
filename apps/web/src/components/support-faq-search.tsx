@@ -23,12 +23,6 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
   const [query, setQuery] = useState("");
   const [openQuestion, setOpenQuestion] = useState<string | null>(faqs[0]?.question ?? null);
 
-  const popularFaqs = useMemo(() => {
-    const markedPopularFaqs = faqs.filter((faq) => faq.isPopular);
-
-    return (markedPopularFaqs.length > 0 ? markedPopularFaqs : faqs).slice(0, 5);
-  }, [faqs]);
-
   const filteredFaqs = useMemo(() => {
     const categoryFaqs = faqs.filter((faq) => {
       return selectedCategory === "Tất cả" || faq.category === selectedCategory;
@@ -51,12 +45,6 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
     });
   }, [filteredFaqs]);
 
-  function choosePopularFaq(faq: FaqEntry) {
-    setSelectedCategory(faq.category);
-    setQuery(faq.question);
-    setOpenQuestion(faq.question);
-  }
-
   return (
     <div className="support-faq-search">
       <div className="support-faq-toolbar">
@@ -68,20 +56,10 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
             placeholder="Nhập OTP, hoàn vé, hành lý, email vé..."
             type="search"
           />
+          <small className="support-faq-result-text">
+            Tìm thấy {filteredFaqs.length} kết quả phù hợp
+          </small>
         </label>
-        <div className="support-faq-count">
-          <span>Kết quả</span>
-          <strong>{filteredFaqs.length}/{faqs.length}</strong>
-        </div>
-      </div>
-
-      <div className="support-faq-suggestion-list" aria-label="Câu hỏi phổ biến">
-        <span>Gợi ý phổ biến</span>
-        {popularFaqs.map((faq) => (
-          <button key={faq.question} type="button" onClick={() => choosePopularFaq(faq)}>
-            {faq.question}
-          </button>
-        ))}
       </div>
 
       <div className="support-faq-category-list" aria-label="Lọc câu hỏi thường gặp">
@@ -113,12 +91,12 @@ export function SupportFaqSearch({ categories, faqs }: SupportFaqSearchProps) {
                   onClick={() => setOpenQuestion(isOpen ? null : faq.question)}
                 >
                   <span className="support-faq-title-wrap">
-                    <span className="pill">{faq.category}</span>
-                    <h3>{faq.question}</h3>
+                    <h3>
+                      <span className="support-faq-inline-tag">{faq.category}</span>
+                      {faq.question}
+                    </h3>
                   </span>
-                  <span className="support-faq-toggle-icon" aria-hidden="true">
-                    {isOpen ? "-" : "+"}
-                  </span>
+                  <span className="support-faq-toggle-icon" aria-hidden="true" />
                 </button>
                 {isOpen ? (
                   <p id={`${faqId}-answer`}>{faq.answer}</p>

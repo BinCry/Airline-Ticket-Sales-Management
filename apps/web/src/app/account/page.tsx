@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,7 +12,6 @@ import {
   ROLE_LABELS,
   type BackofficeModuleKey
 } from "@/lib/access-control";
-import { logoutAuthSession } from "@/lib/auth-api";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   clearStoredAuthSession,
@@ -313,7 +311,10 @@ export default function AccountPage() {
   const [passengerError, setPassengerError] = useState<string | null>(null);
   const [passengerForm, setPassengerForm] = useState<UpsertMyPassengerPayload>(EMPTY_PASSENGER_FORM);
   const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
+  const [isProfileFormVisible, setIsProfileFormVisible] = useState(false);
+  const [isAvatarFormVisible, setIsAvatarFormVisible] = useState(false);
   const [isPasswordFormVisible, setIsPasswordFormVisible] = useState(false);
+  const [isPassengerFormVisible, setIsPassengerFormVisible] = useState(false);
   const [editingPassengerId, setEditingPassengerId] = useState<number | null>(null);
   const [passengerActionError, setPassengerActionError] = useState<string | null>(null);
   const [passengerActionSuccess, setPassengerActionSuccess] = useState<string | null>(null);
@@ -329,7 +330,6 @@ export default function AccountPage() {
   const [isSubmittingPassenger, setIsSubmittingPassenger] = useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deletingPassengerId, setDeletingPassengerId] = useState<number | null>(null);
   const [hidingVoucherCode, setHidingVoucherCode] = useState<string | null>(null);
 
@@ -361,7 +361,10 @@ export default function AccountPage() {
       setEditingPassengerId(null);
       setPassengerForm(EMPTY_PASSENGER_FORM);
       setPasswordForm(EMPTY_PASSWORD_FORM);
+      setIsProfileFormVisible(false);
+      setIsAvatarFormVisible(false);
       setIsPasswordFormVisible(false);
+      setIsPassengerFormVisible(false);
       setIsLoadingProfile(false);
       setIsLoadingPassengers(false);
       setIsLoadingLoyalty(false);
@@ -558,39 +561,6 @@ export default function AccountPage() {
     passwordForm.newPassword.length > 0 &&
     passwordForm.confirmPassword === passwordForm.newPassword;
   const isEditingPassenger = editingPassengerId !== null;
-  const accountStats = isStaffProfile
-    ? [
-        {
-          label: "Vai trò nội bộ",
-          value: localizedRoleSummary
-        },
-        {
-          label: "Module backoffice",
-          value: `${allowedBackofficeModules.length} khu vực`
-        },
-        {
-          label: "Trạng thái tài khoản",
-          value: activeProfile
-            ? (isLoadingProfile ? "Đang tải" : "Sẵn sàng")
-            : "Chưa đăng nhập"
-        }
-      ]
-    : [
-        {
-          label: "Hành khách thường dùng",
-          value: String(passengers.length)
-        },
-        {
-          label: "Vai trò hiện tại",
-          value: localizedRoleSummary
-        },
-        {
-          label: "Trạng thái hồ sơ",
-          value: activeProfile
-            ? (isLoadingProfile ? "Đang tải" : "Sẵn sàng")
-            : "Chưa đăng nhập"
-        }
-      ];
   const activityFeed = activeProfile
     ? isStaffProfile
       ? [
@@ -638,28 +608,23 @@ export default function AccountPage() {
       ];
   const heroEyebrow = activeProfile
     ? isStaffProfile
-      ? `Xin chào, ${localizedRoleSummary}`
-      : `Xin chào, ${activeProfile.displayName}`
-    : "Tài khoản khách hàng";
+      ? localizedRoleSummary
+      : activeProfile.displayName
+    : "Tài khoản";
   const heroTitle = activeProfile
     ? isOperationsStaffProfile
-      ? "Trang nội bộ cập nhật hồ sơ cá nhân và truy cập nhanh công cụ."
+      ? "Hồ sơ nội bộ"
       : isStaffProfile
-        ? "Quản lý hồ sơ nội bộ và công cụ được cấp quyền."
-        : "Quản lý hồ sơ cá nhân và thông tin chuyến bay."
-    : "Theo dõi hồ sơ và chuyến bay tại một nơi.";
+        ? "Hồ sơ và lối tắt công việc"
+        : "Tài khoản của tôi"
+    : "Đăng nhập để quản lý tài khoản";
   const heroDescription = activeProfile
     ? isOperationsStaffProfile
-      ? "Nơi quản lý thông tin tài khoản và sử dụng các module backoffice được cấp quyền của bạn."
+      ? "Cập nhật thông tin cá nhân và mở nhanh các module vận hành được cấp quyền."
       : isStaffProfile
-        ? "Cập nhật thông tin tài khoản và mở nhanh các module backoffice phù hợp với vai trò của bạn."
-        : "Cập nhật thông tin tài khoản, hành khách thường dùng và theo dõi thông báo chuyến bay của bạn."
-    : "Đăng nhập để quản lý hồ sơ, hành khách thường dùng và các cập nhật liên quan đến chuyến bay đã đặt.";
-  const heroTag = isStaffProfile ? "Tài khoản nội bộ" : "Tài khoản hành khách";
-  const heroMediaTitle = isStaffProfile ? "Bảng điều phối cá nhân" : "Hồ sơ chuyến đi";
-  const heroMediaDescription = isStaffProfile
-    ? "Giữ hồ sơ cá nhân gọn gàng và đi nhanh vào đúng khu vực backoffice cần xử lý."
-    : "Đồng bộ đặt chỗ, hành khách thường dùng và thông báo quan trọng theo từng hành trình.";
+        ? "Kiểm tra hồ sơ, vai trò và các khu vực backoffice có thể xử lý trong phiên hiện tại."
+        : "Cập nhật hồ sơ, hành khách thường dùng, voucher và thông báo chuyến bay."
+    : "Đăng nhập để lưu hồ sơ, hành khách thường dùng và theo dõi cập nhật chuyến bay.";
   const accountPills = activeProfile
     ? [
         activeProfile.email,
@@ -667,10 +632,10 @@ export default function AccountPage() {
         `Vai trò: ${localizedRoleSummary}`,
         `Số điện thoại: ${phoneSummary}`,
         isStaffProfile
-          ? `${allowedBackofficeModules.length} module backoffice khả dụng`
+          ? `${allowedBackofficeModules.length} module backoffice`
           : isLoadingProfile
             ? "Đang tải hồ sơ"
-            : "Hồ sơ tài khoản đã sẵn sàng"
+            : "Hồ sơ sẵn sàng"
       ]
     : [];
 
@@ -699,12 +664,14 @@ export default function AccountPage() {
     setEditingPassengerId(null);
     setPassengerActionError(null);
     setPassengerActionSuccess(null);
+    setIsPassengerFormVisible(false);
   }
 
   function resetProfileForm() {
     setProfileForm(buildProfileForm(activeProfile));
     setProfileActionError(null);
     setProfileActionSuccess(null);
+    setIsProfileFormVisible(false);
   }
 
   function syncProfile(nextProfile: MyProfile) {
@@ -751,6 +718,7 @@ export default function AccountPage() {
       syncProfile(nextProfile);
       setProfileError(null);
       setProfileActionSuccess("Đã cập nhật hồ sơ tài khoản.");
+      setIsProfileFormVisible(false);
     } catch (error) {
       setProfileActionError(
         resolveAccountError(error, "Không thể lưu hồ sơ tài khoản lúc này.")
@@ -776,6 +744,7 @@ export default function AccountPage() {
       const nextProfile = await uploadMyAvatar(authSession.accessToken, avatar);
       syncProfile(nextProfile);
       setAvatarActionSuccess("Đã cập nhật ảnh đại diện.");
+      setIsAvatarFormVisible(false);
     } catch (error) {
       setAvatarActionError(
         resolveAccountError(error, "Không thể cập nhật ảnh đại diện lúc này.")
@@ -841,24 +810,6 @@ export default function AccountPage() {
     }
   }
 
-  async function handleLogout() {
-    if (isLoggingOut) {
-      return;
-    }
-
-    setIsLoggingOut(true);
-    try {
-      if (authSession?.refreshToken) {
-        await logoutAuthSession(authSession.refreshToken);
-      }
-    } finally {
-      clearStoredAuthSession();
-      setAuthSession(null);
-      router.push("/login");
-      setIsLoggingOut(false);
-    }
-  }
-
   async function handlePassengerSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -898,6 +849,7 @@ export default function AccountPage() {
       );
       setPassengerForm(EMPTY_PASSENGER_FORM);
       setEditingPassengerId(null);
+      setIsPassengerFormVisible(false);
     } catch (error) {
       setPassengerActionError(
         resolveAccountError(error, "Không thể lưu hành khách lúc này.")
@@ -912,6 +864,7 @@ export default function AccountPage() {
     setEditingPassengerId(passenger.id);
     setPassengerActionError(null);
     setPassengerActionSuccess(null);
+    setIsPassengerFormVisible(true);
   }
 
   async function handleDeletePassenger(passenger: MyPassenger) {
@@ -994,7 +947,7 @@ export default function AccountPage() {
   return (
     <section className="section">
       <div className="container">
-        <div className="page-hero-card">
+        <div className="page-hero-card account-dashboard-hero">
           <div>
             <span className="section-eyebrow">{heroEyebrow}</span>
             <h1 className="page-title">{heroTitle}</h1>
@@ -1038,52 +991,111 @@ export default function AccountPage() {
               </div>
             ) : null}
           </div>
-          <div className="profile-media-card">
-            <Image
-              src="/images/airport-terminal.jpg"
-              alt="Không gian sân bay dùng làm hình nền khu tài khoản"
-              fill
-              sizes="(max-width: 1180px) 100vw, 360px"
-            />
-            <div className="profile-media-overlay">
-              <span className="pill">{heroTag}</span>
-              <h3>{heroMediaTitle}</h3>
-              <p>{heroMediaDescription}</p>
+          <aside className="account-overview-card" aria-label="Tổng quan tài khoản">
+            <div className="account-overview-head">
+              <div className="profile-avatar-preview account-overview-avatar">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={`Ảnh đại diện của ${activeProfile?.displayName ?? "tài khoản"}`}
+                  />
+                ) : (
+                  <span>{activeProfile?.displayName.slice(0, 1).toUpperCase() ?? "?"}</span>
+                )}
+              </div>
+              <div>
+                <span className="pill">{isStaffProfile ? "Nội bộ" : "Hành khách"}</span>
+                <h2>{activeProfile?.displayName ?? "Chưa đăng nhập"}</h2>
+                <p>{activeProfile?.email ?? "Đăng nhập để xem hồ sơ cá nhân."}</p>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="section-gap" />
-        <div className="metric-grid">
-          {accountStats.map((item) => (
-            <article key={item.label} className="metric-card metric-card-strong">
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </article>
-          ))}
-        </div>
-
-        <div className="section-gap" />
-        <div className="section-split">
-          <div>
-            <SectionHeading
-              eyebrow={isStaffProfile ? "Hồ sơ cá nhân" : "Hồ sơ tài khoản"}
-              title={
-                isStaffProfile
-                  ? "Cập nhật nhanh thông tin cá nhân dùng trong phiên nội bộ hiện tại"
-                  : "Cập nhật nhanh tên hiển thị và số điện thoại đang dùng"
-              }
-              description={
-                isStaffProfile
-                  ? "Thông tin này giúp đồng bộ hồ sơ đăng nhập, ảnh đại diện và kênh liên hệ nội bộ của bạn."
-                  : "Thông tin này sẽ được lưu cho tài khoản của bạn và dùng lại ở những lần đăng nhập sau."
-              }
-            />
+            <div className="account-overview-list">
+              <div>
+                <span>Email</span>
+                <strong>{activeProfile?.email ?? "Chưa đăng nhập"}</strong>
+              </div>
+              <div>
+                <span>Xác minh</span>
+                <strong>{activeProfile?.emailVerified ? "Email đã xác minh" : "Email chưa xác minh"}</strong>
+              </div>
+              <div>
+                <span>Vai trò</span>
+                <strong>{localizedRoleSummary}</strong>
+              </div>
+              <div>
+                <span>Số điện thoại</span>
+                <strong>{phoneSummary}</strong>
+              </div>
+              <div>
+                <span>Trạng thái hồ sơ</span>
+                <strong>
+                  {isLoadingProfile ? "Đang tải" : activeProfile ? "Sẵn sàng" : "Cần đăng nhập"}
+                </strong>
+              </div>
+              <div>
+                <span>{isStaffProfile ? "Module nội bộ" : "Hành khách"}</span>
+                <strong>
+                  {isStaffProfile
+                    ? `${allowedBackofficeModules.length} khu vực`
+                    : `${passengers.length} hồ sơ`}
+                </strong>
+              </div>
+            </div>
             {activeProfile ? (
-              <form className="surface-card" onSubmit={handleProfileSubmit}>
+              <div className="account-overview-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setIsProfileFormVisible((value) => !value)}
+                  aria-expanded={isProfileFormVisible}
+                >
+                  Cập nhật hồ sơ
+                </button>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setIsAvatarFormVisible((value) => !value)}
+                  aria-expanded={isAvatarFormVisible}
+                >
+                  Đổi ảnh
+                </button>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setIsPasswordFormVisible(true)}
+                  aria-expanded={isPasswordFormVisible}
+                >
+                  Đổi mật khẩu
+                </button>
+              </div>
+            ) : null}
+          </aside>
+        </div>
+
+        <div className="section-gap" />
+        <div className="section-split account-dashboard-grid">
+          <div>
+            {activeProfile && isAvatarFormVisible ? (
+              <div className="account-modal-backdrop" role="presentation">
+                <div
+                  className="surface-card account-modal-card"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="account-avatar-title"
+                >
                 <div className="auth-note-head">
-                  <h3>Cập nhật hồ sơ tài khoản</h3>
-                  <span className="pill auth-sync-pill">Đồng bộ hồ sơ</span>
+                  <div>
+                    <h3 id="account-avatar-title">Đổi ảnh đại diện</h3>
+                    <span className="pill">JPG, PNG hoặc WEBP, tối đa 2 MB</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="profile-password-close"
+                    onClick={() => setIsAvatarFormVisible(false)}
+                    aria-label="Đóng form đổi ảnh đại diện"
+                  >
+                    ×
+                  </button>
                 </div>
                 <div className="profile-avatar-row">
                   <div className="profile-avatar-preview">
@@ -1097,11 +1109,11 @@ export default function AccountPage() {
                     )}
                   </div>
                   <div className="profile-avatar-actions">
-                    <strong>Ảnh đại diện</strong>
-                    <p>Hỗ trợ JPG, PNG hoặc WEBP, tối đa 2 MB.</p>
+                    <strong>Ảnh đại diện hiện tại</strong>
+                    <p>Chọn tệp mới để cập nhật ảnh hiển thị trong tài khoản và panel người dùng.</p>
                     <div className="auth-action-row profile-avatar-button-row">
-                      <label className="button button-secondary">
-                        {isUploadingAvatar ? "Đang tải ảnh..." : "Đổi ảnh đại diện"}
+                      <label className="button button-primary">
+                        {isUploadingAvatar ? "Đang tải ảnh..." : "Chọn ảnh mới"}
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
@@ -1113,18 +1125,10 @@ export default function AccountPage() {
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => setIsPasswordFormVisible(true)}
-                        aria-expanded={isPasswordFormVisible}
+                        onClick={() => setIsAvatarFormVisible(false)}
+                        disabled={isUploadingAvatar}
                       >
-                        Đổi mật khẩu
-                      </button>
-                      <button
-                        type="button"
-                        className="button profile-logout-button"
-                        onClick={handleLogout}
-                        disabled={isLoggingOut}
-                      >
-                        {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                        Hủy
                       </button>
                     </div>
                   </div>
@@ -1147,6 +1151,32 @@ export default function AccountPage() {
                     <p>{avatarActionSuccess}</p>
                   </div>
                 ) : null}
+                </div>
+              </div>
+            ) : null}
+            {activeProfile && isProfileFormVisible ? (
+              <div className="account-modal-backdrop" role="presentation">
+              <form
+                className="surface-card account-modal-card"
+                onSubmit={handleProfileSubmit}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="account-profile-title"
+              >
+                <div className="auth-note-head">
+                  <div>
+                    <h3 id="account-profile-title">Cập nhật hồ sơ tài khoản</h3>
+                    <span className="pill auth-sync-pill">Đồng bộ hồ sơ</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="profile-password-close"
+                    onClick={() => setIsProfileFormVisible(false)}
+                    aria-label="Đóng form cập nhật hồ sơ"
+                  >
+                    ×
+                  </button>
+                </div>
                 <div className="auth-field-grid auth-field-grid-double">
                   <label className="field auth-field">
                     <span>Tên hiển thị</span>
@@ -1202,17 +1232,25 @@ export default function AccountPage() {
                     onClick={resetProfileForm}
                     disabled={isSubmittingProfile}
                   >
-                    Khôi phục
+                    Hủy
                   </button>
                 </div>
               </form>
+              </div>
             ) : null}
 
             {activeProfile && isPasswordFormVisible ? (
-              <form className="surface-card profile-password-form" onSubmit={handlePasswordSubmit}>
+              <div className="account-modal-backdrop" role="presentation">
+              <form
+                className="surface-card account-modal-card profile-password-form"
+                onSubmit={handlePasswordSubmit}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="account-password-title"
+              >
                 <div className="auth-note-head profile-password-form-head">
                   <div>
-                    <h3>Đổi mật khẩu</h3>
+                    <h3 id="account-password-title">Đổi mật khẩu</h3>
                     <span className="pill">Yêu cầu đăng nhập lại sau khi đổi</span>
                   </div>
                   <button
@@ -1301,16 +1339,36 @@ export default function AccountPage() {
                   </button>
                 </div>
               </form>
+              </div>
             ) : null}
 
             {canUsePassengerSelfService ? (
               <>
                 <div className="section-gap" />
+                <div id="hanh-khach" className="account-anchor" aria-hidden="true" />
                 <SectionHeading
-                  eyebrow="Hồ sơ & hành khách"
-                  title="Lưu sẵn hồ sơ hành khách để đặt vé nhanh hơn cho các chuyến tiếp theo"
-                  description="Thông tin giấy tờ, tùy chọn chỗ ngồi và ghi chú cần thiết được lưu gọn gàng để giảm thao tác nhập lại."
+                  eyebrow="Hành khách"
+                  title="Hành khách thường dùng"
+                  description="Lưu hồ sơ giấy tờ để đặt vé nhanh hơn ở các chuyến tiếp theo."
                 />
+                {activeProfile ? (
+                  <div className="account-section-actions">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => {
+                        setPassengerForm(EMPTY_PASSENGER_FORM);
+                        setEditingPassengerId(null);
+                        setPassengerActionError(null);
+                        setPassengerActionSuccess(null);
+                        setIsPassengerFormVisible(true);
+                      }}
+                      aria-expanded={isPassengerFormVisible}
+                    >
+                      Thêm hành khách
+                    </button>
+                  </div>
+                ) : null}
                 {passengerError && activeProfile ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
@@ -1320,17 +1378,34 @@ export default function AccountPage() {
                     <p>{passengerError}</p>
                   </div>
                 ) : null}
-                {activeProfile ? (
-                  <form className="surface-card" onSubmit={handlePassengerSubmit}>
+                {activeProfile && isPassengerFormVisible ? (
+                  <div className="account-modal-backdrop" role="presentation">
+                  <form
+                    className="surface-card account-modal-card"
+                    onSubmit={handlePassengerSubmit}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="account-passenger-title"
+                  >
                     <div className="auth-note-head">
-                      <h3>
-                        {isEditingPassenger
-                          ? "Cập nhật hành khách thường dùng"
-                          : "Thêm hành khách thường dùng"}
-                      </h3>
-                      <span className="pill">
-                        {isEditingPassenger ? "Chế độ chỉnh sửa" : "Chế độ thêm mới"}
-                      </span>
+                      <div>
+                        <h3 id="account-passenger-title">
+                          {isEditingPassenger
+                            ? "Cập nhật hành khách thường dùng"
+                            : "Thêm hành khách thường dùng"}
+                        </h3>
+                        <span className="pill">
+                          {isEditingPassenger ? "Chế độ chỉnh sửa" : "Chế độ thêm mới"}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="profile-password-close"
+                        onClick={resetPassengerForm}
+                        aria-label="Đóng form hành khách"
+                      >
+                        ×
+                      </button>
                     </div>
                     <div className="auth-field-grid auth-field-grid-double">
                       <label className="field auth-field">
@@ -1443,6 +1518,7 @@ export default function AccountPage() {
                       </button>
                     </div>
                   </form>
+                  </div>
                 ) : null}
                 <div className="stack-list">
                   {passengers.length > 0 ? (
@@ -1502,10 +1578,11 @@ export default function AccountPage() {
           <div>
             {isMemberProfile ? (
               <>
+                <div id="voucher" className="account-anchor" aria-hidden="true" />
                 <SectionHeading
-                  eyebrow="Quyền lợi hội viên"
-                  title="Điểm thưởng và voucher được gom lại để bạn theo dõi nhanh trên cùng tài khoản"
-                  description="Thông tin hội viên chỉ hiển thị khi tài khoản đang ở vai trò member và đã có dữ liệu loyalty thực tế."
+                  eyebrow="Hội viên"
+                  title="Voucher và điểm thưởng"
+                  description="Theo dõi điểm, voucher còn hiệu lực và lịch sử biến động gần đây."
                 />
                 {loyaltyError ? (
                   <div className="auth-note-card">
@@ -1601,9 +1678,9 @@ export default function AccountPage() {
             {isStaffProfile ? (
               <>
                 <SectionHeading
-                  eyebrow="Lối tắt nội bộ"
-                  title="Mở nhanh các khu vực backoffice đã được cấp quyền"
-                  description="Các lối tắt này giúp bạn đi thẳng vào đúng khu vực cần xử lý mà không phải tìm lại từ đầu."
+                  eyebrow="Backoffice"
+                  title="Lối tắt nội bộ"
+                  description="Mở nhanh các khu vực được cấp quyền trong phiên hiện tại."
                 />
                 <div className="card-grid">
                   {allowedBackofficeModules.length > 0 ? (
@@ -1637,17 +1714,18 @@ export default function AccountPage() {
                 <div className="section-gap" />
               </>
             ) : null}
+            <div id="thong-bao" className="account-anchor" aria-hidden="true" />
             <SectionHeading
-              eyebrow={isStaffProfile ? "Nhịp công việc" : "Trung tâm thông báo"}
+              eyebrow={isStaffProfile ? "Công việc" : "Thông báo"}
               title={
                 isStaffProfile
-                  ? "Tóm tắt nhanh hồ sơ cá nhân và phạm vi công việc của phiên hiện tại"
-                  : "Mọi cập nhật quan trọng được gom về một dòng thời gian dễ theo dõi"
+                  ? "Tóm tắt phiên làm việc"
+                  : "Thông báo gần đây"
               }
               description={
                 isStaffProfile
-                  ? "Các ghi chú bên dưới giúp bạn kiểm tra nhanh hồ sơ đăng nhập, vai trò hiện có và những khu vực có thể xử lý ngay."
-                  : "Hành khách có thể xem lại trạng thái thanh toán, mở làm thủ tục, thay đổi chuyến bay và phản hồi từ bộ phận hỗ trợ."
+                  ? "Kiểm tra vai trò, hồ sơ đăng nhập và các khu vực có thể xử lý."
+                  : "Các cập nhật về vé, chuyến bay và phản hồi hỗ trợ được gom tại đây."
               }
             />
             <div className="stack-list">

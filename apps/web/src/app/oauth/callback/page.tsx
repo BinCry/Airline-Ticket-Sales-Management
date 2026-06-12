@@ -34,7 +34,7 @@ function OAuthCallbackContent() {
         persistAuthSession(authSession, true);
         setStatus("success");
         setMessage("Đăng nhập Google thành công.");
-        router.replace(redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/account");
+        router.replace(redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/");
       })
       .catch((error) => {
         setStatus("error");

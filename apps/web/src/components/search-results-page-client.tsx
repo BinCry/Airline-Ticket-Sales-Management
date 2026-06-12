@@ -190,14 +190,6 @@ function dinhDangNgay(value: string): string {
   return `${day}/${month}/${year}`;
 }
 
-function hienThiKhungNgay(criteria: ApiFlightSearchCriteria): string {
-  if (criteria.tripType === "one_way" || !criteria.returnDate) {
-    return dinhDangNgay(criteria.departureDate);
-  }
-
-  return `${dinhDangNgay(criteria.departureDate)} → ${dinhDangNgay(criteria.returnDate)}`;
-}
-
 function hienThiThongBaoDieuHuong(notice: string | null): string | null {
   if (notice === "chon-chuyen-bay-truoc") {
     return "Hãy chọn ít nhất một chuyến bay một chiều hoặc khứ hồi trước khi chuyển sang bước nhập thông tin đặt vé.";
@@ -607,32 +599,9 @@ export function SearchResultsPageClient({
       : outboundFlightsRaw.find((flight) => flight.flightId === selectedOutboundFlightId) ?? null;
   const thongBaoDieuHuong = hienThiThongBaoDieuHuong(notice);
   const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
-  const bestPrice =
-    allFlights.length > 0 ? formatCurrency(Math.min(...allFlights.map((flight) => flight.baseFare))) : "Chưa có";
   const tongKhach = tongHanhKhach(adultCount, childCount, infantCount);
   const sanBayDiPhoBien = sanBayPhoBien.slice(0, 6);
   const sanBayDenPhoBien = sanBayPhoBien.filter((sanBay) => sanBay.code !== from).slice(0, 6);
-
-  const insights = [
-    {
-      label: "Tuyến đang xem",
-      value: hienThiHanhTrinh(criteria.from, criteria.to),
-      compact: true,
-      kind: "text" as const
-    },
-    {
-      label: "Khung ngày",
-      value: hienThiKhungNgay(criteria),
-      compact: true,
-      kind: "date" as const
-    },
-    {
-      label: "Giá mở đầu tốt nhất",
-      value: bestPrice,
-      compact: false,
-      kind: "text" as const
-    }
-  ];
 
   function coTheTangHanhKhach(nhom: NhomHanhKhach): boolean {
     if (tongKhach >= 9) {
@@ -778,39 +747,6 @@ export function SearchResultsPageClient({
   return (
     <section className="section">
       <div className="container">
-        <div className="page-hero-card search-page-hero">
-          <div>
-            <span className="section-eyebrow">Tìm chuyến bay</span>
-            <h1 className="page-title">Chọn chuyến bay phù hợp theo giờ khởi hành, giá mở đầu và số ghế còn bán.</h1>
-            <p className="page-hero-copy">
-              So sánh nhanh giờ bay, thời lượng, giá Phổ thông tiết kiệm và tình trạng ghế của cả
-              ba hạng vé trước khi chuyển sang bước đặt chỗ.
-            </p>
-          </div>
-          <div className="page-hero-stat-grid">
-            {insights.map((item) => (
-              <article
-                key={item.label}
-                className={item.kind === "date" ? "page-hero-stat page-hero-stat-date" : "page-hero-stat"}
-              >
-                <span>{item.label}</span>
-                {item.kind === "date" && criteria.tripType === "round_trip" && criteria.returnDate ? (
-                  <strong className="stat-value-compact date-range-stack">
-                    <span className="date-range-line">{dinhDangNgay(criteria.departureDate)}</span>
-                    <span className="date-range-arrow" aria-hidden="true">
-                      ↓
-                    </span>
-                    <span className="date-range-line">{dinhDangNgay(criteria.returnDate)}</span>
-                  </strong>
-                ) : (
-                  <strong className={item.compact ? "stat-value-compact" : undefined}>{item.value}</strong>
-                )}
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="section-gap" />
         {thongBaoDieuHuong ? (
           <>
             <article className="surface-card booking-inline-info">

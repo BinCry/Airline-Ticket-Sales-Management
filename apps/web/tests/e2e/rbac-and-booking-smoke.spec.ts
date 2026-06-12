@@ -122,12 +122,12 @@ test("trang hỗ trợ không render highlight FAQ", async ({ page }) => {
   await page.getByRole("searchbox").fill("hoàn vé");
   await expect(page.locator("mark")).toHaveCount(0);
 
-  await page
-    .locator(".support-faq-suggestion-list button", {
-      hasText: "Tôi muốn hoàn vé hoặc hủy đặt chỗ thì cần làm gì?"
-    })
-    .first()
-    .click();
+  const faqToggle = page.getByRole("button", {
+    name: "Hoàn vé Tôi muốn hoàn vé hoặc hủy đặt chỗ thì cần làm gì?"
+  });
+
+  await expect(faqToggle).toBeVisible();
+  await faqToggle.click();
   await expect(page.locator("mark")).toHaveCount(0);
 });
 

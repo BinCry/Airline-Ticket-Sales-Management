@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { logoutAuthSession } from "@/lib/auth-api";
 import {
   AUTH_SESSION_UPDATED_EVENT,
+  clearStoredAuthSession,
   loadActiveAuthSession,
   type AuthSession
 } from "@/lib/auth-session";
@@ -15,12 +17,16 @@ import { utilityLinks } from "@/lib/public-content";
 import { buildMainNavigation, isMainNavigationLinkActive } from "@/lib/site-navigation";
 
 export function SiteHeader() {
+  const router = useRouter();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
     setIsMobileOpen(false);
+    setIsAccountPanelOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -58,12 +64,110 @@ export function SiteHeader() {
     accountDisplayName
       ? (isStaffRole ? (shortStaffLabel ?? primaryRoleLabel ?? accountDisplayName) : accountDisplayName)
       : null;
+  const accountInitial = accountDisplayName?.slice(0, 1).toUpperCase() ?? "?";
   const permissions = authSession?.user.permissions ?? [];
   const canOpenBackoffice = hasAnyBackofficeAccess(permissions);
   const navigationLinks = buildMainNavigation(permissions).filter(
     (link) => !(canOpenBackoffice && link.href === "/backoffice")
   );
   const headerClassName = isStaffRole ? "site-header site-header-staff" : "site-header";
+
+  async function handleAccountLogout() {
+    if (!authSession || isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      await logoutAuthSession(authSession.refreshToken);
+    } finally {
+      clearStoredAuthSession();
+      setAuthSession(null);
+      setIsAccountPanelOpen(false);
+      setIsLoggingOut(false);
+      router.push("/");
+    }
+  }
+
+  function renderAccountPanel(placement: "desktop" | "mobile") {
+    if (!authSession || !accountButtonLabel) {
+      return null;
+    }
+
+    const panelId = `account-panel-${placement}`;
+
+    return (
+      <div className="account-menu-wrap">
+        <button
+          type="button"
+          className="button button-secondary nav-account-button account-menu-trigger"
+          onClick={() => setIsAccountPanelOpen((value) => !value)}
+          aria-expanded={isAccountPanelOpen}
+          aria-controls={panelId}
+          title={accountButtonLabel}
+        >
+          <span className="account-menu-avatar" aria-hidden="true">
+            {accountInitial}
+          </span>
+          <span className="account-menu-name">{accountButtonLabel}</span>
+        </button>
+        {isAccountPanelOpen ? (
+          <div id={panelId} className="account-menu-panel" role="menu">
+            <div className="account-menu-identity">
+              <span className="account-menu-avatar account-menu-avatar-large" aria-hidden="true">
+                {accountInitial}
+              </span>
+              <div>
+                <strong>{authSession.user.displayName}</strong>
+                <span>{authSession.user.email}</span>
+                <small>{primaryRoleLabel ?? "Khách hàng"}</small>
+              </div>
+            </div>
+            <div className="account-menu-group">
+              <Link href="/account" role="menuitem">
+                Thông tin cá nhân
+              </Link>
+              <Link href="/account#hanh-khach" role="menuitem">
+                Hành khách
+              </Link>
+              <Link href="/account#thong-bao" role="menuitem">
+                Thông báo
+              </Link>
+              <Link href="/account#voucher" role="menuitem">
+                Voucher / Điểm thưởng
+              </Link>
+            </div>
+            <div className="account-menu-group">
+              <Link href="/manage-booking" role="menuitem">
+                Vé của tôi
+              </Link>
+              <Link href="/check-in" role="menuitem">
+                Làm thủ tục
+              </Link>
+              <Link href="/flight-status" role="menuitem">
+                Trạng thái chuyến bay
+              </Link>
+              {canOpenBackoffice ? (
+                <Link href="/backoffice" role="menuitem">
+                  Backoffice
+                </Link>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="account-menu-logout"
+              onClick={() => void handleAccountLogout()}
+              disabled={isLoggingOut}
+              role="menuitem"
+            >
+              {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <header className={headerClassName}>
@@ -129,13 +233,7 @@ export function SiteHeader() {
                 <strong>1900 6868</strong>
               </div>
               {accountButtonLabel ? (
-                <Link
-                  href="/account"
-                  className="button button-secondary nav-account-button"
-                  title={accountButtonLabel}
-                >
-                  {accountButtonLabel}
-                </Link>
+                renderAccountPanel("mobile")
               ) : (
                 <>
                   <Link href="/login" className="button button-secondary">
@@ -163,13 +261,7 @@ export function SiteHeader() {
             <strong>1900 6868</strong>
           </div>
           {accountButtonLabel ? (
-            <Link
-              href="/account"
-              className="button button-secondary nav-action-button nav-account-button"
-              title={accountButtonLabel}
-            >
-              {accountButtonLabel}
-            </Link>
+            renderAccountPanel("desktop")
           ) : (
             <>
               <Link

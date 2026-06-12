@@ -69,12 +69,12 @@ function LoginPageContent() {
     setAuthSession(nextAuthSession);
 
     const redirectTo = searchParams.get("redirectTo")?.trim();
-    router.push(redirectTo || "/account");
+    router.push(redirectTo || "/");
   }
 
   function handleGoogleLogin() {
     const redirectTo = searchParams.get("redirectTo")?.trim();
-    window.location.href = buildGoogleOAuthLoginUrl(redirectTo || "/account");
+    window.location.href = buildGoogleOAuthLoginUrl(redirectTo || "/");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -143,8 +143,8 @@ function LoginPageContent() {
             của mình.
           </p>
           <div className="auth-action-row">
-            <Link href="/account" className="button button-primary">
-              Vào trang tài khoản
+            <Link href="/" className="button button-primary">
+              Về trang chủ
             </Link>
             <Link href="/manage-booking" className="button button-secondary">
               Quản lý đặt chỗ
