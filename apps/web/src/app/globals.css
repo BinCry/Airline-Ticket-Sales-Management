@@ -3226,10 +3226,12 @@ img {
 
 .search-toolbar-passenger-panel {
   align-self: stretch;
+  align-content: start;
 }
 
 .search-toolbar-passenger-head {
   display: grid;
+  align-content: start;
   gap: 10px;
 }
 
