@@ -1008,7 +1008,7 @@ export default function AccountPage() {
         title="Lối tắt nội bộ"
         description="Mở nhanh các khu vực được cấp quyền trong phiên hiện tại."
       />
-      <div className="card-grid">
+      <div className="card-grid staff-shortcut-grid">
         {allowedBackofficeModules.length > 0 ? (
           allowedBackofficeModules.map((module) => (
             <article key={module} className="surface-card action-card">

@@ -1419,6 +1419,10 @@ img {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.staff-shortcut-grid {
+  grid-template-columns: 1fr;
+}
+
 .card-grid-3,
 .metric-grid,
 .step-grid,
@@ -1560,6 +1564,10 @@ img {
 
 .feature-card-top {
   margin-bottom: 4px;
+}
+
+.module-card-head .pill {
+  margin-left: auto;
 }
 
 .feature-card-rich p,
@@ -3758,7 +3766,7 @@ img {
 }
 
 .module-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .module-card {
@@ -4954,7 +4962,6 @@ th {
   .metric-grid,
   .step-grid,
   .command-metrics,
-  .module-grid,
   .destination-editorial-grid,
   .auth-stat-grid,
   .auth-progress {
