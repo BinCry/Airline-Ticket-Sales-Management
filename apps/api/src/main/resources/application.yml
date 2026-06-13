@@ -49,7 +49,7 @@ app:
       issuer: ${APP_AUTH_JWT_ISSUER:airticket-api}
       secret: ${APP_AUTH_JWT_SECRET:doi-secret-toi-thieu-32-ky-tu-cho-local-airticket}
       access-token-ttl-seconds: ${APP_AUTH_JWT_ACCESS_TOKEN_TTL_SECONDS:900}
-      refresh-token-ttl-seconds: ${APP_AUTH_JWT_REFRESH_TOKEN_TTL_SECONDS:2592000}
+      refresh-token-ttl-seconds: ${APP_AUTH_JWT_REFRESH_TOKEN_TTL_SECONDS:900}
     otp:
       password-reset-ttl-seconds: ${APP_AUTH_OTP_PASSWORD_RESET_TTL_SECONDS:300}
       max-attempts: ${APP_AUTH_OTP_MAX_ATTEMPTS:5}

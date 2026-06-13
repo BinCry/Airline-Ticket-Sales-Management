@@ -1,4 +1,15 @@
 import { pushToast, type ToastTone } from "@/lib/toast";
+import {
+  clearStoredAuthSession,
+  isAuthSessionExpired,
+  loadStoredAuthSession,
+  parseAuthSession,
+  persistAuthSession,
+  readAuthSessionFromStorage,
+  resolveAuthSessionStores,
+  type AuthSession,
+  type AuthSessionStores
+} from "@/lib/auth-session";
 
 export interface ApiErrorResponse {
   errors?: Record<string, string>;
@@ -33,6 +44,8 @@ export class ApiClientError extends Error {
     this.timestamp = timestamp;
   }
 }
+
+let refreshSessionPromise: Promise<AuthSession | null> | null = null;
 
 function sanitizeApiErrors(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object") {
@@ -97,6 +110,119 @@ function shouldShowToast(showErrorToast: boolean | undefined) {
   return showErrorToast ?? true;
 }
 
+function resolveStoredAuthSessionSource(stores: AuthSessionStores = resolveAuthSessionStores()) {
+  const localAuthSession = readAuthSessionFromStorage(stores.localStorage);
+
+  if (localAuthSession) {
+    return {
+      authSession: localAuthSession,
+      shouldRemember: true,
+      stores
+    };
+  }
+
+  const sessionAuthSession = readAuthSessionFromStorage(stores.sessionStorage);
+
+  if (!sessionAuthSession) {
+    return null;
+  }
+
+  return {
+    authSession: sessionAuthSession,
+    shouldRemember: false,
+    stores
+  };
+}
+
+async function refreshStoredAuthSession(): Promise<AuthSession | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (refreshSessionPromise) {
+    return refreshSessionPromise;
+  }
+
+  refreshSessionPromise = (async () => {
+    const storedSource = resolveStoredAuthSessionSource();
+
+    if (!storedSource) {
+      return null;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
+        body: JSON.stringify({
+          refreshToken: storedSource.authSession.refreshToken
+        }),
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        method: "POST"
+      });
+    } catch {
+      return null;
+    }
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        clearStoredAuthSession(storedSource.stores);
+      }
+
+      return null;
+    }
+
+    let responsePayload: unknown;
+    try {
+      responsePayload = await response.json();
+    } catch {
+      clearStoredAuthSession(storedSource.stores);
+      return null;
+    }
+
+    const refreshedAuthSession = parseAuthSession(JSON.stringify(responsePayload));
+
+    if (!refreshedAuthSession) {
+      clearStoredAuthSession(storedSource.stores);
+      return null;
+    }
+
+    persistAuthSession(
+      refreshedAuthSession,
+      storedSource.shouldRemember,
+      storedSource.stores
+    );
+    return refreshedAuthSession;
+  })();
+
+  try {
+    return await refreshSessionPromise;
+  } finally {
+    refreshSessionPromise = null;
+  }
+}
+
+async function resolveRequestAccessToken(accessToken: string | undefined): Promise<string | undefined> {
+  if (!accessToken || typeof window === "undefined") {
+    return accessToken;
+  }
+
+  const storedAuthSession = loadStoredAuthSession();
+
+  if (!storedAuthSession) {
+    return accessToken;
+  }
+
+  if (isAuthSessionExpired(storedAuthSession)) {
+    return (await refreshStoredAuthSession())?.accessToken ?? accessToken;
+  }
+
+  return storedAuthSession.accessToken;
+}
+
 async function readJsonSafely(response: Response): Promise<unknown> {
   const contentType = response.headers.get("Content-Type") ?? "";
 
@@ -146,10 +272,6 @@ export async function requestApi<TResponse>(
   const requestHeaders = new Headers(headers);
   requestHeaders.set("Accept", "application/json");
 
-  if (accessToken) {
-    requestHeaders.set("Authorization", `Bearer ${accessToken}`);
-  }
-
   let body: BodyInit | undefined;
   if (json !== undefined && formData !== undefined) {
     throw new ApiClientError("Chỉ được gửi một loại nội dung trong mỗi yêu cầu.", 0);
@@ -164,15 +286,23 @@ export async function requestApi<TResponse>(
     body = formData;
   }
 
+  const resolvedAccessToken = await resolveRequestAccessToken(accessToken);
+
+  if (resolvedAccessToken) {
+    requestHeaders.set("Authorization", `Bearer ${resolvedAccessToken}`);
+  }
+
   let response: Response;
 
+  const executeRequest = () => fetch(`${getApiBaseUrl()}${endpoint}`, {
+    ...requestInit,
+    body,
+    cache: requestInit.cache ?? "no-store",
+    headers: requestHeaders
+  });
+
   try {
-    response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-      ...requestInit,
-      body,
-      cache: requestInit.cache ?? "no-store",
-      headers: requestHeaders
-    });
+    response = await executeRequest();
   } catch {
     const error = new ApiClientError("Không thể kết nối tới máy chủ dịch vụ.", 0);
     if (shouldShowToast(showErrorToast)) {
@@ -183,6 +313,28 @@ export async function requestApi<TResponse>(
       });
     }
     throw error;
+  }
+
+  if (!response.ok && response.status === 401 && accessToken) {
+    const refreshedAuthSession = await refreshStoredAuthSession();
+
+    if (refreshedAuthSession && refreshedAuthSession.accessToken !== resolvedAccessToken) {
+      requestHeaders.set("Authorization", `Bearer ${refreshedAuthSession.accessToken}`);
+
+      try {
+        response = await executeRequest();
+      } catch {
+        const error = new ApiClientError("Không thể kết nối tới máy chủ dịch vụ.", 0);
+        if (shouldShowToast(showErrorToast)) {
+          pushToast({
+            message: error.message,
+            tone: "danger",
+            title: "Káº¿t ná»‘i tháº¥t báº¡i"
+          });
+        }
+        throw error;
+      }
+    }
   }
 
   if (!response.ok) {
