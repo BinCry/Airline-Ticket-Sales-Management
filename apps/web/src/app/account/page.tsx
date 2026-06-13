@@ -1001,6 +1001,45 @@ export default function AccountPage() {
     </>
   );
 
+  const staffShortcutSection = (
+    <>
+      <SectionHeading
+        eyebrow="Backoffice"
+        title="Lối tắt nội bộ"
+        description="Mở nhanh các khu vực được cấp quyền trong phiên hiện tại."
+      />
+      <div className="card-grid">
+        {allowedBackofficeModules.length > 0 ? (
+          allowedBackofficeModules.map((module) => (
+            <article key={module} className="surface-card action-card">
+              <div className="auth-note-head">
+                <h3>{BACKOFFICE_MODULE_LABELS[module]}</h3>
+                <span className="pill">Sẵn sàng</span>
+              </div>
+              <p>{BACKOFFICE_MODULE_DESCRIPTIONS[module]}</p>
+              <div className="auth-action-row">
+                <Link href={`/backoffice/${module}`} className="button button-primary">
+                  Mở khu vực
+                </Link>
+              </div>
+            </article>
+          ))
+        ) : (
+          <article className="surface-card action-card">
+            <div className="auth-note-head">
+              <h3>Chưa có khu vực nào được cấp</h3>
+              <span className="pill">Cần kiểm tra lại quyền</span>
+            </div>
+            <p>
+              Phiên hiện tại chưa có module backoffice khả dụng. Hãy đăng xuất và đăng
+              nhập lại sau khi quản trị viên cập nhật quyền.
+            </p>
+          </article>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <section className="section">
       <div className="container">
@@ -1637,6 +1676,7 @@ export default function AccountPage() {
                 {notificationSection}
               </>
             ) : null}
+            {isStaffProfile ? staffShortcutSection : null}
           </div>
           <div>
             {isMemberProfile ? (
@@ -1735,45 +1775,6 @@ export default function AccountPage() {
                     )}
                   </div>
                 </article>
-                <div className="section-gap" />
-              </>
-            ) : null}
-            {isStaffProfile ? (
-              <>
-                <SectionHeading
-                  eyebrow="Backoffice"
-                  title="Lối tắt nội bộ"
-                  description="Mở nhanh các khu vực được cấp quyền trong phiên hiện tại."
-                />
-                <div className="card-grid">
-                  {allowedBackofficeModules.length > 0 ? (
-                    allowedBackofficeModules.map((module) => (
-                      <article key={module} className="surface-card action-card">
-                        <div className="auth-note-head">
-                          <h3>{BACKOFFICE_MODULE_LABELS[module]}</h3>
-                          <span className="pill">Sẵn sàng</span>
-                        </div>
-                        <p>{BACKOFFICE_MODULE_DESCRIPTIONS[module]}</p>
-                        <div className="auth-action-row">
-                          <Link href={`/backoffice/${module}`} className="button button-primary">
-                            Mở khu vực
-                          </Link>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <article className="surface-card action-card">
-                      <div className="auth-note-head">
-                        <h3>Chưa có khu vực nào được cấp</h3>
-                        <span className="pill">Cần kiểm tra lại quyền</span>
-                      </div>
-                      <p>
-                        Phiên hiện tại chưa có module backoffice khả dụng. Hãy đăng xuất và đăng
-                        nhập lại sau khi quản trị viên cập nhật quyền.
-                      </p>
-                    </article>
-                  )}
-                </div>
                 <div className="section-gap" />
               </>
             ) : null}
