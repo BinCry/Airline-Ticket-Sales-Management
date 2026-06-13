@@ -231,8 +231,7 @@ export function loadActiveAuthSession(
   }
 
   if (isAuthSessionExpired(authSession)) {
-    clearStoredAuthSession(stores);
-    return null;
+    return authSession;
   }
 
   setAccessTokenCookie(authSession);

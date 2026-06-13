@@ -87,7 +87,7 @@ describe("auth-session", () => {
     expect(loadActiveAuthSession(stores)).toEqual(authSession);
   });
 
-  it("xoa phien het han khi tai lai", () => {
+  it("giu phien het han de co the lam moi bang refresh token", () => {
     const stores = createStores();
     const authSession = createAuthSession({
       accessTokenExpiresAt: "2000-01-01T00:00:00Z"
@@ -95,8 +95,8 @@ describe("auth-session", () => {
 
     persistAuthSession(authSession, true, stores);
 
-    expect(loadActiveAuthSession(stores)).toBeNull();
-    expect(stores.localStorage?.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
+    expect(loadActiveAuthSession(stores)).toEqual(authSession);
+    expect(stores.localStorage?.getItem(AUTH_SESSION_STORAGE_KEY)).not.toBeNull();
   });
 
   it("bo qua du lieu phien khong hop le", () => {
