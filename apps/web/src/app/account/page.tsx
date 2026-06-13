@@ -944,6 +944,63 @@ export default function AccountPage() {
     }
   }
 
+  const notificationSection = (
+    <>
+      <div id="thong-bao" className="account-anchor" aria-hidden="true" />
+      <SectionHeading
+        eyebrow={isStaffProfile ? "Công việc" : "Thông báo"}
+        title={
+          isStaffProfile
+            ? "Tóm tắt phiên làm việc"
+            : "Thông báo gần đây"
+        }
+        description={
+          isStaffProfile
+            ? "Kiểm tra vai trò, hồ sơ đăng nhập và các khu vực có thể xử lý."
+            : "Các cập nhật về vé, chuyến bay và phản hồi hỗ trợ được gom tại đây."
+        }
+      />
+      <div className="stack-list">
+        {isStaffProfile || !activeProfile ? (
+          activityFeed.map((item) => (
+            <article key={item.title} className="surface-card notification-card">
+              <span className="pill">{item.time}</span>
+              <h3>{item.title}</h3>
+              <p>{item.summary}</p>
+            </article>
+          ))
+        ) : notificationError ? (
+          <article className="surface-card notification-card">
+            <span className="pill">Thử lại sau</span>
+            <h3>Chưa tải được thông báo</h3>
+            <p>{notificationError}</p>
+          </article>
+        ) : isLoadingNotifications ? (
+          <article className="surface-card notification-card">
+            <span className="pill">Đang tải</span>
+            <h3>Đang lấy thông báo cá nhân</h3>
+            <p>Thông tin mới nhất sẽ xuất hiện tại đây sau khi hệ thống hoàn tất tải dữ liệu.</p>
+          </article>
+        ) : myNotifications.length > 0 ? (
+          myNotifications.map((notification) => (
+            <article key={notification.id} className="surface-card notification-card">
+              <span className="pill">{formatNotificationStatus(notification.status)}</span>
+              <h3>{notification.subject}</h3>
+              <p>{notification.body}</p>
+              <small>{formatNotificationMeta(notification)}</small>
+            </article>
+          ))
+        ) : (
+          <article className="surface-card notification-card">
+            <span className="pill">0 thông báo</span>
+            <h3>Chưa có thông báo cá nhân</h3>
+            <p>Các cập nhật về vé, chuyến bay hoặc phản hồi hỗ trợ sẽ xuất hiện tại đây.</p>
+          </article>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <section className="section">
       <div className="container">
@@ -1574,6 +1631,12 @@ export default function AccountPage() {
                 ) : null}
               </>
             ) : null}
+            {isMemberProfile ? (
+              <>
+                <div className="section-gap" />
+                {notificationSection}
+              </>
+            ) : null}
           </div>
           <div>
             {isMemberProfile ? (
@@ -1593,7 +1656,7 @@ export default function AccountPage() {
                     <p>{loyaltyError}</p>
                   </div>
                 ) : null}
-                <div className="metric-grid">
+                <div className="metric-grid account-loyalty-metric-grid">
                   {loyaltyStats.map((item) => (
                     <article key={item.label} className="metric-card">
                       <span>{item.label}</span>
@@ -1714,58 +1777,7 @@ export default function AccountPage() {
                 <div className="section-gap" />
               </>
             ) : null}
-            <div id="thong-bao" className="account-anchor" aria-hidden="true" />
-            <SectionHeading
-              eyebrow={isStaffProfile ? "Công việc" : "Thông báo"}
-              title={
-                isStaffProfile
-                  ? "Tóm tắt phiên làm việc"
-                  : "Thông báo gần đây"
-              }
-              description={
-                isStaffProfile
-                  ? "Kiểm tra vai trò, hồ sơ đăng nhập và các khu vực có thể xử lý."
-                  : "Các cập nhật về vé, chuyến bay và phản hồi hỗ trợ được gom tại đây."
-              }
-            />
-            <div className="stack-list">
-              {isStaffProfile || !activeProfile ? (
-                activityFeed.map((item) => (
-                  <article key={item.title} className="surface-card notification-card">
-                    <span className="pill">{item.time}</span>
-                    <h3>{item.title}</h3>
-                    <p>{item.summary}</p>
-                  </article>
-                ))
-              ) : notificationError ? (
-                <article className="surface-card notification-card">
-                  <span className="pill">Thử lại sau</span>
-                  <h3>Chưa tải được thông báo</h3>
-                  <p>{notificationError}</p>
-                </article>
-              ) : isLoadingNotifications ? (
-                <article className="surface-card notification-card">
-                  <span className="pill">Đang tải</span>
-                  <h3>Đang lấy thông báo cá nhân</h3>
-                  <p>Thông tin mới nhất sẽ xuất hiện tại đây sau khi hệ thống hoàn tất tải dữ liệu.</p>
-                </article>
-              ) : myNotifications.length > 0 ? (
-                myNotifications.map((notification) => (
-                  <article key={notification.id} className="surface-card notification-card">
-                    <span className="pill">{formatNotificationStatus(notification.status)}</span>
-                    <h3>{notification.subject}</h3>
-                    <p>{notification.body}</p>
-                    <small>{formatNotificationMeta(notification)}</small>
-                  </article>
-                ))
-              ) : (
-                <article className="surface-card notification-card">
-                  <span className="pill">0 thông báo</span>
-                  <h3>Chưa có thông báo cá nhân</h3>
-                  <p>Các cập nhật về vé, chuyến bay hoặc phản hồi hỗ trợ sẽ xuất hiện tại đây.</p>
-                </article>
-              )}
-            </div>
+            {!isMemberProfile ? notificationSection : null}
           </div>
         </div>
       </div>
