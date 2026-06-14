@@ -329,9 +329,9 @@ export default async function HomePage() {
                     <span className="pill">{promotion.tag}</span>
                     <h3>{promotion.title}</h3>
                     <p>{promotion.summary}</p>
-                    <button type="button" className="text-button">
+                    <Link href={promotion.href} className="text-button">
                       {promotion.cta}
-                    </button>
+                    </Link>
                   </div>
                   <div className={`home-promo-card-media home-promo-card-media-${index}`}>
                     <Image
