@@ -135,6 +135,7 @@ export default function BookingCheckoutPage() {
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
   const [holdExpiredMessage, setHoldExpiredMessage] = useState<string | null>(null);
   const isRefreshingExpiredHoldRef = useRef(false);
+  const daChuyenTrangSauThanhToanRef = useRef(false);
 
   useEffect(() => {
     if (params?.pnr) {
@@ -271,6 +272,20 @@ export default function BookingCheckoutPage() {
       setVoucherCode(session.appliedVoucherCode);
     }
   }, [session?.appliedVoucherCode]);
+
+  useEffect(() => {
+    if (!bookingCode) {
+      daChuyenTrangSauThanhToanRef.current = false;
+      return;
+    }
+
+    if (session?.paymentStatus !== "paid" || daChuyenTrangSauThanhToanRef.current) {
+      return;
+    }
+
+    daChuyenTrangSauThanhToanRef.current = true;
+    router.replace(`/manage-booking?bookingCode=${encodeURIComponent(bookingCode)}`);
+  }, [bookingCode, router, session?.paymentStatus]);
 
   const handleHoldCountdownExpired = useCallback(async () => {
     if (!bookingCode || isRefreshingExpiredHoldRef.current) {
