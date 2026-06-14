@@ -1,6 +1,5 @@
 "use client";
 
-import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -18,20 +17,30 @@ import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import { createBookingHold, fetchFlightBookingOptions } from "@/lib/booking-api";
 import { parseBookingHandoffState, type BookingHandoffSegment } from "@/lib/booking-flow";
-import {
-  applyCopilotPassengerInfo,
-  createBookingReadableValue,
-  type CopilotContactState,
-  type CopilotFillPassengerInfoInput,
-  type CopilotPassengerSegmentChoice,
-  type CopilotPassengerState
-} from "@/lib/copilot-booking-actions";
 import { layLopMauGoiGia } from "@/lib/display";
 import { formatCurrency } from "@/lib/format";
 
-type ContactFormState = CopilotContactState;
-type PassengerFormState = CopilotPassengerState;
-type PassengerSegmentChoice = CopilotPassengerSegmentChoice;
+interface ContactFormState {
+  email: string;
+  fullName: string;
+  phone: string;
+}
+
+interface PassengerFormState {
+  dateOfBirth: string;
+  documentNumber: string;
+  documentType: string;
+  fullName: string;
+  passengerType: PassengerType;
+}
+
+interface PassengerSegmentChoice {
+  fareFamily: ApiFlightBookingFareOption["fareFamily"] | null;
+  farePrice: number;
+  fareTitle: string;
+  inventoryId: number | null;
+  seatNumber: string;
+}
 
 const seatRows = Array.from({ length: 28 }, (_, index) => index + 1);
 const seatLetters = ["A", "B", "C", "D", "E", "F"];
@@ -270,145 +279,6 @@ export function BookingPageClient() {
     setSegmentChoices(createDefaultChoices(bookingOptions, passengers.length));
     setActivePassengerBySegment(Array.from({ length: bookingOptions.length }, () => 0));
   }, [bookingOptions, passengers.length]);
-
-  const copilotReadableValue = createBookingReadableValue({
-    activePassengerBySegment,
-    bookingOptions,
-    contact,
-    handoffState,
-    passengers,
-    segmentChoices
-  });
-
-  useCopilotReadable(
-    {
-      description:
-        "Thong tin dat ve hien tai, gom hanh trinh da chon, thong tin lien he, tung hanh khach, hang ve va so do ghe trong theo moi chang.",
-      value: copilotReadableValue
-    },
-    [copilotReadableValue]
-  );
-
-  useCopilotAction(
-    {
-      name: "fillPassengerInfo",
-      description:
-        "Dien thong tin lien he, thong tin hanh khach, chon hang ve va tu dong chon ghe trong cho tung hanh khach tren man hinh dat ve hien tai.",
-      parameters: [
-        {
-          description: "Ho va ten nguoi lien he.",
-          name: "contactFullName",
-          required: false,
-          type: "string"
-        },
-        {
-          description: "Email nguoi lien he.",
-          name: "contactEmail",
-          required: false,
-          type: "string"
-        },
-        {
-          description: "So dien thoai nguoi lien he.",
-          name: "contactPhone",
-          required: false,
-          type: "string"
-        },
-        {
-          description: "Bat de agent tu tim ghe trong phu hop cho cac hanh khach.",
-          name: "autoChooseSeats",
-          required: false,
-          type: "boolean"
-        },
-        {
-          attributes: [
-            {
-              description: "Vi tri hanh khach trong form, bat dau tu 0.",
-              name: "passengerIndex",
-              required: false,
-              type: "number"
-            },
-            {
-              description: "Ho va ten hanh khach.",
-              name: "fullName",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "Ngay sinh theo dinh dang YYYY-MM-DD.",
-              name: "dateOfBirth",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "Loai giay to, vi du CCCD, Ho chieu, Giay khai sinh.",
-              name: "documentType",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "So giay to cua hanh khach.",
-              name: "documentNumber",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "Hang ve mong muon, chi nhan pho_thong_tiet_kiem, pho_thong_linh_hoat, thuong_gia.",
-              name: "preferredFareFamily",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "So ghe cu the neu nguoi dung da biet ghe mong muon, vi du 12A.",
-              name: "preferredSeatNumber",
-              required: false,
-              type: "string"
-            },
-            {
-              description: "So thich ghe, vi du gan cua so, gan loi di, hang dau, hang cuoi.",
-              name: "seatPreference",
-              required: false,
-              type: "string"
-            }
-          ],
-          description: "Danh sach thong tin can dien cho tung hanh khach.",
-          name: "passengers",
-          required: false,
-          type: "object[]"
-        }
-      ],
-      handler: async (input) => {
-        const result = applyCopilotPassengerInfo({
-          bookingOptions,
-          contact,
-          input: input as CopilotFillPassengerInfoInput,
-          passengers,
-          segmentChoices
-        });
-
-        setContact(result.nextContact);
-        setPassengers(result.nextPassengers);
-        setSegmentChoices(result.nextSegmentChoices);
-        setSubmitError(null);
-
-        if (result.updatedPassengerIndexes.length > 0 && bookingOptions.length > 0) {
-          const focusPassengerIndex = result.updatedPassengerIndexes[0];
-          setActivePassengerBySegment((currentValues) =>
-            currentValues.map(() => focusPassengerIndex)
-          );
-        }
-
-        return {
-          assignedSeats: result.assignedSeats,
-          updatedPassengerIndexes: result.updatedPassengerIndexes,
-          message:
-            result.assignedSeats.length > 0
-              ? "Da cap nhat thong tin hanh khach va chon ghe trong tren man hinh dat ve."
-              : "Da cap nhat thong tin hanh khach tren man hinh dat ve."
-        };
-      }
-    },
-    [bookingOptions, contact, passengers, segmentChoices]
-  );
 
   if (!handoffState) {
     return (

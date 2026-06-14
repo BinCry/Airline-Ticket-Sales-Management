@@ -76,8 +76,7 @@ import org.springframework.test.web.servlet.MockMvc;
         CmsController.class,
         ApiMetaController.class,
         BackofficeOperationsController.class,
-        BackofficeVoucherController.class,
-        CopilotContextController.class
+        BackofficeVoucherController.class
     },
     properties = {
         "app.auth.jwt.issuer=airticket-api",
@@ -1084,57 +1083,6 @@ class ControllerSecurityTest {
   void getApiHealth_shouldAllowPublicAccess() throws Exception {
     mockMvc.perform(get("/api/meta/health"))
         .andExpect(status().isOk());
-  }
-
-  @Test
-  void getCopilotContext_shouldAllowGuestAndReturnPublicScopes() throws Exception {
-    mockMvc.perform(get("/api/public/copilot/context"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authMode").value("guest"))
-        .andExpect(jsonPath("$.roles").isArray())
-        .andExpect(jsonPath("$.roles").isEmpty())
-        .andExpect(jsonPath("$.permissions").isArray())
-        .andExpect(jsonPath("$.permissions").isEmpty())
-        .andExpect(jsonPath("$.allowedAgentScopes[0]").value("booking.public_search"))
-        .andExpect(jsonPath("$.allowedAgentScopes[1]").value("booking.form_fill"))
-        .andExpect(jsonPath("$.allowedAgentScopes[2]").value("booking.seat_map_readonly"))
-        .andExpect(jsonPath("$.allowedAgentScopes[3]").value("booking.seat_selection"))
-        .andExpect(jsonPath("$.allowedAgentScopes[4]").value("booking.payment_guidance"))
-        .andExpect(jsonPath("$.allowedAgentScopes[5]").value("booking.payment_session_create"))
-        .andExpect(jsonPath("$.bookingRules.holdMinutes").value(15))
-        .andExpect(jsonPath("$.bookingRules.paymentProvider").value("sepay"));
-  }
-
-  @Test
-  void getCopilotContext_shouldExposeMemberSelfServiceScope() throws Exception {
-    mockMvc.perform(get("/api/public/copilot/context")
-            .header(
-                HttpHeaders.AUTHORIZATION,
-                bearerToken(List.of("member"), List.of("customer.self_service", "member.loyalty"))
-            ))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authMode").value("authenticated"))
-        .andExpect(jsonPath("$.roles[0]").value("member"))
-        .andExpect(jsonPath("$.permissions[0]").value("customer.self_service"))
-        .andExpect(jsonPath("$.permissions[1]").value("member.loyalty"))
-        .andExpect(jsonPath("$.allowedAgentScopes[6]").value("booking.manage_own_booking"))
-        .andExpect(jsonPath("$.allowedAgentScopes[7]").value("booking.member_voucher_guidance"));
-  }
-
-  @Test
-  void getCopilotContext_shouldNotExposeBackofficeScopesForStaff() throws Exception {
-    mockMvc.perform(get("/api/public/copilot/context")
-            .header(
-                HttpHeaders.AUTHORIZATION,
-                bearerToken(List.of("operations_staff"), List.of("backoffice.operations", "backoffice.admin"))
-            ))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.authMode").value("authenticated"))
-        .andExpect(jsonPath("$.roles[0]").value("operations_staff"))
-        .andExpect(jsonPath("$.permissions").isArray())
-        .andExpect(jsonPath("$.permissions").isEmpty())
-        .andExpect(jsonPath("$.allowedAgentScopes.length()").value(6))
-        .andExpect(jsonPath("$.bookingRules.seatConflictMessage").value("Ghế này đã có người khác chọn"));
   }
 
   @Test

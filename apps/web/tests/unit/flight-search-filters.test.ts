@@ -9,14 +9,8 @@ import {
   taoKhoangGiaDong
 } from "@/lib/flight-search-filters";
 
-interface TaoChuyenBayOverrides extends Partial<ApiFlightCard> {
-  baseFare: number;
-  flightId: number;
-  seatsLeft?: number;
-}
-
 function taoChuyenBay(
-  overrides: TaoChuyenBayOverrides
+  overrides: Partial<ApiFlightCard> & Pick<ApiFlightCard, "flightId" | "baseFare">
 ): ApiFlightCard {
   return {
     flightId: overrides.flightId,

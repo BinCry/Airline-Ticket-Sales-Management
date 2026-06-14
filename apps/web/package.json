@@ -9,14 +9,10 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@copilotkit/react-core": "^1.60.1",
-    "@copilotkit/react-ui": "^1.60.1",
-    "@copilotkit/runtime": "^1.60.1",
     "@qlvmb/shared-types": "file:../../packages/shared-types",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "zod": "^3.25.76"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",

@@ -47,7 +47,6 @@ Hệ thống quản lý bán vé máy bay được phát triển với kiến tr
 - Kế hoạch production chính:
   - [plans/production-go-live/plan.md](plans/production-go-live/plan.md)
 - Tài liệu production:
-  - [docs/setup/production-ghcr-coolify.md](docs/setup/production-ghcr-coolify.md)
   - [docs/setup/production-azure-coolify.md](docs/setup/production-azure-coolify.md)
   - [docs/architecture/ma-tran-vai-tro-production.md](docs/architecture/ma-tran-vai-tro-production.md)
 
@@ -172,7 +171,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
 - `Azure VM` cài `Coolify`
 - `Azure Database for PostgreSQL Flexible Server`
 - `docker-compose.prod.yml` dùng cho `web + api`
-- GitHub Actions build image trên `GitHub`, push lên `GHCR` và `Coolify` chỉ pull image
+- GitHub Actions trigger redeploy qua webhook Coolify
 - Domain production:
   - `https://airplane.id.vn`
   - `https://api.airplane.id.vn`
@@ -195,8 +194,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
 - `APP_MAIL_*`
 - `APP_PAYMENT_SEPAY_*`
 - `NEXT_PUBLIC_API_BASE_URL`
-- `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
-- `COOLIFY_API_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
+- `COOLIFY_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
 
 ### Kiểm tra nhanh cấu hình production
 - Lệnh:

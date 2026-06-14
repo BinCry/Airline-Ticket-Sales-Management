@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import "@copilotkit/react-ui/styles.css";
-
-import { BookingCopilotSidebar } from "@/components/booking-copilot-sidebar";
 import { ChatbotWidget } from "@/components/chatbot-widget";
-import { CopilotProvider } from "@/components/copilot-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ToastProvider } from "@/components/toast-provider";
@@ -43,18 +39,15 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body>
-        <CopilotProvider>
-          <div className="site-shell">
-            <Suspense>
-              <ToastProvider />
-            </Suspense>
-            <SiteHeader />
-            <main className="page-main">{children}</main>
-            <SiteFooter />
-            <ChatbotWidget />
-            <BookingCopilotSidebar />
-          </div>
-        </CopilotProvider>
+        <div className="site-shell">
+          <Suspense>
+            <ToastProvider />
+          </Suspense>
+          <SiteHeader />
+          <main className="page-main">{children}</main>
+          <SiteFooter />
+          <ChatbotWidget />
+        </div>
       </body>
     </html>
   );

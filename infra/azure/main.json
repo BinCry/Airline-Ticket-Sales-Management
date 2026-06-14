@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "14075184321517762467"
+      "templateHash": "118334802648582356"
     }
   },
   "parameters": {
@@ -110,7 +110,7 @@
     }
   },
   "variables": {
-    "$fxv#0": "I2Nsb3VkLWNvbmZpZwpwYWNrYWdlX3VwZGF0ZTogdHJ1ZQpwYWNrYWdlX3VwZ3JhZGU6IHRydWUKcGFja2FnZXM6CiAgLSBjdXJsCiAgLSB3Z2V0CiAgLSBnaXQKICAtIGpxCiAgLSBjYS1jZXJ0aWZpY2F0ZXMKCnJ1bmNtZDoKICAtIHRpbWVkYXRlY3RsIHNldC10aW1lem9uZSBBc2lhL0hvX0NoaV9NaW5oCiAgLSBmYWxsb2NhdGUgLWwgNEcgL3N3YXBmaWxlCiAgLSBjaG1vZCA2MDAgL3N3YXBmaWxlCiAgLSBta3N3YXAgL3N3YXBmaWxlCiAgLSBzd2Fwb24gL3N3YXBmaWxlCiAgLSBzaCAtYyAnZ3JlcCAtcSAiXi9zd2FwZmlsZSAiIC9ldGMvZnN0YWIgfHwgZWNobyAiL3N3YXBmaWxlIG5vbmUgc3dhcCBzdyAwIDAiID4+IC9ldGMvZnN0YWInCiAgLSBjdXJsIC1mc1NMIGh0dHBzOi8vY2RuLmNvb2xsYWJzLmlvL2Nvb2xpZnkvaW5zdGFsbC5zaCB8IGJhc2gK",
+    "$fxv#0": "I2Nsb3VkLWNvbmZpZwpwYWNrYWdlX3VwZGF0ZTogdHJ1ZQpwYWNrYWdlX3VwZ3JhZGU6IHRydWUKcGFja2FnZXM6CiAgLSBjdXJsCiAgLSB3Z2V0CiAgLSBnaXQKICAtIGpxCiAgLSBjYS1jZXJ0aWZpY2F0ZXMKCnJ1bmNtZDoKICAtIHRpbWVkYXRlY3RsIHNldC10aW1lem9uZSBBc2lhL0hvX0NoaV9NaW5oCiAgLSBjdXJsIC1mc1NMIGh0dHBzOi8vY2RuLmNvb2xsYWJzLmlvL2Nvb2xpZnkvaW5zdGFsbC5zaCB8IGJhc2gK",
     "publicIpName": "[format('{0}-pip', parameters('projectPrefix'))]",
     "networkSecurityGroupName": "[format('{0}-nsg', parameters('projectPrefix'))]",
     "virtualNetworkName": "[format('{0}-vnet', parameters('projectPrefix'))]",

@@ -1,14 +1,10 @@
 # Lên production với Azure, Coolify và Azure Database for PostgreSQL
 
-> Lưu ý
-> Flow trong tài liệu này là hướng `source-build` cũ. Với VPS `4GB RAM`, hãy ưu tiên flow image registry trong [docs/setup/production-ghcr-coolify.md](production-ghcr-coolify.md) để tránh `OOM` và `504 Gateway Time-out`.
-
 ## Mục tiêu
 - Chạy `web` và `api` trên một máy ảo Azure có cài `Coolify`.
 - Dùng `Azure Database for PostgreSQL Flexible Server` làm cơ sở dữ liệu production.
 - Quản lý toàn bộ biến môi trường ở `Coolify`.
 - Tự động redeploy khi `main` có thay đổi và pipeline thành công.
-- Nếu VPS chỉ có `4GB RAM`, nên chuyển sang deploy bằng image registry thay vì để `Coolify` tự build source.
 - Domain production đã chốt:
   - `https://airplane.id.vn`
   - `https://api.airplane.id.vn`
@@ -45,8 +41,7 @@
   - `APP_PAYMENT_SEPAY_WEBHOOK_API_KEY`
   - webhook public thật `https://api.airplane.id.vn/api/payments/webhooks/sepay`
   - domain production và DNS
-  - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
-  - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
+  - `COOLIFY_PRODUCTION_WEBHOOK_URL`
 
 ## Kiểm tra cấu hình production trước khi cutover
 - Chạy nhanh tại thư mục gốc repo:

@@ -31,18 +31,11 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class BookingServiceTest {
@@ -83,7 +76,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
 
@@ -138,83 +131,7 @@ class BookingServiceTest {
 
     assertThatThrownBy(() -> bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L))))
         .isInstanceOf(BadRequestException.class)
-        .hasMessage("Ghế này đã có người khác chọn");
-  }
-
-  @Test
-  void createHold_shouldRejectSecondConcurrentSeatSelectionAtSameMillisecond() throws Exception {
-    FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
-    when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
-    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
-    when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
-    when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-
-    CountDownLatch saveReadyLatch = new CountDownLatch(2);
-    CountDownLatch releaseSaveLatch = new CountDownLatch(1);
-    AtomicInteger saveCount = new AtomicInteger();
-
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> {
-      saveReadyLatch.countDown();
-
-      if (!saveReadyLatch.await(2, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Khong the dong bo hai luong giu cho.");
-      }
-      if (!releaseSaveLatch.await(2, TimeUnit.SECONDS)) {
-        throw new IllegalStateException("Khong the mo khoa buoc luu booking.");
-      }
-
-      if (saveCount.getAndIncrement() == 0) {
-        return invocation.getArgument(0);
-      }
-
-      throw new DataIntegrityViolationException("uk_booking_seat_selection_segment_seat");
-    });
-
-    ExecutorService executorService = Executors.newFixedThreadPool(2);
-
-    try {
-      Future<Object> firstResultFuture = executorService.submit(() -> {
-        try {
-          return bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
-        } catch (Exception exception) {
-          return exception;
-        }
-      });
-      Future<Object> secondResultFuture = executorService.submit(() -> {
-        try {
-          return bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
-        } catch (Exception exception) {
-          return exception;
-        }
-      });
-
-      assertThat(saveReadyLatch.await(2, TimeUnit.SECONDS)).isTrue();
-      releaseSaveLatch.countDown();
-
-      Object firstResult = firstResultFuture.get(2, TimeUnit.SECONDS);
-      Object secondResult = secondResultFuture.get(2, TimeUnit.SECONDS);
-
-      int successCount = 0;
-      int rejectedCount = 0;
-
-      for (Object result : List.of(firstResult, secondResult)) {
-        if (result instanceof BookingHoldResponse response) {
-          successCount += 1;
-          assertThat(response.status()).isEqualTo("held");
-          continue;
-        }
-
-        assertThat(result).isInstanceOf(BadRequestException.class);
-        assertThat(((BadRequestException) result).getMessage())
-            .isEqualTo("Ghế này đã có người khác chọn");
-        rejectedCount += 1;
-      }
-
-      assertThat(successCount).isEqualTo(1);
-      assertThat(rejectedCount).isEqualTo(1);
-    } finally {
-      executorService.shutdownNow();
-    }
+        .hasMessage("Không được chọn trùng ghế cho cùng một chặng bay.");
   }
 
   @Test
@@ -224,7 +141,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(true, false);
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
 
@@ -239,7 +156,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(
         oneWayHoldRequest(
@@ -288,7 +205,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(bookingHoldChoNhieuHanhKhachMotChieu());
 
@@ -354,7 +271,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(bookingHoldKhuHoiNhieuHanhKhach());
 
