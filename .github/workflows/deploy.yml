@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  packages: write
 
 concurrency:
   group: deploy-production
@@ -117,57 +118,104 @@ jobs:
         shell: pwsh
         run: ./infra/scripts/kiem-tra-san-sang-production.ps1
 
-  verify-images:
-    name: verify-images
-    runs-on: ubuntu-latest
-    needs:
-      - build-api
-      - build-web
-      - validate-production-config
-
-    steps:
-      - name: Lấy mã nguồn
-        uses: actions/checkout@v4
-
-      - name: Thiết lập Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Cài dependency cho image web
-        run: npm ci
-
-      - name: Build image web
-        run: docker build --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.airplane.id.vn -f apps/web/Dockerfile .
-
-      - name: Build image api
-        run: docker build -f apps/api/Dockerfile apps/api
-
-  sync-deploy-branch:
-    name: sync-deploy-branch
+  publish-images:
+    name: publish-images
     runs-on: ubuntu-latest
     needs:
       - test-api
       - test-web
-      - verify-images
+      - build-api
+      - build-web
       - validate-production-config
+    outputs:
+      api_image: ${{ steps.image-meta.outputs.api_image }}
+      sha_tag: ${{ steps.image-meta.outputs.sha_tag }}
+      web_image: ${{ steps.image-meta.outputs.web_image }}
 
     steps:
       - name: Lấy mã nguồn
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Đồng bộ main sang deploy
+      - name: Chuẩn bị tên image
+        id: image-meta
+        shell: bash
         run: |
-          git config --global user.name "deploy-bot"
-          git config --global user.email "deploy@bot.com"
-          git fetch origin
-          if git show-ref --verify --quiet refs/remotes/origin/deploy; then
-            git checkout -B deploy origin/deploy
-          else
-            git checkout -b deploy
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          repo="$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')"
+          echo "web_image=ghcr.io/${owner}/${repo}-web" >> "$GITHUB_OUTPUT"
+          echo "api_image=ghcr.io/${owner}/${repo}-api" >> "$GITHUB_OUTPUT"
+          echo "sha_tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Thiết lập Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Đăng nhập GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build và đẩy image web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          provenance: false
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=https://api.airplane.id.vn
+          tags: |
+            ${{ steps.image-meta.outputs.web_image }}:main
+            ${{ steps.image-meta.outputs.web_image }}:${{ steps.image-meta.outputs.sha_tag }}
+
+      - name: Build và đẩy image api
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.image-meta.outputs.api_image }}:main
+            ${{ steps.image-meta.outputs.api_image }}:${{ steps.image-meta.outputs.sha_tag }}
+
+      - name: Ghi tóm tắt image production
+        shell: bash
+        run: |
+          {
+            echo "## Image production"
+            echo "- Web: \`${{ steps.image-meta.outputs.web_image }}:main\`"
+            echo "- Web theo commit: \`${{ steps.image-meta.outputs.web_image }}:${{ steps.image-meta.outputs.sha_tag }}\`"
+            echo "- API: \`${{ steps.image-meta.outputs.api_image }}:main\`"
+            echo "- API theo commit: \`${{ steps.image-meta.outputs.api_image }}:${{ steps.image-meta.outputs.sha_tag }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  trigger-coolify-image-deploy:
+    name: trigger-coolify-image-deploy
+    runs-on: ubuntu-latest
+    needs:
+      - publish-images
+
+    steps:
+      - name: Gọi webhook Coolify cho image nếu đã cấu hình
+        shell: bash
+        env:
+          API_WEBHOOK: ${{ secrets.COOLIFY_API_PRODUCTION_WEBHOOK_URL }}
+          WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_PRODUCTION_WEBHOOK_URL }}
+        run: |
+          da_goi=0
+
+          if [ -n "$WEB_WEBHOOK" ]; then
+            curl -fsS -X POST "$WEB_WEBHOOK"
+            da_goi=1
           fi
-          git merge origin/main --no-edit
-          git push origin deploy
+
+          if [ -n "$API_WEBHOOK" ]; then
+            curl -fsS -X POST "$API_WEBHOOK"
+            da_goi=1
+          fi
+
+          if [ "$da_goi" -eq 0 ]; then
+            echo "Chưa cấu hình webhook image trên GitHub Secrets, bỏ qua bước redeploy Coolify."
+          fi

@@ -10,4 +10,9 @@ packages:
 
 runcmd:
   - timedatectl set-timezone Asia/Ho_Chi_Minh
+  - fallocate -l 4G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - sh -c 'grep -q "^/swapfile " /etc/fstab || echo "/swapfile none swap sw 0 0" >> /etc/fstab'
   - curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
