@@ -9,6 +9,15 @@ interface VisibleToast extends ToastPayload {
   createdAt: number;
 }
 
+interface EnqueueToastOptions {
+  createdAt?: number;
+  onDismissLater: (toastId: string, durationMs: number) => void;
+  setToasts: (updater: (currentToasts: VisibleToast[]) => VisibleToast[]) => void;
+  toast: ToastPayload;
+}
+
+const DEFAULT_TOAST_DURATION_MS = 4200;
+
 const TOAST_MESSAGE_BY_QUERY: Record<string, Omit<ToastPayload, "id">> = {
   "can-dang-nhap": {
     message: "Bạn cần đăng nhập để tiếp tục.",
@@ -35,27 +44,44 @@ function buildToastFromQuery(code: string | null) {
   return TOAST_MESSAGE_BY_QUERY[code] ?? null;
 }
 
+export function enqueueToast({
+  createdAt = Date.now(),
+  onDismissLater,
+  setToasts,
+  toast
+}: EnqueueToastOptions): VisibleToast {
+  const nextToast: VisibleToast = {
+    ...toast,
+    createdAt
+  };
+
+  setToasts((currentToasts) => [...currentToasts, nextToast].slice(-4));
+  onDismissLater(nextToast.id, toast.durationMs ?? DEFAULT_TOAST_DURATION_MS);
+
+  return nextToast;
+}
+
 export function ToastProvider() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [toasts, setToasts] = useState<VisibleToast[]>([]);
 
+  function scheduleDismiss(toastId: string, durationMs: number) {
+    window.setTimeout(() => {
+      setToasts((currentToasts) =>
+        currentToasts.filter((item) => item.id !== toastId)
+      );
+    }, durationMs);
+  }
+
   useEffect(() => {
     return subscribeToast((toast) => {
-      const nextToast: VisibleToast = {
-        ...toast,
-        createdAt: Date.now()
-      };
-
-      setToasts((currentToasts) => [...currentToasts, nextToast].slice(-4));
-
-      const durationMs = toast.durationMs ?? 4200;
-      window.setTimeout(() => {
-        setToasts((currentToasts) =>
-          currentToasts.filter((item) => item.id !== nextToast.id)
-        );
-      }, durationMs);
+      enqueueToast({
+        onDismissLater: scheduleDismiss,
+        setToasts,
+        toast
+      });
     });
   }, []);
 
@@ -72,14 +98,17 @@ export function ToastProvider() {
     const currentParams = new URLSearchParams(searchParams.toString());
     currentParams.delete("thong-bao");
 
-    setToasts((currentToasts) => [
-      ...currentToasts,
-      {
+    const createdAt = Date.now();
+
+    enqueueToast({
+      createdAt,
+      onDismissLater: scheduleDismiss,
+      setToasts,
+      toast: {
         ...permissionToast,
-        createdAt: Date.now(),
-        id: `query-${Date.now()}`
+        id: `query-${createdAt}`
       }
-    ].slice(-4));
+    });
 
     startTransition(() => {
       const nextQuery = currentParams.toString();
