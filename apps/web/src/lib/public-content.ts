@@ -12,6 +12,7 @@ export interface FooterSection {
 
 export interface PromotionCard {
   cta: string;
+  href: string;
   summary: string;
   tag: string;
   title: string;
@@ -126,21 +127,24 @@ export const promotions: PromotionCard[] = [
     title: "Chuẩn bị trước hành lý và quyền lợi vé cho chuyến đi cuối tuần",
     summary:
       "Tập trung vào thông tin cần kiểm tra trước khi chốt vé: hành lý, đổi hoặc hoàn và các bước quản lý đặt chỗ.",
-    cta: "Xem hướng dẫn"
+    cta: "Xem hướng dẫn",
+    href: "/support#luu-y"
   },
   {
     tag: "Tự phục vụ",
     title: "Rút ngắn thao tác sau đặt vé với hồ sơ hành khách và thông báo tập trung",
     summary:
       "Hành khách có thể cập nhật hồ sơ, theo dõi thông báo và xem lại hoạt động tài khoản ngay trên website.",
-    cta: "Mở tài khoản"
+    cta: "Mở tài khoản",
+    href: "/register"
   },
   {
     tag: "Hỗ trợ",
     title: "Tra cứu nhanh điều kiện vé, FAQ và kênh liên hệ trước ngày bay",
     summary:
       "Những thông tin hay phát sinh được gom về một nơi để giảm thời gian tìm kiếm và chờ hỗ trợ.",
-    cta: "Mở trung tâm hỗ trợ"
+    cta: "Mở trung tâm hỗ trợ",
+    href: "/support"
   }
 ];
 
