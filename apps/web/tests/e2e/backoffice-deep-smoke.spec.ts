@@ -184,7 +184,19 @@ test("backoffice support gửi lại email lỗi và đổi trạng thái", asyn
     permissions: ["backoffice.support"]
   });
 
-  let notifications = [
+  let notifications: Array<{
+    bookingCode: string;
+    createdAt: string;
+    id: number;
+    lastError: string | null;
+    recipientEmail: string;
+    retryCount: number;
+    sentAt: string | null;
+    status: string;
+    subject: string;
+    type: string;
+    updatedAt: string;
+  }> = [
     {
       id: 71,
       type: "TICKET_EMAIL",
@@ -518,7 +530,18 @@ test("backoffice admin cập nhật role, trạng thái và xóa nhật ký", as
     ]
   };
 
-  let users = [
+  let users: Array<{
+    avatarUrl: string | null;
+    displayName: string;
+    email: string;
+    emailVerified: boolean;
+    id: number;
+    lastLoginAt: string;
+    lockedAt: string | null;
+    phone: string;
+    roles: string[];
+    status: string;
+  }> = [
     {
       id: 9,
       email: "ops@vna.vn",

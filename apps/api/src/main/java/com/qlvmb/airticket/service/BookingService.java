@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +56,7 @@ public class BookingService {
   private static final String INVENTORY_NOT_FOUND_MESSAGE = "Kh\u00f4ng t\u00ecm th\u1ea5y th\u00f4ng tin gh\u1ebf cho l\u1ef1a ch\u1ecdn \u0111\u00e3 ch\u1ecdn.";
   private static final String SEAT_SELECTION_INVALID_MESSAGE = "Th\u00f4ng tin gh\u1ebf \u0111\u00e3 ch\u1ecdn kh\u00f4ng h\u1ee3p l\u1ec7.";
   private static final String SEAT_SELECTION_DUPLICATE_MESSAGE = "Kh\u00f4ng \u0111\u01b0\u1ee3c ch\u1ecdn tr\u00f9ng gh\u1ebf cho c\u00f9ng m\u1ed9t ch\u1eb7ng bay.";
+  private static final String SEAT_SELECTION_CONFLICT_MESSAGE = "Gh\u1ebf n\u00e0y \u0111\u00e3 c\u00f3 ng\u01b0\u1eddi kh\u00e1c ch\u1ecdn";
   private static final String SEAT_SELECTION_MISMATCH_MESSAGE = "Mỗi hành khách cần chọn đúng một ghế cho từng chặng bay.";
   private static final String REFUND_NOT_AVAILABLE_MESSAGE = "\u0110\u1eb7t ch\u1ed7 hi\u1ec7n kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9.";
   private static final String REFUND_AFTER_CHECKIN_MESSAGE = "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 sau khi \u0111\u00e3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn.";
@@ -72,6 +74,8 @@ public class BookingService {
   private static final Set<String> SUPPORTED_TRIP_TYPES = Set.of("one_way", "round_trip");
   private static final Set<String> SUPPORTED_PASSENGER_TYPES = Set.of("adult", "child", "infant");
   private static final char[] BOOKING_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
+  private static final String SEAT_SELECTION_SEGMENT_CONSTRAINT =
+      "uk_booking_seat_selection_segment_seat";
 
   private final FlightFareInventoryRepository flightFareInventoryRepository;
   private final BookingRepository bookingRepository;
@@ -233,7 +237,7 @@ public class BookingService {
         )
     ));
 
-    BookingEntity savedBooking = bookingRepository.save(booking);
+    BookingEntity savedBooking = saveHeldBooking(booking);
     return mapHoldResponse(savedBooking);
   }
 
@@ -817,7 +821,7 @@ public class BookingService {
           )
       );
       if (occupiedSeats.contains(seatNumber)) {
-        throw new BadRequestException(SEAT_SELECTION_DUPLICATE_MESSAGE);
+        throw new BadRequestException(SEAT_SELECTION_CONFLICT_MESSAGE);
       }
       occupiedSeats.add(seatNumber);
       passengerCountByInventoryId.merge(seatSelectionRequest.inventoryId(), 1, Integer::sum);
@@ -835,6 +839,32 @@ public class BookingService {
         List.copyOf(preparedSeatSelections),
         Map.copyOf(passengerCountByInventoryId)
     );
+  }
+
+  private BookingEntity saveHeldBooking(BookingEntity booking) {
+    try {
+      return bookingRepository.saveAndFlush(booking);
+    } catch (DataIntegrityViolationException exception) {
+      if (isSeatSelectionConflict(exception)) {
+        throw new BadRequestException(SEAT_SELECTION_CONFLICT_MESSAGE);
+      }
+      throw exception;
+    }
+  }
+
+  private boolean isSeatSelectionConflict(Throwable throwable) {
+    Throwable currentThrowable = throwable;
+
+    while (currentThrowable != null) {
+      String message = currentThrowable.getMessage();
+      if (message != null
+          && message.toLowerCase(Locale.ROOT).contains(SEAT_SELECTION_SEGMENT_CONSTRAINT)) {
+        return true;
+      }
+      currentThrowable = currentThrowable.getCause();
+    }
+
+    return false;
   }
 
   private PreparedTripSegment resolveTripSegment(

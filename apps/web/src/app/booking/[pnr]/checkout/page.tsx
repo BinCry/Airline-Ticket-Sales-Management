@@ -1,5 +1,6 @@
 "use client";
 
+import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +16,7 @@ import {
   confirmLocalPayment,
   createPaymentSession
 } from "@/lib/booking-api";
+import { createCheckoutReadableValue } from "@/lib/copilot-booking-actions";
 import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
 import { formatCurrency } from "@/lib/format";
 import { fetchMyVouchers, type MyVoucher } from "@/lib/my-account-api";
@@ -134,6 +136,7 @@ export default function BookingCheckoutPage() {
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
   const [holdExpiredMessage, setHoldExpiredMessage] = useState<string | null>(null);
+  const [agentPaymentNotice, setAgentPaymentNotice] = useState<string | null>(null);
   const isRefreshingExpiredHoldRef = useRef(false);
 
   useEffect(() => {
@@ -308,6 +311,83 @@ export default function BookingCheckoutPage() {
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
   const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
   const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
+  const copilotReadableValue = createCheckoutReadableValue({
+    availableVouchers,
+    bookingCode,
+    isMemberSession,
+    isPaymentClosed,
+    session
+  });
+
+  useCopilotReadable(
+    {
+      description:
+        "Trang thanh toan hien tai, gom ma dat cho, trang thai thanh toan, session QR, voucher kha dung va thong bao het han giu cho neu co.",
+      value: copilotReadableValue
+    },
+    [copilotReadableValue]
+  );
+
+  useCopilotAction(
+    {
+      name: "generatePayment",
+      description:
+        "Tao hoac lam moi phien thanh toan cho ma dat cho hien tai, cap nhat QR thanh toan tren man hinh va de nguoi dung tu xac nhan giao dich.",
+      parameters: [
+        {
+          description: "Bat de lam moi lai session thanh toan ngay ca khi da co session tren man hinh.",
+          name: "forceRefresh",
+          required: false,
+          type: "boolean"
+        }
+      ],
+      handler: async () => {
+        if (!bookingCode) {
+          return {
+            message: "Chua co ma dat cho de tao session thanh toan."
+          };
+        }
+
+        setIsLoading(true);
+        setErrorMessage(null);
+        setAgentPaymentNotice(null);
+
+        try {
+          const nextSession = await createPaymentSession(bookingCode, accessToken);
+          setSession(nextSession);
+          setHoldExpiredMessage(
+            isClosedPaymentStatus(nextSession.paymentStatus) ? HOLD_EXPIRED_NOTICE : null
+          );
+          setAgentPaymentNotice(
+            "AI da chuan bi xong session thanh toan va cap nhat ma QR tren man hinh."
+          );
+
+          return {
+            amount: nextSession.amount,
+            bookingCode: nextSession.bookingCode,
+            paymentStatus: nextSession.paymentStatus,
+            qrCodeUrl: resolveFallbackQrCodeUrl(nextSession),
+            referenceCode: nextSession.referenceCode,
+            sessionMode: nextSession.sessionMode
+          };
+        } catch (error) {
+          const resolvedMessage = resolveApiClientErrorMessage(
+            error,
+            "Khong the chuan bi thong tin thanh toan."
+          );
+          setAgentPaymentNotice(null);
+          setErrorMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : resolvedMessage);
+          setHoldExpiredMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : null);
+          return {
+            message: resolvedMessage
+          };
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    },
+    [accessToken, bookingCode]
+  );
 
   async function handleLocalPaymentConfirmation() {
     if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local") {
@@ -540,6 +620,15 @@ export default function BookingCheckoutPage() {
                         <span className="pill">Thanh toán đã khóa</span>
                       </div>
                       <p>{holdExpiredMessage}</p>
+                    </div>
+                  ) : null}
+                  {agentPaymentNotice ? (
+                    <div className="auth-note-card">
+                      <div className="auth-note-head">
+                        <h3>AI đã chuẩn bị phiên thanh toán</h3>
+                        <span className="pill">Sẵn sàng quét QR</span>
+                      </div>
+                      <p>{agentPaymentNotice}</p>
                     </div>
                   ) : null}
                   <div className="booking-submit-row">

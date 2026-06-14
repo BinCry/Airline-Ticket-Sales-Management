@@ -1,5 +1,6 @@
 "use client";
 
+import { useCopilotAction, useCopilotReadable } from "@copilotkit/react-core";
 import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useEffect, useState, type FormEvent } from "react";
@@ -35,6 +36,11 @@ import {
   taoTieuChiTimChuyenBayMacDinh
 } from "@/lib/flight-search-api";
 import { formatCurrency } from "@/lib/format";
+import {
+  buildSearchCriteriaFromCopilotInput,
+  createSearchReadableValue,
+  type CopilotSearchFlightsInput
+} from "@/lib/copilot-booking-actions";
 import {
   getVietnamTodayIso,
   resolveRoundTripReturnDate
@@ -602,6 +608,103 @@ export function SearchResultsPageClient({
   const tongKhach = tongHanhKhach(adultCount, childCount, infantCount);
   const sanBayDiPhoBien = sanBayPhoBien.slice(0, 6);
   const sanBayDenPhoBien = sanBayPhoBien.filter((sanBay) => sanBay.code !== from).slice(0, 6);
+  const copilotReadableValue = createSearchReadableValue(
+    criteria,
+    searchData,
+    selectedOutboundFlightId
+  );
+
+  useCopilotReadable(
+    {
+      description:
+        "Danh sách chuyến bay đang hiển thị trên màn hình tìm kiếm, gồm tiêu chí tìm, chặng đi, chặng về và chiều đi đã chọn.",
+      value: copilotReadableValue
+    },
+    [copilotReadableValue]
+  );
+
+  useCopilotAction(
+    {
+      name: "searchFlights",
+      description:
+        "Cập nhật tiêu chí tìm chuyến bay trên giao diện hiện tại và tải lại danh sách kết quả phù hợp với yêu cầu chat.",
+      parameters: [
+        {
+          description: "Mã sân bay điểm đi, ví dụ SGN hoặc HAN.",
+          name: "from",
+          required: false,
+          type: "string"
+        },
+        {
+          description: "Mã sân bay điểm đến, ví dụ DAD hoặc PQC.",
+          name: "to",
+          required: false,
+          type: "string"
+        },
+        {
+          description: "Ngày khởi hành theo định dạng YYYY-MM-DD.",
+          name: "departureDate",
+          required: false,
+          type: "string"
+        },
+        {
+          description: "Ngày về theo định dạng YYYY-MM-DD khi tìm khứ hồi.",
+          name: "returnDate",
+          required: false,
+          type: "string"
+        },
+        {
+          description: "Loại hành trình, chỉ nhận one_way hoặc round_trip.",
+          name: "tripType",
+          required: false,
+          type: "string"
+        },
+        {
+          description: "Số lượng người lớn.",
+          name: "adultCount",
+          required: false,
+          type: "number"
+        },
+        {
+          description: "Số lượng trẻ em.",
+          name: "childCount",
+          required: false,
+          type: "number"
+        },
+        {
+          description: "Số lượng em bé.",
+          name: "infantCount",
+          required: false,
+          type: "number"
+        }
+      ],
+      handler: async (input) => {
+        const nextCriteria = buildSearchCriteriaFromCopilotInput(
+          criteria,
+          input as CopilotSearchFlightsInput
+        );
+        setTripType(nextCriteria.tripType);
+        setFrom(nextCriteria.from);
+        setTo(nextCriteria.to);
+        setDepartureDate(nextCriteria.departureDate);
+        setReturnDate(nextCriteria.returnDate ?? "");
+        setAdultCount(nextCriteria.adultCount);
+        setChildCount(nextCriteria.childCount);
+        setInfantCount(nextCriteria.infantCount);
+        setDangTaiKetQua(true);
+
+        startTransition(() => {
+          router.push(taoDuongDanTimChuyenBay(nextCriteria), { scroll: false });
+        });
+
+        return {
+          criteria: nextCriteria,
+          message: "Đã cập nhật tiêu chí tìm chuyến bay trên màn hình hiện tại."
+        };
+      }
+    },
+    [criteria, router]
+  );
 
   function coTheTangHanhKhach(nhom: NhomHanhKhach): boolean {
     if (tongKhach >= 9) {
