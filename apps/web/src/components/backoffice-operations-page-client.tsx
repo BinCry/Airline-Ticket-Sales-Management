@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import type { AirportOption } from "@qlvmb/shared-types";
+
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import { fetchAirportOptions } from "@/lib/airport-api";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   cancelBackofficeOperationsFlight,
@@ -209,8 +212,9 @@ function taoDanhSachHangVeCoDinh(baseFare: number): BackofficeFareReadonlyItem[]
   }));
 }
 
-function capNhatGiaGocHopLe(value: string, giaMacDinh: number): number {
-  const giaDaNhap = Number(value);
+function capNhatSoTienHopLe(value: string, giaMacDinh: number): number {
+  const phanSo = value.replace(/\D/g, "");
+  const giaDaNhap = Number(phanSo);
   if (!Number.isFinite(giaDaNhap) || giaDaNhap < 1) {
     return giaMacDinh;
   }
@@ -241,6 +245,10 @@ export function BackofficeOperationsPageClient() {
   // Danh sách chuyến bay đang mở chi tiết (collapsible)
   const [expandedFlightIds, setExpandedFlightIds] = useState<Set<number>>(new Set());
   const [flightForm, setFlightForm] = useState<BackofficeOperationsFlightCreateInput>(createEmptyFlightForm);
+  const [goiYSanBayDi, setGoiYSanBayDi] = useState<AirportOption[]>([]);
+  const [goiYSanBayDen, setGoiYSanBayDen] = useState<AirportOption[]>([]);
+  const [dangTaiSanBayDi, setDangTaiSanBayDi] = useState(false);
+  const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
 
   const [voucherState, setVoucherState] = useState<OperationsState>("idle");
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
@@ -263,6 +271,72 @@ export function BackofficeOperationsPageClient() {
     void loadFlightStatus("", "", accessToken);
     void loadVouchers("", "", "ALL", accessToken);
   }, [accessToken]);
+
+  useEffect(() => {
+    const tuKhoa = flightForm.originCode.trim();
+
+    if (!tuKhoa) {
+      setGoiYSanBayDi([]);
+      setDangTaiSanBayDi(false);
+      return;
+    }
+
+    const boDieuKhien = new AbortController();
+    const boDem = setTimeout(async () => {
+      setDangTaiSanBayDi(true);
+
+      try {
+        const danhSach = await fetchAirportOptions(tuKhoa, boDieuKhien.signal);
+        setGoiYSanBayDi(danhSach);
+      } catch {
+        if (!boDieuKhien.signal.aborted) {
+          setGoiYSanBayDi([]);
+        }
+      } finally {
+        if (!boDieuKhien.signal.aborted) {
+          setDangTaiSanBayDi(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(boDem);
+      boDieuKhien.abort();
+    };
+  }, [flightForm.originCode]);
+
+  useEffect(() => {
+    const tuKhoa = flightForm.destinationCode.trim();
+
+    if (!tuKhoa) {
+      setGoiYSanBayDen([]);
+      setDangTaiSanBayDen(false);
+      return;
+    }
+
+    const boDieuKhien = new AbortController();
+    const boDem = setTimeout(async () => {
+      setDangTaiSanBayDen(true);
+
+      try {
+        const danhSach = await fetchAirportOptions(tuKhoa, boDieuKhien.signal);
+        setGoiYSanBayDen(danhSach);
+      } catch {
+        if (!boDieuKhien.signal.aborted) {
+          setGoiYSanBayDen([]);
+        }
+      } finally {
+        if (!boDieuKhien.signal.aborted) {
+          setDangTaiSanBayDen(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(boDem);
+      boDieuKhien.abort();
+    };
+  }, [flightForm.destinationCode]);
 
   async function loadFlightStatus(nextDate: string, nextCode: string, nextAccessToken: string) {
     setState("loading");
@@ -400,7 +474,7 @@ export function BackofficeOperationsPageClient() {
     }
 
     const shouldCancelFlight = window.confirm(
-      `Hủy chuyến ${flight.code} sẽ cập nhật booking, vé liên quan và gửi email thông báo cho khách. Bạn có muốn tiếp tục?`
+      `Hủy chuyến ${flight.code} sẽ cập nhật booking, vé liên quan, gửi email thông báo và tự tạo yêu cầu hoàn vé chờ duyệt cho các vé đã thanh toán. Bạn có muốn tiếp tục?`
     );
 
     if (!shouldCancelFlight) {
@@ -414,7 +488,7 @@ export function BackofficeOperationsPageClient() {
       await loadFlightStatus(date, code.trim().toUpperCase(), accessToken);
       pushToast({
         title: "Đã hủy chuyến bay",
-        message: "Hệ thống đã đồng bộ trạng thái chuyến, booking và email thông báo.",
+        message: "Hệ thống đã đồng bộ trạng thái chuyến, booking, email thông báo và yêu cầu hoàn vé liên quan.",
         tone: "success"
       });
     } catch (error) {
@@ -622,16 +696,44 @@ export function BackofficeOperationsPageClient() {
                 <input
                   value={flightForm.originCode}
                   onChange={(event) => updateFlightFormField("originCode", event.target.value)}
-                  placeholder="Ví dụ: SGN"
+                  list="goi-y-san-bay-di-operations"
+                  autoComplete="off"
+                  placeholder="Ví dụ: SGN hoặc Thành phố Hồ Chí Minh"
                 />
+                <datalist id="goi-y-san-bay-di-operations">
+                  {goiYSanBayDi.map((sanBay) => (
+                    <option key={sanBay.code} value={sanBay.code}>
+                      {`${sanBay.cityName} (${sanBay.code}) - ${sanBay.airportName}`}
+                    </option>
+                  ))}
+                </datalist>
+                <small>
+                  {dangTaiSanBayDi
+                    ? "Đang tải gợi ý sân bay..."
+                    : "Nhập mã hoặc tên thành phố để nhận gợi ý mã sân bay."}
+                </small>
               </label>
               <label className="field">
                 <span>Sân bay đến</span>
                 <input
                   value={flightForm.destinationCode}
                   onChange={(event) => updateFlightFormField("destinationCode", event.target.value)}
-                  placeholder="Ví dụ: HAN"
+                  list="goi-y-san-bay-den-operations"
+                  autoComplete="off"
+                  placeholder="Ví dụ: HAN hoặc Hà Nội"
                 />
+                <datalist id="goi-y-san-bay-den-operations">
+                  {goiYSanBayDen.map((sanBay) => (
+                    <option key={sanBay.code} value={sanBay.code}>
+                      {`${sanBay.cityName} (${sanBay.code}) - ${sanBay.airportName}`}
+                    </option>
+                  ))}
+                </datalist>
+                <small>
+                  {dangTaiSanBayDen
+                    ? "Đang tải gợi ý sân bay..."
+                    : "Nhập mã hoặc tên thành phố để nhận gợi ý mã sân bay."}
+                </small>
               </label>
               <label className="field">
                 <span>Giờ cất cánh</span>
@@ -660,11 +762,12 @@ export function BackofficeOperationsPageClient() {
               <label className="field">
                 <span>Giá gốc Phổ thông tiết kiệm</span>
                 <input
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={flightForm.baseFare}
                   onChange={(event) =>
-                    updateFlightFormField("baseFare", capNhatGiaGocHopLe(event.target.value, flightForm.baseFare))
+                    updateFlightFormField("baseFare", capNhatSoTienHopLe(event.target.value, flightForm.baseFare))
                   }
                 />
               </label>
@@ -871,15 +974,16 @@ export function BackofficeOperationsPageClient() {
                         <label className="field">
                           <span>Giá gốc Phổ thông tiết kiệm</span>
                           <input
-                            type="number"
-                            min={1}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={draft?.baseFare ?? flight.baseFare}
                             onChange={(event) =>
                               setDrafts((current) => ({
                                 ...current,
                                 [flight.flightId]: {
                                   ...(draft ?? buildFlightDraft(flight)),
-                                  baseFare: capNhatGiaGocHopLe(event.target.value, draft?.baseFare ?? flight.baseFare)
+                                  baseFare: capNhatSoTienHopLe(event.target.value, draft?.baseFare ?? flight.baseFare)
                                 }
                               }))
                             }
@@ -1058,13 +1162,14 @@ export function BackofficeOperationsPageClient() {
               <label className="field">
                 <span>Giảm giá</span>
                 <input
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={voucherForm.discountAmount}
                   onChange={(event) =>
                     setVoucherForm((current) => ({
                       ...current,
-                      discountAmount: Number(event.target.value)
+                      discountAmount: capNhatSoTienHopLe(event.target.value, current.discountAmount)
                     }))
                   }
                 />
@@ -1255,15 +1360,19 @@ export function BackofficeOperationsPageClient() {
                     <label className="field">
                       <span>Giảm giá</span>
                       <input
-                        type="number"
-                        min={1}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={draft?.discountAmount ?? voucher.discountAmount}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({
                             ...current,
                             [voucher.voucherId]: {
                               ...(draft ?? buildVoucherDraft(voucher)),
-                              discountAmount: Number(event.target.value)
+                              discountAmount: capNhatSoTienHopLe(
+                                event.target.value,
+                                draft?.discountAmount ?? voucher.discountAmount
+                              )
                             }
                           }))
                         }
