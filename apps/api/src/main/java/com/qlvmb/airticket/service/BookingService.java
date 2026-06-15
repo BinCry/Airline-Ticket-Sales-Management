@@ -1004,17 +1004,53 @@ public class BookingService {
   }
 
   private long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
-    long activeTicketCount = booking.getTickets().stream()
-        .filter(ticket -> !TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus()))
-        .count();
-    if (activeTicketCount > 0 && requestedTickets.size() == activeTicketCount) {
+    if (!booking.getTickets().isEmpty() && requestedTickets.size() == booking.getTickets().size()) {
       return booking.getTotalAmount();
     }
 
-    return requestedTickets.stream()
-        .map(TicketEntity::getSegment)
-        .mapToLong(BookingSegmentEntity::getPricePerPassenger)
+    long requestedBaseAmount = requestedTickets.stream()
+        .mapToLong(this::resolveTicketBaseAmount)
         .sum();
+    long requestedDiscountAmount = resolveRequestedTicketDiscountAmount(booking, requestedTickets);
+    return Math.max(0L, requestedBaseAmount - requestedDiscountAmount);
+  }
+
+  private long resolveRequestedTicketDiscountAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+    long bookingBaseAmount = booking.getBaseAmount();
+    long discountPool = Math.min(booking.getDiscountAmount(), bookingBaseAmount);
+    if (bookingBaseAmount <= 0L || discountPool <= 0L) {
+      return 0L;
+    }
+
+    List<TicketEntity> orderedTickets = booking.getTickets().stream().toList();
+    Set<TicketEntity> requestedTicketSet = new LinkedHashSet<>(requestedTickets);
+    long remainingBaseAmount = bookingBaseAmount;
+    long remainingDiscount = discountPool;
+    long requestedDiscountAmount = 0L;
+
+    for (int index = 0; index < orderedTickets.size(); index++) {
+      TicketEntity ticket = orderedTickets.get(index);
+      long ticketBaseAmount = resolveTicketBaseAmount(ticket);
+      long allocatedDiscount = index == orderedTickets.size() - 1 || remainingBaseAmount <= ticketBaseAmount
+          ? Math.min(ticketBaseAmount, remainingDiscount)
+          : Math.min(
+              ticketBaseAmount,
+              Math.floorDiv(ticketBaseAmount * remainingDiscount, remainingBaseAmount)
+          );
+
+      if (requestedTicketSet.contains(ticket)) {
+        requestedDiscountAmount += allocatedDiscount;
+      }
+
+      remainingBaseAmount -= ticketBaseAmount;
+      remainingDiscount -= allocatedDiscount;
+    }
+
+    return requestedDiscountAmount;
+  }
+
+  private long resolveTicketBaseAmount(TicketEntity ticket) {
+    return ticket.getSegment().getPricePerPassenger();
   }
 
   private String resolveFlightScopeKey(TicketEntity ticket) {
