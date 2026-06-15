@@ -1,3 +1,4 @@
+import { rewriteNewsImageUrl } from "@/lib/news-images";
 import { getNewsDataApiKey } from "@/lib/server-env";
 
 const NEWSDATA_ENDPOINT = "https://newsdata.io/api/1/latest";
@@ -289,7 +290,7 @@ function mapArticleToPreview(article: NewsDataArticle): TravelArticlePreview | n
     title,
     source,
     readTime: formatPublishedDate(article.pubDate),
-    image: article.image_url,
+    image: rewriteNewsImageUrl(article.image_url),
     summary,
     href: article.link,
     external: true

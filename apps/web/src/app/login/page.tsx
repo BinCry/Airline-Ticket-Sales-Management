@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { AuthShell } from "@/components/auth-shell";
 import { PasswordField } from "@/components/password-field";
@@ -12,7 +12,12 @@ import {
   loginWithPassword,
   resolveAuthErrorMessage
 } from "@/lib/auth-api";
-import { persistAuthSession, type AuthSession } from "@/lib/auth-session";
+import {
+  AUTH_SESSION_UPDATED_EVENT,
+  loadValidAuthSession,
+  persistAuthSession,
+  type AuthSession
+} from "@/lib/auth-session";
 
 const loginStats = [
   {
@@ -51,8 +56,17 @@ const trustPoints = [
   "Nhận nhắc việc trước ngày khởi hành, email vé và các cập nhật mới nhất về hành trình."
 ];
 
+function resolveSafeRedirectTarget(value: string | null | undefined) {
+  const redirectTo = value?.trim();
+
+  if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
+    return "/";
+  }
+
+  return redirectTo;
+}
+
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,12 +78,34 @@ function LoginPageContent() {
   const isReadyToContinue = authSession !== null;
   const isFormValid = email.trim().length > 0 && password.trim().length > 0;
 
+  useEffect(() => {
+    function syncAuthState() {
+      const nextAuthSession = loadValidAuthSession();
+
+      if (!nextAuthSession) {
+        return;
+      }
+
+      setAuthSession(nextAuthSession);
+      window.location.replace(
+        resolveSafeRedirectTarget(searchParams.get("redirectTo"))
+      );
+    }
+
+    syncAuthState();
+    window.addEventListener(AUTH_SESSION_UPDATED_EVENT, syncAuthState);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_UPDATED_EVENT, syncAuthState);
+    };
+  }, [searchParams]);
+
   function handleAuthSuccess(nextAuthSession: AuthSession) {
     persistAuthSession(nextAuthSession, shouldRemember);
     setAuthSession(nextAuthSession);
-
-    const redirectTo = searchParams.get("redirectTo")?.trim();
-    router.push(redirectTo || "/");
+    window.location.assign(
+      resolveSafeRedirectTarget(searchParams.get("redirectTo"))
+    );
   }
 
   function handleGoogleLogin() {

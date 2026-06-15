@@ -1,12 +1,13 @@
 import { pushToast, type ToastTone } from "@/lib/toast";
 import {
+  AUTH_SESSION_REFRESH_WINDOW_MS,
   clearStoredAuthSession,
-  isAuthSessionExpired,
   loadStoredAuthSession,
   parseAuthSession,
   persistAuthSession,
   readAuthSessionFromStorage,
   resolveAuthSessionStores,
+  willAuthSessionExpireWithin,
   type AuthSession,
   type AuthSessionStores
 } from "@/lib/auth-session";
@@ -134,7 +135,7 @@ function resolveStoredAuthSessionSource(stores: AuthSessionStores = resolveAuthS
   };
 }
 
-async function refreshStoredAuthSession(): Promise<AuthSession | null> {
+export async function refreshStoredAuthSession(): Promise<AuthSession | null> {
   if (typeof window === "undefined") {
     return null;
   }
@@ -179,14 +180,12 @@ async function refreshStoredAuthSession(): Promise<AuthSession | null> {
     try {
       responsePayload = await response.json();
     } catch {
-      clearStoredAuthSession(storedSource.stores);
       return null;
     }
 
     const refreshedAuthSession = parseAuthSession(JSON.stringify(responsePayload));
 
     if (!refreshedAuthSession) {
-      clearStoredAuthSession(storedSource.stores);
       return null;
     }
 
@@ -216,7 +215,12 @@ async function resolveRequestAccessToken(accessToken: string | undefined): Promi
     return accessToken;
   }
 
-  if (isAuthSessionExpired(storedAuthSession)) {
+  if (
+    willAuthSessionExpireWithin(
+      storedAuthSession,
+      AUTH_SESSION_REFRESH_WINDOW_MS
+    )
+  ) {
     return (await refreshStoredAuthSession())?.accessToken ?? accessToken;
   }
 

@@ -3,6 +3,7 @@ import { presentUserDisplayName } from "@/lib/present-user-label";
 export const AUTH_SESSION_STORAGE_KEY = "qlvmb.auth.session";
 export const AUTH_SESSION_UPDATED_EVENT = "qlvmb:auth-session-updated";
 export const AUTH_ACCESS_TOKEN_COOKIE = "qlvmb.access_token";
+export const AUTH_SESSION_REFRESH_WINDOW_MS = 60_000;
 
 export interface AuthSessionUser {
   id: number;
@@ -163,6 +164,11 @@ function setAccessTokenCookie(authSession: AuthSession): void {
   document.cookie = `${AUTH_ACCESS_TOKEN_COOKIE}=${safeToken}; Path=/; Max-Age=${secondsUntilExpiry}; SameSite=Lax`;
 }
 
+export function readAuthSessionExpirationTime(authSession: AuthSession): number | null {
+  const expiresAt = Date.parse(authSession.accessTokenExpiresAt);
+  return Number.isNaN(expiresAt) ? null : expiresAt;
+}
+
 function clearAccessTokenCookie(): void {
   if (typeof document === "undefined") {
     return;
@@ -212,16 +218,36 @@ export function isAuthSessionExpired(
   authSession: AuthSession,
   currentTime = Date.now()
 ): boolean {
-  const expiresAt = Date.parse(authSession.accessTokenExpiresAt);
+  const expiresAt = readAuthSessionExpirationTime(authSession);
 
-  if (Number.isNaN(expiresAt)) {
+  if (expiresAt === null) {
     return true;
   }
 
   return expiresAt <= currentTime;
 }
 
+export function willAuthSessionExpireWithin(
+  authSession: AuthSession,
+  windowMs: number,
+  currentTime = Date.now()
+): boolean {
+  const expiresAt = readAuthSessionExpirationTime(authSession);
+
+  if (expiresAt === null) {
+    return true;
+  }
+
+  return expiresAt - currentTime <= windowMs;
+}
+
 export function loadActiveAuthSession(
+  stores: AuthSessionStores = resolveAuthSessionStores()
+): AuthSession | null {
+  return loadStoredAuthSession(stores);
+}
+
+export function loadValidAuthSession(
   stores: AuthSessionStores = resolveAuthSessionStores()
 ): AuthSession | null {
   const authSession = loadStoredAuthSession(stores);
@@ -231,7 +257,8 @@ export function loadActiveAuthSession(
   }
 
   if (isAuthSessionExpired(authSession)) {
-    return authSession;
+    clearAccessTokenCookie();
+    return null;
   }
 
   setAccessTokenCookie(authSession);

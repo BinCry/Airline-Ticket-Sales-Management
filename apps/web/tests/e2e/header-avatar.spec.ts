@@ -27,7 +27,7 @@ test("header hiển thị avatar từ phiên đăng nhập", async ({ page }) =>
 
   await expect(
     page.locator('.account-menu-trigger .account-menu-avatar-custom').first()
-  ).toHaveAttribute("src", `http://localhost:8080${avatarPath}`);
+  ).toHaveAttribute("src", /\/uploads\/avatars\/header-test\.png$/);
 });
 
 test("header dùng chữ cái mặc định khi avatar tải lỗi", async ({ page }) => {

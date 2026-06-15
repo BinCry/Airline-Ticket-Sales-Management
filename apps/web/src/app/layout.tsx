@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { AuthSessionKeeper } from "@/components/auth-session-keeper";
 import { ChatbotWidget } from "@/components/chatbot-widget";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -43,6 +44,7 @@ export default function RootLayout({
           <Suspense>
             <ToastProvider />
           </Suspense>
+          <AuthSessionKeeper />
           <SiteHeader />
           <main className="page-main">{children}</main>
           <SiteFooter />

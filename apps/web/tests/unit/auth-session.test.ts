@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTH_SESSION_STORAGE_KEY,
   loadActiveAuthSession,
+  loadValidAuthSession,
   parseAuthSession,
   persistAuthSession,
   type AuthSession,
@@ -97,6 +98,18 @@ describe("auth-session", () => {
 
     expect(loadActiveAuthSession(stores)).toEqual(authSession);
     expect(stores.localStorage?.getItem(AUTH_SESSION_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("khong coi phien het han la phien con hieu luc de render ui", () => {
+    const stores = createStores();
+    const authSession = createAuthSession({
+      accessTokenExpiresAt: "2000-01-01T00:00:00Z"
+    });
+
+    persistAuthSession(authSession, true, stores);
+
+    expect(loadValidAuthSession(stores)).toBeNull();
+    expect(loadActiveAuthSession(stores)).toEqual(authSession);
   });
 
   it("bo qua du lieu phien khong hop le", () => {

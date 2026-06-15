@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { logoutAuthSession } from "@/lib/auth-api";
 import {
   AUTH_SESSION_UPDATED_EVENT,
   clearStoredAuthSession,
-  loadActiveAuthSession,
+  loadValidAuthSession,
   type AuthSession
 } from "@/lib/auth-session";
 import { hasAnyBackofficeAccess, ROLE_LABELS } from "@/lib/access-control";
@@ -32,7 +32,6 @@ function resolveAvatarUrl(avatarUrl: string | null | undefined) {
 }
 
 export function SiteHeader() {
-  const router = useRouter();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
@@ -48,7 +47,7 @@ export function SiteHeader() {
   useEffect(() => {
     function syncAuthSession() {
       setFailedAvatarUrl(null);
-      setAuthSession(loadActiveAuthSession());
+      setAuthSession(loadValidAuthSession());
     }
 
     syncAuthSession();
@@ -109,7 +108,7 @@ export function SiteHeader() {
       setAuthSession(null);
       setIsAccountPanelOpen(false);
       setIsLoggingOut(false);
-      router.push("/");
+      window.location.assign("/");
     }
   }
 
@@ -173,11 +172,11 @@ export function SiteHeader() {
             </div>
             {usesStaffAccountMenu ? (
               <div className="account-menu-group">
-                <Link href="/account" role="menuitem">
+                <Link href="/account" prefetch={false} role="menuitem">
                   Thông tin cá nhân
                 </Link>
                 {canOpenBackoffice ? (
-                  <Link href="/backoffice" role="menuitem">
+                  <Link href="/backoffice" prefetch={false} role="menuitem">
                     Backoffice
                   </Link>
                 ) : null}
@@ -185,7 +184,7 @@ export function SiteHeader() {
             ) : (
               <>
                 <div className="account-menu-group">
-                  <Link href="/account" role="menuitem">
+                  <Link href="/account" prefetch={false} role="menuitem">
                     Thông tin cá nhân
                   </Link>
                 </div>
@@ -200,7 +199,7 @@ export function SiteHeader() {
                     Trạng thái chuyến bay
                   </Link>
                   {canOpenBackoffice ? (
-                    <Link href="/backoffice" role="menuitem">
+                    <Link href="/backoffice" prefetch={false} role="menuitem">
                       Backoffice
                     </Link>
                   ) : null}
@@ -298,7 +297,7 @@ export function SiteHeader() {
                 </>
               )}
               {canOpenBackoffice ? (
-                <Link href="/backoffice" className="button button-secondary">
+                <Link href="/backoffice" prefetch={false} className="button button-secondary">
                   Backoffice
                 </Link>
               ) : null}
@@ -334,6 +333,7 @@ export function SiteHeader() {
           {canOpenBackoffice ? (
             <Link
               href="/backoffice"
+              prefetch={false}
               className="button button-secondary nav-action-button"
             >
               Backoffice
