@@ -447,6 +447,28 @@ class BookingServiceTest {
   }
 
   @Test
+  void requestRefund_shouldAllowCancelledPaidBookingFromOperationsForSelectedTickets() {
+    BookingEntity booking = cancelledRoundTripBookingFromOperationsWithVoucher("A6C2X9");
+    when(bookingRepository.lockDetailedByBookingCode("A6C2X9")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2X9",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest(
+            "Chuyen bay bi huy",
+            List.of("7380000000002")
+        )
+    );
+
+    assertThat(response.status()).isEqualTo("cancelled");
+    assertThat(response.refundRequest()).isNotNull();
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1000000L);
+    assertThat(booking.getRefundRequests()).hasSize(1);
+    assertThat(booking.getRefundRequests().iterator().next().getRequestedTickets())
+        .extracting(TicketEntity::getTicketNumber)
+        .containsExactly("7380000000002");
+  }
+
+  @Test
   void requestRefund_shouldAllowRefundReturnLegAfterOutboundCheckedIn() {
     BookingEntity booking = roundTripBookingWithCheckedInOutbound("A6C2P9");
     when(bookingRepository.lockDetailedByBookingCode("A6C2P9")).thenReturn(Optional.of(booking));
@@ -791,6 +813,14 @@ class BookingServiceTest {
 
   private BookingEntity roundTripBookingWithRefundedOutboundAndVoucher(String bookingCode) {
     return roundTripBookingForRefundScenarios(bookingCode, 1100000L, 200000L, false, true);
+  }
+
+  private BookingEntity cancelledRoundTripBookingFromOperationsWithVoucher(String bookingCode) {
+    BookingEntity booking = roundTripBookingForRefundScenarios(bookingCode, 1100000L, 200000L, false, false);
+    OffsetDateTime cancelledAt = OffsetDateTime.now().minusMinutes(2);
+    booking.getTickets().forEach(ticket -> ticket.markCancelled(cancelledAt));
+    booking.markCancelled(cancelledAt);
+    return booking;
   }
 
   private BookingEntity roundTripBookingForRefundScenarios(

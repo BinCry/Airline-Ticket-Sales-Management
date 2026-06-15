@@ -3,6 +3,7 @@ package com.qlvmb.airticket.service;
 import com.qlvmb.airticket.domain.dto.BackofficeFlightCreateRequest;
 import com.qlvmb.airticket.domain.dto.BackofficeFlightOperationUpdateRequest;
 import com.qlvmb.airticket.domain.dto.BackofficeFlightOperationsResponse;
+import com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest;
 import com.qlvmb.airticket.domain.entity.AirportEntity;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
@@ -44,6 +45,7 @@ public class BackofficeOperationsService {
   private final AuditLogRepository auditLogRepository;
   private final ProductCatalogService productCatalogService;
   private final NotificationOutboxService notificationOutboxService;
+  private final BookingService bookingService;
 
   public BackofficeOperationsService(
       FlightRepository flightRepository,
@@ -53,7 +55,8 @@ public class BackofficeOperationsService {
       UserAccountRepository userAccountRepository,
       AuditLogRepository auditLogRepository,
       ProductCatalogService productCatalogService,
-      NotificationOutboxService notificationOutboxService
+      NotificationOutboxService notificationOutboxService,
+      BookingService bookingService
   ) {
     this.flightRepository = flightRepository;
     this.airportRepository = airportRepository;
@@ -63,6 +66,7 @@ public class BackofficeOperationsService {
     this.auditLogRepository = auditLogRepository;
     this.productCatalogService = productCatalogService;
     this.notificationOutboxService = notificationOutboxService;
+    this.bookingService = bookingService;
   }
 
   @Transactional(readOnly = true)
@@ -304,9 +308,46 @@ public class BackofficeOperationsService {
           ticket.markCancelled(currentTime);
         }
       }
+      createAutomaticRefundRequestIfEligible(booking, flight);
     }
 
     notificationOutboxService.createAndSendFlightCancellationEmail(booking, flight, cancellationNote);
+  }
+
+  private void createAutomaticRefundRequestIfEligible(BookingEntity booking, FlightEntity cancelledFlight) {
+    if (!BookingEntity.PAYMENT_STATUS_PAID.equals(booking.getPaymentStatus())) {
+      return;
+    }
+
+    boolean hasPendingRefund = booking.getRefundRequests().stream().anyMatch(refundRequest -> refundRequest.isPending());
+    if (hasPendingRefund || booking.isRefundPending()) {
+      return;
+    }
+
+    List<String> affectedTicketNumbers = booking.getTickets().stream()
+        .filter(ticket -> belongsToCancelledFlight(ticket, cancelledFlight))
+        .map(TicketEntity::getTicketNumber)
+        .toList();
+    if (affectedTicketNumbers.isEmpty()) {
+      return;
+    }
+
+    bookingService.requestRefund(
+        booking.getBookingCode(),
+        new RefundRequestCreateRequest(
+            "Chuyen bay " + cancelledFlight.getCode() + " da bi huy boi dieu hanh.",
+            affectedTicketNumbers
+        )
+    );
+  }
+
+  private boolean belongsToCancelledFlight(TicketEntity ticket, FlightEntity cancelledFlight) {
+    BookingSegmentEntity segment = ticket.getSegment();
+    if (segment == null || segment.getInventory() == null || segment.getInventory().getFlight() == null) {
+      return false;
+    }
+
+    return cancelledFlight.getId().equals(segment.getInventory().getFlight().getId());
   }
 
   private void releaseSeatsForBooking(BookingEntity booking) {

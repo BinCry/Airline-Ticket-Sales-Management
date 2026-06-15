@@ -499,6 +499,117 @@ test("backoffice operations hủy rồi ẩn chuyến đã hủy", async ({ page
   await expect(page.locator("article", { hasText: "VN5201" })).toHaveCount(0);
 });
 
+test("backoffice operations cho phép nhập tiền trực tiếp và gợi ý mã sân bay khi tạo chuyến", async ({ page }) => {
+  await seedAuthSession(page, {
+    roles: ["operations_staff"],
+    permissions: ["backoffice.operations"]
+  });
+
+  let createPayload: Record<string, unknown> | null = null;
+
+  await page.route(/\/api\/airports\?query=.*/, async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("query")?.toLowerCase() ?? "";
+
+    if (query.includes("thành phố hồ chí minh")) {
+      await route.fulfill(jsonResponse([
+        {
+          code: "SGN",
+          cityName: "Thành phố Hồ Chí Minh",
+          airportName: "Tân Sơn Nhất",
+          terminalLabel: "Nội địa"
+        }
+      ]));
+      return;
+    }
+
+    if (query.includes("hà nội")) {
+      await route.fulfill(jsonResponse([
+        {
+          code: "HAN",
+          cityName: "Hà Nội",
+          airportName: "Nội Bài",
+          terminalLabel: "T1"
+        }
+      ]));
+      return;
+    }
+
+    await route.fulfill(jsonResponse([]));
+  });
+
+  await page.route(/\/api\/backoffice\/operations\/flights(?:\/.*)?(?:\?.*)?$/, async (route) => {
+    const request = route.request();
+
+    if (request.method() === "GET") {
+      await route.fulfill(jsonResponse({
+        queryCode: null,
+        queryDate: null,
+        flights: []
+      }));
+      return;
+    }
+
+    if (request.method() === "POST") {
+      createPayload = request.postDataJSON() as Record<string, unknown>;
+      await route.fulfill(jsonResponse(taoFlight({
+        flightId: 88,
+        code: "VN6201",
+        originCode: "SGN",
+        destinationCode: "HAN",
+        baseFare: 1300000
+      })));
+      return;
+    }
+
+    await route.abort();
+  });
+
+  await page.route(/\/api\/backoffice\/operations\/vouchers(?:\/.*)?(?:\?.*)?$/, async (route) => {
+    await route.fulfill(jsonResponse({
+      queryEmail: null,
+      queryCode: null,
+      queryStatus: null,
+      vouchers: []
+    }));
+  });
+
+  await page.goto("/backoffice/operations");
+
+  const originField = page.getByLabel("Sân bay đi");
+  await originField.fill("Thành phố Hồ Chí Minh");
+  await expect(page.locator("#goi-y-san-bay-di-operations option[value='SGN']")).toHaveCount(1);
+  await originField.fill("SGN");
+
+  const destinationField = page.getByLabel("Sân bay đến");
+  await destinationField.fill("Hà Nội");
+  await expect(page.locator("#goi-y-san-bay-den-operations option[value='HAN']")).toHaveCount(1);
+  await destinationField.fill("HAN");
+
+  const baseFareField = page.getByLabel("Giá gốc Phổ thông tiết kiệm").first();
+  await baseFareField.fill("1300000");
+  await expect(baseFareField).toHaveValue("1300000");
+
+  const voucherDiscountField = page.getByLabel("Giảm giá").first();
+  await voucherDiscountField.fill("250000");
+  await expect(voucherDiscountField).toHaveValue("250000");
+
+  await page.getByPlaceholder("Ví dụ: VN6201").fill("vn6201");
+  await page.getByRole("button", { name: "Tạo chuyến bay mới" }).click();
+
+  await expect
+    .poll(() => createPayload)
+    .not.toBeNull();
+  await expect
+    .poll(() => createPayload?.originCode)
+    .toBe("SGN");
+  await expect
+    .poll(() => createPayload?.destinationCode)
+    .toBe("HAN");
+  await expect
+    .poll(() => createPayload?.baseFare)
+    .toBe(1300000);
+});
+
 test("backoffice operations thu hồi rồi xóa voucher đã thu hồi", async ({ page }) => {
   await seedAuthSession(page, {
     roles: ["operations_staff"],
