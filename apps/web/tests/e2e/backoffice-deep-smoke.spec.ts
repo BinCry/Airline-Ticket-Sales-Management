@@ -404,6 +404,10 @@ test("backoffice operations hủy rồi ẩn chuyến đã hủy", async ({ page
 
   const flightCard = page.locator("article", { hasText: "VN5201" }).first();
   await expect(flightCard).toBeVisible();
+  const flightToggle = flightCard.getByRole("button", { name: /VN5201/ });
+  await expect(flightToggle).toHaveAttribute("aria-expanded", "false");
+  await flightToggle.click();
+  await expect(flightToggle).toHaveAttribute("aria-expanded", "true");
 
   page.once("dialog", async (dialog) => {
     await dialog.accept();
