@@ -468,6 +468,42 @@ class BookingServiceTest {
         .containsExactly("7380000000002");
   }
 
+  @Test
+  void requestRefund_shouldApplyVoucherShareWhenRefundingReturnLegOnly() {
+    BookingEntity booking = roundTripBookingWithVoucherAndCheckedInOutbound("A6C2V9");
+    when(bookingRepository.lockDetailedByBookingCode("A6C2V9")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2V9",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest(
+            "Khong bay chang ve",
+            List.of("7380000000002")
+        )
+    );
+
+    assertThat(response.status()).isEqualTo("refund_pending");
+    assertThat(response.refundRequest()).isNotNull();
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1000000L);
+  }
+
+  @Test
+  void requestRefund_shouldUseRemainingNetAmountWhenOtherLegWasRefundedEarlier() {
+    BookingEntity booking = roundTripBookingWithRefundedOutboundAndVoucher("A6C2R9");
+    when(bookingRepository.lockDetailedByBookingCode("A6C2R9")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2R9",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest(
+            "Khong bay chang ve",
+            List.of("7380000000002")
+        )
+    );
+
+    assertThat(response.status()).isEqualTo("refund_pending");
+    assertThat(response.refundRequest()).isNotNull();
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1000000L);
+  }
+
   private BookingHoldRequest oneWayHoldRequest(
       List<BookingHoldRequest.AncillaryRequest> ancillaries,
       List<Long> inventoryIds
@@ -746,6 +782,24 @@ class BookingServiceTest {
   }
 
   private BookingEntity roundTripBookingWithCheckedInOutbound(String bookingCode) {
+    return roundTripBookingForRefundScenarios(bookingCode, 1490000L, 0L, true, false);
+  }
+
+  private BookingEntity roundTripBookingWithVoucherAndCheckedInOutbound(String bookingCode) {
+    return roundTripBookingForRefundScenarios(bookingCode, 1100000L, 200000L, true, false);
+  }
+
+  private BookingEntity roundTripBookingWithRefundedOutboundAndVoucher(String bookingCode) {
+    return roundTripBookingForRefundScenarios(bookingCode, 1100000L, 200000L, false, true);
+  }
+
+  private BookingEntity roundTripBookingForRefundScenarios(
+      String bookingCode,
+      long segmentPrice,
+      long voucherDiscount,
+      boolean checkedInOutbound,
+      boolean refundedOutbound
+  ) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
     OffsetDateTime outboundDepartureAt = OffsetDateTime.now().plusDays(3);
     OffsetDateTime returnDepartureAt = OffsetDateTime.now().plusDays(7);
@@ -755,7 +809,7 @@ class BookingServiceTest {
         20101L,
         "AU201",
         5,
-        1490000L,
+        segmentPrice,
         "pho_thong_tiet_kiem",
         outboundDepartureAt,
         outboundDepartureAt.plusHours(2),
@@ -766,7 +820,7 @@ class BookingServiceTest {
         20102L,
         "AU202",
         5,
-        1490000L,
+        segmentPrice,
         "pho_thong_tiet_kiem",
         returnDepartureAt,
         returnDepartureAt.plusHours(2),
@@ -776,13 +830,17 @@ class BookingServiceTest {
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
         "round_trip",
-        2980000L,
+        segmentPrice * 2,
         0L,
-        2980000L,
+        segmentPrice * 2,
         "VND",
         createdAt,
         createdAt.plusMinutes(BookingService.HOLD_MINUTES)
     );
+
+    if (voucherDiscount > 0L) {
+      booking.applyVoucher("MEM200", voucherDiscount, createdAt.plusMinutes(1));
+    }
 
     booking.assignContact(BookingContactEntity.create(
         booking,
@@ -814,9 +872,9 @@ class BookingServiceTest {
         outboundDepartureAt.plusHours(2),
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
-        1490000L,
+        segmentPrice,
         1,
-        1490000L,
+        segmentPrice,
         createdAt
     );
     booking.addSegment(outboundSegment);
@@ -833,9 +891,9 @@ class BookingServiceTest {
         returnDepartureAt.plusHours(2),
         "pho_thong_tiet_kiem",
         "Pho thong tiet kiem",
-        1490000L,
+        segmentPrice,
         1,
-        1490000L,
+        segmentPrice,
         createdAt
     );
     booking.addSegment(returnSegment);
@@ -849,16 +907,34 @@ class BookingServiceTest {
         "7380000000001",
         createdAt.plusMinutes(5)
     );
-    outboundTicket.markCheckedIn(createdAt.plusMinutes(6));
+    if (checkedInOutbound) {
+      outboundTicket.markCheckedIn(createdAt.plusMinutes(6));
+    }
+    if (refundedOutbound) {
+      outboundTicket.markCancelled(createdAt.plusMinutes(6));
+    }
     booking.addTicket(outboundTicket);
 
-    booking.addTicket(TicketEntity.issue(
+    TicketEntity returnTicket = TicketEntity.issue(
         booking,
         passenger,
         returnSegment,
         "7380000000002",
         createdAt.plusMinutes(5)
-    ));
+    );
+    booking.addTicket(returnTicket);
+
+    if (refundedOutbound) {
+      RefundRequestEntity approvedRefundRequest = RefundRequestEntity.createPending(
+          booking,
+          "Da duyet hoan chang di",
+          1000000L,
+          createdAt.plusMinutes(7),
+          List.of(outboundTicket)
+      );
+      approvedRefundRequest.markApproved(createdAt.plusMinutes(8));
+      booking.addRefundRequest(approvedRefundRequest);
+    }
 
     return booking;
   }
