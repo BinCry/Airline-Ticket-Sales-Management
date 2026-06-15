@@ -30,6 +30,7 @@ function isBoardingPass(value: unknown): value is ApiBoardingPass {
   }
 
   return (
+    (value.inventoryId === undefined || typeof value.inventoryId === "number") &&
     typeof value.ticketNumber === "string" &&
     typeof value.passengerName === "string" &&
     typeof value.seatNumber === "string" &&

@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import type { ApiBoardingPass, ApiManageBookingSegment, ApiManageBookingTicket } from "@qlvmb/shared-types";
 
 import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import { createRefundRequest } from "@/lib/booking-api";
-import { coTheLamThuTuc, coTheYeuCauHoanVe } from "@/lib/booking-self-service";
+import {
+  coTheLamThuTuc,
+  coTheYeuCauHoanVe,
+  layVeCoTheYeuCauHoan,
+  timPhanDoanChoVe
+} from "@/lib/booking-self-service";
 import { formatCurrency } from "@/lib/format";
 import {
   fetchManageBooking,
@@ -20,6 +27,14 @@ import {
 import { pushToast } from "@/lib/toast";
 
 type LookupState = "idle" | "loading" | "error" | "success";
+
+interface NhomVe {
+  key: string;
+  segment: ApiManageBookingSegment | null;
+  tickets: ApiManageBookingTicket[];
+}
+
+const KHOA_HOAN_TOAN_BO = "__all__";
 
 function formatBookingStatus(status: ManageBookingOverview["status"]) {
   switch (status) {
@@ -97,6 +112,66 @@ function formatDateTime(value: string | null) {
   }).format(parsedDate);
 }
 
+function taoKhoaNhomBay(segment: ApiManageBookingSegment | null, ticketNumber: string) {
+  if (!segment) {
+    return `ticket-${ticketNumber}`;
+  }
+
+  return [
+    segment.code,
+    segment.originCode,
+    segment.destinationCode,
+    segment.departureAt
+  ].join("|");
+}
+
+function taoNhanNhomBay(segment: ApiManageBookingSegment | null) {
+  if (!segment) {
+    return "Chặng chưa xác định";
+  }
+
+  return `${segment.code} • ${segment.from} - ${segment.to} • ${formatDateTime(segment.departureAt)}`;
+}
+
+function taoDanhSachNhomVe(
+  bookingOverview: ManageBookingOverview | null,
+  tickets: ApiManageBookingTicket[]
+): NhomVe[] {
+  if (!bookingOverview) {
+    return [];
+  }
+
+  const groupMap = new Map<string, NhomVe>();
+  tickets.forEach((ticket) => {
+    const segment = timPhanDoanChoVe(bookingOverview, ticket);
+    const key = taoKhoaNhomBay(segment, ticket.ticketNumber);
+    const existingGroup = groupMap.get(key);
+    if (existingGroup) {
+      existingGroup.tickets.push(ticket);
+      return;
+    }
+
+    groupMap.set(key, {
+      key,
+      segment,
+      tickets: [ticket]
+    });
+  });
+
+  return Array.from(groupMap.values());
+}
+
+function timPhanDoanChoBoardingPass(
+  bookingOverview: ManageBookingOverview | null,
+  boardingPass: ApiBoardingPass
+) {
+  if (!bookingOverview || typeof boardingPass.inventoryId !== "number") {
+    return null;
+  }
+
+  return bookingOverview.segments.find((segment) => segment.inventoryId === boardingPass.inventoryId) ?? null;
+}
+
 export function ManageBookingPageClient() {
   const searchParams = useSearchParams();
   const [bookingCode, setBookingCode] = useState("");
@@ -111,6 +186,7 @@ export function ManageBookingPageClient() {
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [refundReason, setRefundReason] = useState("Không thể tiếp tục hành trình.");
+  const [selectedRefundScopeKey, setSelectedRefundScopeKey] = useState<string>(KHOA_HOAN_TOAN_BO);
   const [isRefunding, setIsRefunding] = useState(false);
   const isHoldingBooking =
     bookingOverview?.status === "held" && bookingOverview.paymentStatus === "pending";
@@ -135,6 +211,24 @@ export function ManageBookingPageClient() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, accessToken]);
+
+  const danhSachVeCoTheHoan = useMemo(
+    () => (bookingOverview ? layVeCoTheYeuCauHoan(bookingOverview) : []),
+    [bookingOverview]
+  );
+
+  const danhSachNhomVeCoTheHoan = useMemo(
+    () => taoDanhSachNhomVe(bookingOverview, danhSachVeCoTheHoan),
+    [bookingOverview, danhSachVeCoTheHoan]
+  );
+
+  const danhSachTicketDangChonHoan = useMemo(() => {
+    if (selectedRefundScopeKey === KHOA_HOAN_TOAN_BO) {
+      return [];
+    }
+
+    return danhSachNhomVeCoTheHoan.find((group) => group.key === selectedRefundScopeKey)?.tickets ?? [];
+  }, [danhSachNhomVeCoTheHoan, selectedRefundScopeKey]);
 
   async function traCuuBooking(nextBookingCode: string, nextLookupToken?: string | null) {
     setLookupState("loading");
@@ -239,6 +333,15 @@ export function ManageBookingPageClient() {
     await traCuuBooking(normalizedBookingCode);
   }
 
+  function handleOpenRefundModal() {
+    if (danhSachNhomVeCoTheHoan.length > 1) {
+      setSelectedRefundScopeKey(KHOA_HOAN_TOAN_BO);
+    } else {
+      setSelectedRefundScopeKey(danhSachNhomVeCoTheHoan[0]?.key ?? KHOA_HOAN_TOAN_BO);
+    }
+    setIsRefundModalOpen(true);
+  }
+
   async function handleRefundRequest() {
     if (!bookingOverview || isRefunding) {
       return;
@@ -250,7 +353,11 @@ export function ManageBookingPageClient() {
       const nextBookingOverview = await createRefundRequest(
         bookingOverview.bookingCode,
         {
-          reason: refundReason.trim()
+          reason: refundReason.trim(),
+          ticketNumbers:
+            selectedRefundScopeKey === KHOA_HOAN_TOAN_BO
+              ? undefined
+              : danhSachTicketDangChonHoan.map((ticket) => ticket.ticketNumber)
         },
         accessToken,
         accessToken ? undefined : lookupToken ?? undefined
@@ -278,7 +385,7 @@ export function ManageBookingPageClient() {
             <span className="section-eyebrow">Quản lý đặt chỗ</span>
             <h1 className="page-title">Tra cứu mã đặt chỗ, theo dõi vé và xử lý nhu cầu sau chuyến bay.</h1>
             <p className="page-hero-copy">
-              Nhập mã đặt chỗ để xem trạng thái thanh toán, vé, thẻ lên máy bay và yêu cầu hoàn vé.
+              Nhập mã đặt chỗ để xem trạng thái thanh toán, ticket theo từng chặng, boarding pass và yêu cầu hoàn vé.
             </p>
           </div>
           <div className="booking-summary-card">
@@ -433,27 +540,6 @@ export function ManageBookingPageClient() {
                     <strong>{formatCurrency(bookingOverview.priceSummary.totalAmount)}</strong>
                   </div>
                 </div>
-                {(bookingOverview.priceSummary.discountAmount > 0 || bookingOverview.priceSummary.appliedVoucherCode) ? (
-                  <div className="result-grid result-grid-rich">
-                    <div>
-                      <span>Giảm từ voucher</span>
-                      <strong>{formatCurrency(bookingOverview.priceSummary.discountAmount)}</strong>
-                    </div>
-                    <div>
-                      <span>Mã voucher</span>
-                      <strong>{bookingOverview.priceSummary.appliedVoucherCode ?? "Không có"}</strong>
-                    </div>
-                    <div>
-                      <span>Tổng trước giảm</span>
-                      <strong>
-                        {formatCurrency(
-                          bookingOverview.priceSummary.baseAmount +
-                            bookingOverview.priceSummary.ancillaryAmount
-                        )}
-                      </strong>
-                    </div>
-                  </div>
-                ) : null}
               </article>
 
               <article className="surface-card">
@@ -487,22 +573,20 @@ export function ManageBookingPageClient() {
                           <strong>{formatCurrency(segment.subtotalAmount)}</strong>
                         </div>
                       </div>
-                      {segment.statusLabel || segment.gate || segment.note ? (
-                        <div className="result-grid result-grid-rich">
-                          <div>
-                            <span>Trạng thái chuyến bay</span>
-                            <strong>{segment.statusLabel ?? "Theo lịch"}</strong>
-                          </div>
-                          <div>
-                            <span>Cửa ra tàu</span>
-                            <strong>{segment.gate ?? "Chờ cập nhật"}</strong>
-                          </div>
-                          <div>
-                            <span>Ghi chú vận hành</span>
-                            <strong>{segment.note ?? "Chưa có ghi chú"}</strong>
-                          </div>
+                      <div className="result-grid result-grid-rich">
+                        <div>
+                          <span>Trạng thái chuyến bay</span>
+                          <strong>{segment.statusLabel ?? "Theo lịch"}</strong>
                         </div>
-                      ) : null}
+                        <div>
+                          <span>Cửa ra tàu</span>
+                          <strong>{segment.gate ?? "Chờ cập nhật"}</strong>
+                        </div>
+                        <div>
+                          <span>Ghi chú vận hành</span>
+                          <strong>{segment.note ?? "Chưa có ghi chú"}</strong>
+                        </div>
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -549,7 +633,7 @@ export function ManageBookingPageClient() {
                 <SectionHeading
                   eyebrow="Tự phục vụ"
                   title="Thao tác tiếp theo"
-                  description="Các thao tác chỉ mở khi mã đặt chỗ đủ điều kiện xử lý."
+                  description="Check-in và hoàn vé đều được kiểm soát theo từng chặng nhưng vẫn dùng chung một mã đặt chỗ."
                 />
                 <div className="booking-action-list">
                   {coTheLamThuTuc(bookingOverview) ? (
@@ -572,7 +656,7 @@ export function ManageBookingPageClient() {
                     <button
                       type="button"
                       className="button button-secondary"
-                      onClick={() => setIsRefundModalOpen(true)}
+                      onClick={handleOpenRefundModal}
                     >
                       Yêu cầu Hủy/Hoàn vé
                     </button>
@@ -596,20 +680,24 @@ export function ManageBookingPageClient() {
                 <SectionHeading
                   eyebrow="Ticket"
                   title="Vé đã phát hành"
-                  description="Mỗi hành khách có một vé và trạng thái sẽ đổi sang đã làm thủ tục sau check-in."
+                  description="Mỗi ticket gắn với đúng một chặng bay, nhờ vậy bạn có thể làm thủ tục và hoàn vé tách biệt theo từng chiều."
                 />
                 <div className="stack-list">
                   {bookingOverview.tickets.length > 0 ? (
-                    bookingOverview.tickets.map((ticket) => (
-                      <article key={ticket.ticketNumber} className="surface-card">
-                        <h3>{ticket.ticketNumber}</h3>
-                        <p>{ticket.passengerName}</p>
-                        <div className="booking-ticket-meta">
-                          <strong>{formatTicketStatus(ticket.status)}</strong>
-                          <span>{formatDateTime(ticket.issuedAt)}</span>
-                        </div>
-                      </article>
-                    ))
+                    bookingOverview.tickets.map((ticket) => {
+                      const segment = timPhanDoanChoVe(bookingOverview, ticket);
+                      return (
+                        <article key={ticket.ticketNumber} className="surface-card">
+                          <h3>{ticket.ticketNumber}</h3>
+                          <p>{ticket.passengerName}</p>
+                          {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
+                          <div className="booking-ticket-meta">
+                            <strong>{formatTicketStatus(ticket.status)}</strong>
+                            <span>{formatDateTime(ticket.issuedAt)}</span>
+                          </div>
+                        </article>
+                      );
+                    })
                   ) : (
                     <article className="surface-card">
                       <p>Không tìm thấy dữ liệu.</p>
@@ -622,17 +710,21 @@ export function ManageBookingPageClient() {
                 <SectionHeading
                   eyebrow="Boarding pass"
                   title="Thẻ lên máy bay"
-                  description="Dữ liệu này được tạo sau khi hoàn tất làm thủ tục trực tuyến."
+                  description="Dữ liệu này được tạo sau khi hoàn tất làm thủ tục trực tuyến cho từng chặng."
                 />
                 <div className="stack-list">
                   {bookingOverview.boardingPasses.length > 0 ? (
-                    bookingOverview.boardingPasses.map((boardingPass) => (
-                      <article key={boardingPass.ticketNumber} className="surface-card boarding-pass-mini-card">
-                        <h3>{boardingPass.passengerName}</h3>
-                        <p>{boardingPass.ticketNumber} • Ghế {boardingPass.seatNumber} • Cửa {boardingPass.gate}</p>
-                        <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
-                      </article>
-                    ))
+                    bookingOverview.boardingPasses.map((boardingPass) => {
+                      const segment = timPhanDoanChoBoardingPass(bookingOverview, boardingPass);
+                      return (
+                        <article key={boardingPass.ticketNumber} className="surface-card boarding-pass-mini-card">
+                          <h3>{boardingPass.passengerName}</h3>
+                          <p>{boardingPass.ticketNumber} • Ghế {boardingPass.seatNumber} • Cửa {boardingPass.gate}</p>
+                          {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
+                          <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
+                        </article>
+                      );
+                    })
                   ) : (
                     <article className="surface-card">
                       <p>Chưa có dữ liệu làm thủ tục trực tuyến.</p>
@@ -705,6 +797,43 @@ export function ManageBookingPageClient() {
             <span className="section-eyebrow">Yêu cầu hoàn vé</span>
             <h3 id="refund-modal-title">Xác nhận gửi yêu cầu hoàn vé</h3>
             <p>Mã đặt chỗ {bookingOverview.bookingCode} sẽ được chuyển sang trạng thái đang chờ duyệt.</p>
+
+            {danhSachNhomVeCoTheHoan.length > 1 ? (
+              <div className="stack-list">
+                <label className="booking-ticket-option">
+                  <input
+                    type="radio"
+                    name="refund-scope"
+                    checked={selectedRefundScopeKey === KHOA_HOAN_TOAN_BO}
+                    onChange={() => setSelectedRefundScopeKey(KHOA_HOAN_TOAN_BO)}
+                  />
+                  <div>
+                    <strong>Toàn bộ hành trình đủ điều kiện</strong>
+                    <p>Gửi yêu cầu hoàn cho toàn bộ các ticket hiện có thể xử lý.</p>
+                  </div>
+                </label>
+                {danhSachNhomVeCoTheHoan.map((group) => (
+                  <label key={group.key} className="booking-ticket-option">
+                    <input
+                      type="radio"
+                      name="refund-scope"
+                      checked={selectedRefundScopeKey === group.key}
+                      onChange={() => setSelectedRefundScopeKey(group.key)}
+                    />
+                    <div>
+                      <strong>{taoNhanNhomBay(group.segment)}</strong>
+                      <p>{group.tickets.length} ticket sẽ được đưa vào yêu cầu hoàn.</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            ) : danhSachNhomVeCoTheHoan.length === 1 ? (
+              <article className="surface-card booking-inline-info">
+                <strong>{taoNhanNhomBay(danhSachNhomVeCoTheHoan[0].segment)}</strong>
+                <p>{danhSachNhomVeCoTheHoan[0].tickets.length} ticket sẽ được đưa vào yêu cầu hoàn.</p>
+              </article>
+            ) : null}
+
             <label className="field">
               <span>Lý do yêu cầu</span>
               <textarea
@@ -714,6 +843,14 @@ export function ManageBookingPageClient() {
                 rows={4}
               />
             </label>
+
+            {selectedRefundScopeKey !== KHOA_HOAN_TOAN_BO && danhSachTicketDangChonHoan.length > 0 ? (
+              <article className="surface-card booking-inline-info">
+                <strong>Danh sách ticket được chọn</strong>
+                <p>{danhSachTicketDangChonHoan.map((ticket) => ticket.ticketNumber).join(", ")}</p>
+              </article>
+            ) : null}
+
             <div className="booking-modal-actions">
               <button type="button" className="button button-secondary" onClick={() => setIsRefundModalOpen(false)}>
                 Đóng

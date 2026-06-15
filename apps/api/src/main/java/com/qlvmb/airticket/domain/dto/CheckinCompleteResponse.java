@@ -10,6 +10,7 @@ public record CheckinCompleteResponse(
 ) {
 
   public record BoardingPassItem(
+      long inventoryId,
       String ticketNumber,
       String passengerName,
       String seatNumber,

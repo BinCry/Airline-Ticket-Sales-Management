@@ -114,6 +114,7 @@ public record BookingOverviewResponse(
   }
 
   public record TicketItem(
+      long inventoryId,
       String ticketNumber,
       String passengerName,
       String status,
@@ -122,6 +123,7 @@ public record BookingOverviewResponse(
   }
 
   public record BoardingPassItem(
+      long inventoryId,
       String ticketNumber,
       String passengerName,
       String seatNumber,

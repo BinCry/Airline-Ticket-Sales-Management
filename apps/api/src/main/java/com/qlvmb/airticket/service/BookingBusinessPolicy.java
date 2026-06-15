@@ -24,11 +24,25 @@ final class BookingBusinessPolicy {
     return coTatCaPhanDoanHopLe(segments, currentTime, REFUND_BLOCKING_STATUSES);
   }
 
+  static boolean coTheTuPhucVuHoanVe(
+      BookingSegmentEntity segment,
+      OffsetDateTime currentTime
+  ) {
+    return segment != null && !biChanTuPhucVu(segment, currentTime, REFUND_BLOCKING_STATUSES);
+  }
+
   static boolean coTheTuPhucVuLamThuTuc(
       Iterable<BookingSegmentEntity> segments,
       OffsetDateTime currentTime
   ) {
     return coTatCaPhanDoanHopLe(segments, currentTime, CHECKIN_BLOCKING_STATUSES);
+  }
+
+  static boolean coTheTuPhucVuLamThuTuc(
+      BookingSegmentEntity segment,
+      OffsetDateTime currentTime
+  ) {
+    return segment != null && !biChanTuPhucVu(segment, currentTime, CHECKIN_BLOCKING_STATUSES);
   }
 
   static boolean coPhanDoanBiHuy(Iterable<BookingSegmentEntity> segments) {

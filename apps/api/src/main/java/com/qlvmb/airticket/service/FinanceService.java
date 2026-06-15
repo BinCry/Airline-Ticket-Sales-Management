@@ -9,7 +9,9 @@ import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.RefundRequestRepository;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,15 +50,41 @@ public class FinanceService {
     RefundRequestEntity refundRequest = lockRefundRequest(refundRequestId);
     BookingEntity booking = refundRequest.getBooking();
 
-    if (!refundRequest.isPending() || !booking.isRefundPending()) {
+    if (!refundRequest.isPending() || (!booking.isRefundPending() && !booking.isCancelled())) {
       throw new BadRequestException(REFUND_APPROVE_INVALID_MESSAGE);
     }
 
     OffsetDateTime currentTime = OffsetDateTime.now();
+    List<TicketEntity> requestedTickets = refundRequest.getRequestedTickets().isEmpty()
+        ? booking.getTickets().stream().toList()
+        : refundRequest.getRequestedTickets().stream().toList();
+    Map<Long, Integer> releaseCountByInventoryId = new LinkedHashMap<>();
+
     refundRequest.markApproved(currentTime);
-    booking.markCancelled(currentTime);
-    booking.getTickets().forEach(ticket -> ticket.markCancelled(currentTime));
-    booking.getSegments().forEach(segment -> segment.getInventory().releaseSeats(segment.getPassengerCount()));
+    requestedTickets.forEach(ticket -> {
+      if (!TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus())) {
+        Long inventoryId = ticket.getSegment().getInventory().getId();
+        releaseCountByInventoryId.merge(inventoryId, 1, Integer::sum);
+        ticket.markCancelled(currentTime);
+      }
+    });
+
+    booking.getSegments().forEach(segment -> {
+      Integer releaseCount = releaseCountByInventoryId.get(segment.getInventory().getId());
+      if (releaseCount != null && releaseCount > 0) {
+        segment.getInventory().releaseSeats(releaseCount);
+      }
+    });
+
+    boolean hasRemainingActiveTickets = booking.getTickets().stream()
+        .anyMatch(ticket -> !TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus()));
+    if (hasRemainingActiveTickets) {
+      if (booking.isRefundPending()) {
+        booking.markTicketedAgain(currentTime);
+      }
+    } else {
+      booking.markCancelled(currentTime);
+    }
     notificationOutboxService.createAndSendRefundStatusEmail(booking, refundRequest);
 
     return mapRefundItem(refundRequest);
@@ -67,13 +95,15 @@ public class FinanceService {
     RefundRequestEntity refundRequest = lockRefundRequest(refundRequestId);
     BookingEntity booking = refundRequest.getBooking();
 
-    if (!refundRequest.isPending() || !booking.isRefundPending()) {
+    if (!refundRequest.isPending() || (!booking.isRefundPending() && !booking.isCancelled())) {
       throw new BadRequestException(REFUND_REJECT_INVALID_MESSAGE);
     }
 
     OffsetDateTime currentTime = OffsetDateTime.now();
     refundRequest.markRejected(currentTime);
-    booking.markTicketedAgain(currentTime);
+    if (booking.isRefundPending()) {
+      booking.markTicketedAgain(currentTime);
+    }
     notificationOutboxService.createAndSendRefundStatusEmail(booking, refundRequest);
 
     return mapRefundItem(refundRequest);

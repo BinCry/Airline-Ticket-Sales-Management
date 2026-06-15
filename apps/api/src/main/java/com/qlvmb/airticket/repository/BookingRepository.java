@@ -68,6 +68,7 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
       left join fetch seatSelection.segment
       left join fetch booking.tickets ticket
       left join fetch ticket.passenger
+      left join fetch ticket.segment ticketSegment
       left join fetch ticket.boardingPass
       left join fetch booking.refundRequests
       where upper(booking.bookingCode) = upper(:bookingCode)
@@ -89,6 +90,7 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
       left join fetch seatSelection.segment
       left join fetch booking.tickets ticket
       left join fetch ticket.passenger
+      left join fetch ticket.segment ticketSegment
       left join fetch ticket.boardingPass
       left join fetch booking.refundRequests
       where upper(booking.bookingCode) = upper(:bookingCode)
@@ -110,6 +112,7 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
       left join fetch seatSelection.segment
       left join fetch booking.tickets ticket
       left join fetch ticket.passenger
+      left join fetch ticket.segment ticketSegment
       left join fetch ticket.boardingPass
       left join fetch booking.refundRequests
       where exists (

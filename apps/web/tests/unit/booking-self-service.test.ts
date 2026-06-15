@@ -5,17 +5,19 @@ import type { ApiManageBookingOverview, ApiManageBookingSegment } from "@qlvmb/s
 import {
   coTheLamThuTuc,
   coTheYeuCauHoanVe,
-  layVeCoTheCheckin
+  layVeCoTheCheckin,
+  layVeCoTheYeuCauHoan
 } from "@/lib/booking-self-service";
 
 const THOI_GIAN_THAM_CHIEU = new Date("2026-06-07T10:00:00+07:00");
 
 function taoPhanDoan(
+  inventoryId: number,
   departureAt: string,
   status: ApiManageBookingSegment["status"] = "scheduled"
 ): ApiManageBookingSegment {
   return {
-    inventoryId: 20101,
+    inventoryId,
     code: "VN123",
     from: "Thành phố Hồ Chí Minh",
     to: "Hà Nội",
@@ -41,13 +43,14 @@ const bookingMau: ApiManageBookingOverview = {
   ticketedAt: "2026-06-07T14:10:00+07:00",
   tripType: "one_way",
   steps: ["Giữ chỗ thành công", "Thanh toán thành công"],
-  segments: [taoPhanDoan("2026-06-08T08:00:00+07:00")],
+  segments: [taoPhanDoan(20101, "2026-06-08T08:00:00+07:00")],
   contact: null,
   passengers: [],
   ancillaries: [],
   seatSelections: [],
   tickets: [
     {
+      inventoryId: 20101,
       ticketNumber: "7380000000001",
       passengerName: "Nguyen Van A",
       status: "issued",
@@ -73,16 +76,36 @@ describe("booking-self-service", () => {
     expect(coTheLamThuTuc(bookingMau, THOI_GIAN_THAM_CHIEU)).toBe(true);
   });
 
-  it("khong cho check-in voi hanh trinh khu hoi", () => {
+  it("cho check-in theo tung ticket voi hanh trinh khu hoi", () => {
     expect(
       layVeCoTheCheckin(
         {
           ...bookingMau,
-          tripType: "round_trip"
+          tripType: "round_trip",
+          segments: [
+            taoPhanDoan(20101, "2026-06-08T08:00:00+07:00"),
+            taoPhanDoan(20102, "2026-06-10T18:00:00+07:00")
+          ],
+          tickets: [
+            {
+              inventoryId: 20101,
+              ticketNumber: "7380000000001",
+              passengerName: "Nguyen Van A",
+              status: "issued",
+              issuedAt: "2026-06-07T14:10:00+07:00"
+            },
+            {
+              inventoryId: 20102,
+              ticketNumber: "7380000000002",
+              passengerName: "Nguyen Van A",
+              status: "issued",
+              issuedAt: "2026-06-07T14:10:00+07:00"
+            }
+          ]
         },
         THOI_GIAN_THAM_CHIEU
-      )
-    ).toHaveLength(0);
+      ).map((ticket) => ticket.ticketNumber)
+    ).toEqual(["7380000000001", "7380000000002"]);
   });
 
   it("chan check-in khi chuyen bay da bat dau", () => {
@@ -90,7 +113,7 @@ describe("booking-self-service", () => {
       coTheLamThuTuc(
         {
           ...bookingMau,
-          segments: [taoPhanDoan("2026-06-07T09:00:00+07:00", "boarding")]
+          segments: [taoPhanDoan(20101, "2026-06-07T09:00:00+07:00", "boarding")]
         },
         THOI_GIAN_THAM_CHIEU
       )
@@ -104,6 +127,7 @@ describe("booking-self-service", () => {
           ...bookingMau,
           tickets: [
             {
+              inventoryId: 20101,
               ticketNumber: "7380000000001",
               passengerName: "Nguyen Van A",
               status: "checked_in",
@@ -114,6 +138,38 @@ describe("booking-self-service", () => {
         THOI_GIAN_THAM_CHIEU
       )
     ).toBe(false);
+  });
+
+  it("cho hoan chang ve khi chang di da checked_in", () => {
+    expect(
+      layVeCoTheYeuCauHoan(
+        {
+          ...bookingMau,
+          tripType: "round_trip",
+          segments: [
+            taoPhanDoan(20101, "2026-06-08T08:00:00+07:00"),
+            taoPhanDoan(20102, "2026-06-10T18:00:00+07:00")
+          ],
+          tickets: [
+            {
+              inventoryId: 20101,
+              ticketNumber: "7380000000001",
+              passengerName: "Nguyen Van A",
+              status: "checked_in",
+              issuedAt: "2026-06-07T14:10:00+07:00"
+            },
+            {
+              inventoryId: 20102,
+              ticketNumber: "7380000000002",
+              passengerName: "Nguyen Van A",
+              status: "issued",
+              issuedAt: "2026-06-07T14:10:00+07:00"
+            }
+          ]
+        },
+        THOI_GIAN_THAM_CHIEU
+      ).map((ticket) => ticket.ticketNumber)
+    ).toEqual(["7380000000002"]);
   });
 
   it("chan hoan ve khi da co yeu cau dang cho duyet", () => {
@@ -139,7 +195,7 @@ describe("booking-self-service", () => {
       coTheYeuCauHoanVe(
         {
           ...bookingMau,
-          segments: [taoPhanDoan("2026-06-07T08:00:00+07:00", "departed")]
+          segments: [taoPhanDoan(20101, "2026-06-07T08:00:00+07:00", "departed")]
         },
         THOI_GIAN_THAM_CHIEU
       )
@@ -153,7 +209,7 @@ describe("booking-self-service", () => {
           ...bookingMau,
           status: "cancelled",
           paymentStatus: "paid",
-          segments: [taoPhanDoan("2026-06-07T08:00:00+07:00", "cancelled")]
+          segments: [taoPhanDoan(20101, "2026-06-07T08:00:00+07:00", "cancelled")]
         },
         THOI_GIAN_THAM_CHIEU
       )

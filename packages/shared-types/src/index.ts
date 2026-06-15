@@ -439,6 +439,7 @@ export interface ApiCheckinCompleteRequest {
 }
 
 export interface ApiBoardingPass {
+  inventoryId?: number;
   ticketNumber: string;
   passengerName: string;
   seatNumber: string;
@@ -455,6 +456,7 @@ export interface ApiCheckinCompleteResponse {
 
 export interface ApiRefundRequest {
   reason: string;
+  ticketNumbers?: string[];
 }
 
 export interface ApiManageBookingSegment {
@@ -509,6 +511,7 @@ export interface ApiManageBookingSeatSelection {
 }
 
 export interface ApiManageBookingTicket {
+  inventoryId?: number;
   ticketNumber: string;
   passengerName: string;
   status: Extract<TicketStatus, "issued" | "checked_in" | "cancelled">;

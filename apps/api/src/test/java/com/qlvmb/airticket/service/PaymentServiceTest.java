@@ -13,6 +13,9 @@ import com.qlvmb.airticket.domain.dto.SePayWebhookRequest;
 import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
+import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
+import com.qlvmb.airticket.domain.entity.FlightEntity;
+import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.entity.PaymentTransactionEntity;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
@@ -276,6 +279,25 @@ class PaymentServiceTest {
   }
 
   @Test
+  void handlePaymentCallback_shouldCreateSeparateTicketsForRoundTripBooking() {
+    BookingEntity booking = heldRoundTripBooking("A6C2P7");
+    when(bookingService.findBookingForPayment("A6C2P7")).thenReturn(booking);
+    when(paymentTransactionRepository.findByBookingId(any())).thenReturn(Optional.empty());
+    when(paymentTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingService.generatePaymentReference()).thenReturn("SEPAY-000000000007", "SEPAY-000000000008");
+    when(bookingService.generateUniqueTicketNumber()).thenReturn("7380000000007", "7380000000008");
+    when(bookingService.mapOverviewResponse(booking)).thenCallRealMethod();
+    when(bookingService.mapBookingStatus(BookingEntity.STATUS_TICKETED)).thenReturn("ticketed");
+    when(bookingService.mapPaymentStatus(BookingEntity.PAYMENT_STATUS_PAID)).thenReturn("paid");
+    when(bookingService.mapTicketStatus("ISSUED")).thenReturn("issued");
+
+    var response = paymentService.handlePaymentCallback(new PaymentCallbackRequest("A6C2P7", "success"));
+
+    assertThat(response.tickets()).hasSize(2);
+    assertThat(booking.getTickets()).hasSize(2);
+  }
+
+  @Test
   void handleSePayWebhook_shouldTicketBookingWhenContentContainsPaymentCode() {
     BookingEntity booking = heldBooking("A6C2W1");
     PaymentTransactionEntity transaction = pendingTransaction(booking, "SEPAY-123456789012");
@@ -464,7 +486,107 @@ class PaymentServiceTest {
         createdAt
     ));
 
+    booking.addSegment(createSegment(
+        booking,
+        20101L,
+        "AU201",
+        "Thanh pho Ho Chi Minh",
+        "Ha Noi",
+        "SGN",
+        "HAN",
+        createdAt.plusDays(3)
+    ));
+
     return booking;
+  }
+
+  private BookingEntity heldRoundTripBooking(String bookingCode) {
+    OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(2);
+    BookingEntity booking = BookingEntity.createHold(
+        bookingCode,
+        "round_trip",
+        2980000L,
+        0L,
+        2980000L,
+        "VND",
+        createdAt,
+        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
+    );
+
+    booking.assignContact(BookingContactEntity.create(
+        booking,
+        "Nguyen Van A",
+        "a@example.com",
+        "0912345678"
+    ));
+
+    booking.addPassenger(BookingPassengerEntity.create(
+        booking,
+        "Nguyen Van A",
+        "adult",
+        LocalDate.of(1995, 5, 12),
+        "CCCD",
+        "079123456789",
+        createdAt
+    ));
+
+    booking.addSegment(createSegment(
+        booking,
+        20101L,
+        "AU201",
+        "Thanh pho Ho Chi Minh",
+        "Ha Noi",
+        "SGN",
+        "HAN",
+        createdAt.plusDays(3)
+    ));
+    booking.addSegment(createSegment(
+        booking,
+        20102L,
+        "AU202",
+        "Ha Noi",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "SGN",
+        createdAt.plusDays(7)
+    ));
+
+    return booking;
+  }
+
+  private BookingSegmentEntity createSegment(
+      BookingEntity booking,
+      long inventoryId,
+      String flightCode,
+      String fromCity,
+      String toCity,
+      String originCode,
+      String destinationCode,
+      OffsetDateTime departureAt
+  ) {
+    FlightEntity flight = org.mockito.Mockito.mock(FlightEntity.class);
+    FlightFareInventoryEntity inventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
+    org.mockito.Mockito.lenient().when(flight.getStatus()).thenReturn("scheduled");
+    org.mockito.Mockito.lenient().when(inventory.getId()).thenReturn(inventoryId);
+    org.mockito.Mockito.lenient().when(inventory.getFlight()).thenReturn(flight);
+
+    return BookingSegmentEntity.create(
+        booking,
+        inventory,
+        flightCode,
+        fromCity,
+        toCity,
+        originCode,
+        destinationCode,
+        departureAt,
+        departureAt.plusHours(2),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        departureAt.minusDays(1)
+    );
   }
 
   private PaymentTransactionEntity pendingTransaction(BookingEntity booking, String orderCode) {

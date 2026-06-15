@@ -24,48 +24,88 @@ function biChanTheoTrangThai(
   return status !== null && danhSachTrangThai.has(status);
 }
 
-function hanhTrinhKhongConHopLeChoCheckin(
-  segments: ApiManageBookingSegment[],
+function phanDoanKhongHopLeChoCheckin(
+  segment: ApiManageBookingSegment | null,
   thamChieuMiliGiay: number
 ): boolean {
   return (
-    segments.length === 0 ||
-    segments.some(
-      (segment) =>
-        biChanTheoTrangThai(segment, TRANG_THAI_CHAN_CHECKIN) ||
-        daQuaGioKhoiHanh(segment, thamChieuMiliGiay)
-    )
+    segment === null ||
+    biChanTheoTrangThai(segment, TRANG_THAI_CHAN_CHECKIN) ||
+    daQuaGioKhoiHanh(segment, thamChieuMiliGiay)
   );
 }
 
-function hanhTrinhDaBatDauChoHoanVe(
-  segments: ApiManageBookingSegment[],
+function phanDoanKhongHopLeChoHoanVe(
+  segment: ApiManageBookingSegment | null,
   thamChieuMiliGiay: number
 ): boolean {
-  return segments.some(
-    (segment) =>
-      biChanTheoTrangThai(segment, TRANG_THAI_CHAN_HOAN_VE) ||
-      daQuaGioKhoiHanh(segment, thamChieuMiliGiay)
+  return (
+    segment === null ||
+    biChanTheoTrangThai(segment, TRANG_THAI_CHAN_HOAN_VE) ||
+    daQuaGioKhoiHanh(segment, thamChieuMiliGiay)
   );
+}
+
+export function timPhanDoanChoVe(
+  bookingOverview: ApiManageBookingOverview,
+  ticket: ApiManageBookingTicket
+): ApiManageBookingSegment | null {
+  if (typeof ticket.inventoryId === "number") {
+    return bookingOverview.segments.find((segment) => segment.inventoryId === ticket.inventoryId) ?? null;
+  }
+
+  return bookingOverview.segments.length === 1 ? bookingOverview.segments[0] : null;
 }
 
 export function layVeCoTheCheckin(
   bookingOverview: ApiManageBookingOverview,
   thamChieuThoiGian: Date = new Date()
 ): ApiManageBookingTicket[] {
-  if (bookingOverview.tripType !== "one_way") {
-    return [];
-  }
-
   if (bookingOverview.status !== "ticketed") {
     return [];
   }
 
-  if (hanhTrinhKhongConHopLeChoCheckin(bookingOverview.segments, thamChieuThoiGian.getTime())) {
+  return bookingOverview.tickets.filter((ticket) => {
+    if (ticket.status !== "issued") {
+      return false;
+    }
+
+    return !phanDoanKhongHopLeChoCheckin(
+      timPhanDoanChoVe(bookingOverview, ticket),
+      thamChieuThoiGian.getTime()
+    );
+  });
+}
+
+export function layVeCoTheYeuCauHoan(
+  bookingOverview: ApiManageBookingOverview,
+  thamChieuThoiGian: Date = new Date()
+): ApiManageBookingTicket[] {
+  const laBookingBiHuyDaThanhToan =
+    bookingOverview.status === "cancelled" && bookingOverview.paymentStatus === "paid";
+
+  if (bookingOverview.status !== "ticketed" && !laBookingBiHuyDaThanhToan) {
     return [];
   }
 
-  return bookingOverview.tickets.filter((ticket) => ticket.status === "issued");
+  if (bookingOverview.refundRequest?.status === "pending") {
+    return [];
+  }
+
+  if (laBookingBiHuyDaThanhToan) {
+    return bookingOverview.tickets.filter((ticket) => ticket.status !== "checked_in");
+  }
+
+  return bookingOverview.tickets.filter((ticket) => {
+    if (ticket.status !== "issued") {
+      return false;
+    }
+
+    return !phanDoanKhongHopLeChoHoanVe(
+      timPhanDoanChoVe(bookingOverview, ticket),
+      thamChieuThoiGian.getTime()
+    );
+  });
 }
 
 export function coTheLamThuTuc(
@@ -79,30 +119,5 @@ export function coTheYeuCauHoanVe(
   bookingOverview: ApiManageBookingOverview,
   thamChieuThoiGian: Date = new Date()
 ): boolean {
-  const laBookingBiHuyDaThanhToan =
-    bookingOverview.status === "cancelled" && bookingOverview.paymentStatus === "paid";
-
-  if (bookingOverview.status !== "ticketed" && !laBookingBiHuyDaThanhToan) {
-    return false;
-  }
-
-  if (bookingOverview.refundRequest?.status === "pending") {
-    return false;
-  }
-
-  if (bookingOverview.tickets.some((ticket) => ticket.status === "checked_in")) {
-    return false;
-  }
-
-  if (!laBookingBiHuyDaThanhToan) {
-    if (bookingOverview.segments.length === 0) {
-      return false;
-    }
-
-    if (hanhTrinhDaBatDauChoHoanVe(bookingOverview.segments, thamChieuThoiGian.getTime())) {
-      return false;
-    }
-  }
-
-  return true;
+  return layVeCoTheYeuCauHoan(bookingOverview, thamChieuThoiGian).length > 0;
 }

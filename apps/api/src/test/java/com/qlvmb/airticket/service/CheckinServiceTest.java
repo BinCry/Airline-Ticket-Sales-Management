@@ -60,14 +60,27 @@ class CheckinServiceTest {
   }
 
   @Test
-  void completeCheckin_shouldRejectRoundTripBooking() {
-    BookingEntity booking = ticketedBooking("A6C2P1", "round_trip", false);
+  void completeCheckin_shouldAllowRoundTripBookingWhenSelectingOneDirection() {
+    BookingEntity booking = roundTripBooking("A6C2P1", false);
     when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
     when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+    when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    assertThatThrownBy(() -> checkinService.completeCheckin(
+    CheckinCompleteResponse response = checkinService.completeCheckin(
         new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
-    )).isInstanceOf(BadRequestException.class);
+    );
+
+    assertThat(response.ticketNumbers()).containsExactly("7380000000001");
+    assertThat(booking.getTickets().stream()
+        .filter(ticket -> "7380000000001".equals(ticket.getTicketNumber()))
+        .findFirst()
+        .orElseThrow()
+        .getStatus()).isEqualTo(TicketEntity.STATUS_CHECKED_IN);
+    assertThat(booking.getTickets().stream()
+        .filter(ticket -> "7380000000002".equals(ticket.getTicketNumber()))
+        .findFirst()
+        .orElseThrow()
+        .getStatus()).isEqualTo(TicketEntity.STATUS_ISSUED);
   }
 
   @Test
@@ -154,13 +167,10 @@ class CheckinServiceTest {
     booking.addPassenger(passenger);
 
     FlightEntity flight = org.mockito.Mockito.mock(FlightEntity.class);
-    when(flight.getId()).thenReturn(501L);
     when(flight.getStatus()).thenReturn("scheduled");
     when(flight.getGate()).thenReturn("G5");
 
     FlightFareInventoryEntity saverInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
-    when(saverInventory.getFlight()).thenReturn(flight);
-
     FlightFareInventoryEntity flexInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
     when(flexInventory.getFlight()).thenReturn(flight);
 
@@ -215,6 +225,7 @@ class CheckinServiceTest {
     TicketEntity ticket = TicketEntity.issue(
         booking,
         passenger,
+        flexSegment,
         "7380000000001",
         createdAt.plusMinutes(5)
     );
@@ -355,6 +366,117 @@ class CheckinServiceTest {
     }
 
     booking.addTicket(ticket);
+    return booking;
+  }
+
+  private BookingEntity roundTripBooking(String bookingCode, boolean outboundCheckedIn) {
+    OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
+    OffsetDateTime outboundDepartureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime returnDepartureAt = OffsetDateTime.now().plusDays(7);
+    BookingEntity booking = BookingEntity.createHold(
+        bookingCode,
+        "round_trip",
+        2980000L,
+        0L,
+        2980000L,
+        "VND",
+        createdAt,
+        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
+    );
+
+    BookingPassengerEntity passenger = BookingPassengerEntity.create(
+        booking,
+        "Nguyen Van A",
+        "adult",
+        LocalDate.of(1995, 5, 12),
+        "CCCD",
+        "079123456789",
+        createdAt
+    );
+    booking.addPassenger(passenger);
+
+    FlightEntity outboundFlight = org.mockito.Mockito.mock(FlightEntity.class);
+    FlightFareInventoryEntity outboundInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
+    org.mockito.Mockito.lenient().when(outboundFlight.getStatus()).thenReturn("scheduled");
+    org.mockito.Mockito.lenient().when(outboundFlight.getGate()).thenReturn("G3");
+    org.mockito.Mockito.lenient().when(outboundInventory.getId()).thenReturn(20101L);
+    org.mockito.Mockito.lenient().when(outboundInventory.getFlight()).thenReturn(outboundFlight);
+
+    FlightEntity returnFlight = org.mockito.Mockito.mock(FlightEntity.class);
+    FlightFareInventoryEntity returnInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
+    org.mockito.Mockito.lenient().when(returnFlight.getStatus()).thenReturn("scheduled");
+    org.mockito.Mockito.lenient().when(returnFlight.getGate()).thenReturn("G4");
+    org.mockito.Mockito.lenient().when(returnInventory.getId()).thenReturn(20102L);
+    org.mockito.Mockito.lenient().when(returnInventory.getFlight()).thenReturn(returnFlight);
+
+    BookingSegmentEntity outboundSegment = BookingSegmentEntity.create(
+        booking,
+        outboundInventory,
+        "AU201",
+        "Thanh pho Ho Chi Minh",
+        "Ha Noi",
+        "SGN",
+        "HAN",
+        outboundDepartureAt,
+        outboundDepartureAt.plusHours(2),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(outboundSegment);
+
+    BookingSegmentEntity returnSegment = BookingSegmentEntity.create(
+        booking,
+        returnInventory,
+        "AU202",
+        "Ha Noi",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "SGN",
+        returnDepartureAt,
+        returnDepartureAt.plusHours(2),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(returnSegment);
+
+    booking.markTicketed("SANDBOX-000000000001", createdAt.plusMinutes(5));
+
+    TicketEntity outboundTicket = TicketEntity.issue(
+        booking,
+        passenger,
+        outboundSegment,
+        "7380000000001",
+        createdAt.plusMinutes(5)
+    );
+    if (outboundCheckedIn) {
+      BoardingPassEntity boardingPass = BoardingPassEntity.create(
+          outboundTicket,
+          "12A",
+          "G3",
+          outboundDepartureAt.minusMinutes(45),
+          "BP-A6C2P1-7380000000001",
+          createdAt.plusMinutes(6)
+      );
+      outboundTicket.assignBoardingPass(boardingPass);
+      outboundTicket.markCheckedIn(createdAt.plusMinutes(6));
+    }
+    booking.addTicket(outboundTicket);
+
+    booking.addTicket(TicketEntity.issue(
+        booking,
+        passenger,
+        returnSegment,
+        "7380000000002",
+        createdAt.plusMinutes(5)
+    ));
     return booking;
   }
 }

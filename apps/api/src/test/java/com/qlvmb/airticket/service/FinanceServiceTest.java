@@ -74,6 +74,20 @@ class FinanceServiceTest {
   }
 
   @Test
+  void approveRefund_shouldKeepBookingTicketedWhenOnlyReturnLegIsRefunded() {
+    PartialFixture fixture = pendingPartialRefundFixture();
+    when(refundRequestRepository.lockDetailedById(56L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    var response = financeService.approveRefund(56L);
+
+    assertThat(response.status()).isEqualTo("approved");
+    assertThat(response.bookingStatus()).isEqualTo("ticketed");
+    assertThat(fixture.outboundTicket.getStatus()).isEqualTo(TicketEntity.STATUS_CHECKED_IN);
+    assertThat(fixture.returnTicket.getStatus()).isEqualTo(TicketEntity.STATUS_CANCELLED);
+    verify(fixture.returnInventory).releaseSeats(1);
+  }
+
+  @Test
   void approveRefund_shouldRejectWhenRefundNoLongerPending() {
     Fixture fixture = pendingRefundFixture();
     fixture.refundRequest.markApproved(OffsetDateTime.now());
@@ -229,6 +243,123 @@ class FinanceServiceTest {
       RefundRequestEntity refundRequest,
       TicketEntity ticket,
       FlightFareInventoryEntity inventory
+  ) {
+  }
+
+  private PartialFixture pendingPartialRefundFixture() {
+    OffsetDateTime createdAt = OffsetDateTime.parse("2026-05-09T10:00:00+07:00");
+    FlightFareInventoryEntity outboundInventory = mock(FlightFareInventoryEntity.class);
+    when(outboundInventory.getId()).thenReturn(20101L);
+    FlightFareInventoryEntity returnInventory = mock(FlightFareInventoryEntity.class);
+    when(returnInventory.getId()).thenReturn(20102L);
+
+    BookingEntity booking = BookingEntity.createHold(
+        "A6C2R1",
+        "round_trip",
+        2980000L,
+        0L,
+        2980000L,
+        "VND",
+        createdAt,
+        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
+    );
+
+    booking.assignContact(BookingContactEntity.create(
+        booking,
+        "Nguyen Van A",
+        "a@example.com",
+        "0912345678"
+    ));
+
+    BookingPassengerEntity passenger = BookingPassengerEntity.create(
+        booking,
+        "Nguyen Van A",
+        "adult",
+        LocalDate.of(1995, 5, 12),
+        "CCCD",
+        "079123456789",
+        createdAt
+    );
+    booking.addPassenger(passenger);
+
+    BookingSegmentEntity outboundSegment = BookingSegmentEntity.create(
+        booking,
+        outboundInventory,
+        "AU201",
+        "Thanh pho Ho Chi Minh",
+        "Ha Noi",
+        "SGN",
+        "HAN",
+        OffsetDateTime.parse("2026-06-01T06:10:00+07:00"),
+        OffsetDateTime.parse("2026-06-01T08:20:00+07:00"),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(outboundSegment);
+
+    BookingSegmentEntity returnSegment = BookingSegmentEntity.create(
+        booking,
+        returnInventory,
+        "AU202",
+        "Ha Noi",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "SGN",
+        OffsetDateTime.parse("2026-06-05T18:10:00+07:00"),
+        OffsetDateTime.parse("2026-06-05T20:20:00+07:00"),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(returnSegment);
+    booking.markTicketed("SANDBOX-000000000002", createdAt.plusMinutes(5));
+
+    TicketEntity outboundTicket = TicketEntity.issue(
+        booking,
+        passenger,
+        outboundSegment,
+        "7380000000101",
+        createdAt.plusMinutes(5)
+    );
+    outboundTicket.markCheckedIn(createdAt.plusMinutes(6));
+    booking.addTicket(outboundTicket);
+
+    TicketEntity returnTicket = TicketEntity.issue(
+        booking,
+        passenger,
+        returnSegment,
+        "7380000000102",
+        createdAt.plusMinutes(5)
+    );
+    booking.addTicket(returnTicket);
+
+    RefundRequestEntity refundRequest = RefundRequestEntity.createPending(
+        booking,
+        "Khong bay chang ve",
+        1490000L,
+        createdAt.plusMinutes(7),
+        List.of(returnTicket)
+    );
+    booking.addRefundRequest(refundRequest);
+    booking.markRefundPending(createdAt.plusMinutes(7));
+
+    setRefundRequestId(refundRequest, 56L);
+    return new PartialFixture(booking, refundRequest, outboundTicket, returnTicket, returnInventory);
+  }
+
+  private record PartialFixture(
+      BookingEntity booking,
+      RefundRequestEntity refundRequest,
+      TicketEntity outboundTicket,
+      TicketEntity returnTicket,
+      FlightFareInventoryEntity returnInventory
   ) {
   }
 }

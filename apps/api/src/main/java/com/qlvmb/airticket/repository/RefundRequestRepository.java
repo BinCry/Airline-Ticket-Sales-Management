@@ -21,8 +21,10 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequestEnti
       join fetch refundRequest.booking booking
       left join fetch booking.contact
       left join fetch booking.tickets ticket
+      left join fetch ticket.segment ticketSegment
       left join fetch booking.segments segment
       left join fetch segment.inventory
+      left join fetch refundRequest.requestedTickets requestedTicket
       where refundRequest.hiddenAt is null
       order by refundRequest.createdAt desc
       """)
@@ -32,6 +34,7 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequestEnti
       select distinct refundRequest from RefundRequestEntity refundRequest
       join fetch refundRequest.booking booking
       left join fetch booking.tickets
+      left join fetch refundRequest.requestedTickets
       where refundRequest.status = :status
         and refundRequest.updatedAt >= :from
         and refundRequest.updatedAt < :to
@@ -48,8 +51,10 @@ public interface RefundRequestRepository extends JpaRepository<RefundRequestEnti
       join fetch refundRequest.booking booking
       left join fetch booking.contact
       left join fetch booking.tickets ticket
+      left join fetch ticket.segment ticketSegment
       left join fetch booking.segments segment
       left join fetch segment.inventory
+      left join fetch refundRequest.requestedTickets requestedTicket
       where refundRequest.id = :refundRequestId
         and refundRequest.hiddenAt is null
       """)

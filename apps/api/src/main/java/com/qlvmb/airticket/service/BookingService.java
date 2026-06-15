@@ -59,6 +59,12 @@ public class BookingService {
   private static final String REFUND_NOT_AVAILABLE_MESSAGE = "\u0110\u1eb7t ch\u1ed7 hi\u1ec7n kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9.";
   private static final String REFUND_AFTER_CHECKIN_MESSAGE = "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 sau khi \u0111\u00e3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn.";
   private static final String REFUND_PENDING_MESSAGE = "Y\u00eau c\u1ea7u ho\u00e0n v\u00e9 cho m\u00e3 \u0111\u1eb7t ch\u1ed7 n\u00e0y \u0111ang ch\u1edd x\u1eed l\u00fd.";
+  private static final String REFUND_TICKET_LIST_MESSAGE =
+      "Danh s\u00e1ch v\u00e9 c\u1ea7n ho\u00e0n cho m\u00e3 \u0111\u1eb7t ch\u1ed7 n\u00e0y kh\u00f4ng h\u1ee3p l\u1ec7.";
+  private static final String REFUND_TICKET_NOT_FOUND_MESSAGE =
+      "Kh\u00f4ng t\u00ecm th\u1ea5y v\u00e9 ph\u00f9 h\u1ee3p v\u1edbi m\u00e3 \u0111\u1eb7t ch\u1ed7 \u0111\u00e3 nh\u1eadp.";
+  private static final String REFUND_MULTI_FLIGHT_MESSAGE =
+      "M\u1ed7i y\u00eau c\u1ea7u ho\u00e0n v\u00e9 ch\u1ec9 \u00e1p d\u1ee5ng cho m\u1ed9t chi\u1ec1u bay.";
   private static final String VOUCHER_NOT_AVAILABLE_MESSAGE = "Booking hiện không ở trạng thái phù hợp để áp voucher.";
   private static final String REFUND_AFTER_DEPARTURE_MESSAGE =
       "Kh\u00f4ng th\u1ec3 g\u1eedi y\u00eau c\u1ea7u ho\u00e0n v\u00e9 khi h\u00e0nh tr\u00ecnh \u0111\u00e3 b\u1eaft \u0111\u1ea7u.";
@@ -283,27 +289,34 @@ public class BookingService {
       throw new BadRequestException(REFUND_NOT_AVAILABLE_MESSAGE);
     }
 
-    boolean hasCheckedInTicket = booking.getTickets().stream()
-        .anyMatch(ticket -> TicketEntity.STATUS_CHECKED_IN.equals(ticket.getStatus()));
-    if (hasCheckedInTicket) {
-      throw new BadRequestException(REFUND_AFTER_CHECKIN_MESSAGE);
-    }
-
     boolean hasPendingRefund = booking.getRefundRequests().stream().anyMatch(RefundRequestEntity::isPending);
     if (hasPendingRefund || booking.isRefundPending()) {
       throw new BadRequestException(REFUND_PENDING_MESSAGE);
     }
 
+    List<TicketEntity> requestedTickets = resolveRequestedRefundTickets(booking, request, cancelledByOperations);
+    if (requestedTickets.isEmpty()) {
+      throw new BadRequestException(REFUND_NOT_AVAILABLE_MESSAGE);
+    }
+
     if (!cancelledByOperations
-        && !BookingBusinessPolicy.coTheTuPhucVuHoanVe(booking.getSegments(), currentTime)) {
+        && requestedTickets.stream().anyMatch(ticket -> TicketEntity.STATUS_CHECKED_IN.equals(ticket.getStatus()))) {
+      throw new BadRequestException(REFUND_AFTER_CHECKIN_MESSAGE);
+    }
+
+    if (!cancelledByOperations
+        && requestedTickets.stream()
+            .map(TicketEntity::getSegment)
+            .anyMatch(segment -> !BookingBusinessPolicy.coTheTuPhucVuHoanVe(segment, currentTime))) {
       throw new BadRequestException(REFUND_AFTER_DEPARTURE_MESSAGE);
     }
 
     RefundRequestEntity refundRequest = RefundRequestEntity.createPending(
         booking,
         request.reason().trim(),
-        booking.getTotalAmount(),
-        currentTime
+        resolveRefundAmount(booking, requestedTickets),
+        currentTime,
+        requestedTickets
     );
     booking.addRefundRequest(refundRequest);
     if (!booking.isCancelled()) {
@@ -401,6 +414,7 @@ public class BookingService {
 
     List<BookingOverviewResponse.TicketItem> tickets = booking.getTickets().stream()
         .map(ticket -> new BookingOverviewResponse.TicketItem(
+            ticket.getSegment().getInventory().getId(),
             ticket.getTicketNumber(),
             ticket.getPassenger().getFullName(),
             mapTicketStatus(ticket.getStatus()),
@@ -930,6 +944,7 @@ public class BookingService {
 
   private BookingOverviewResponse.BoardingPassItem mapBoardingPass(BoardingPassEntity boardingPass, TicketEntity ticket) {
     return new BookingOverviewResponse.BoardingPassItem(
+        ticket.getSegment().getInventory().getId(),
         ticket.getTicketNumber(),
         ticket.getPassenger().getFullName(),
         boardingPass.getSeatNumber(),
@@ -937,6 +952,77 @@ public class BookingService {
         boardingPass.getBoardingTime(),
         boardingPass.getBarcode()
     );
+  }
+
+  private List<TicketEntity> resolveRequestedRefundTickets(
+      BookingEntity booking,
+      RefundRequestCreateRequest request,
+      boolean cancelledByOperations
+  ) {
+    Map<String, TicketEntity> ticketByNumber = booking.getTickets().stream()
+        .collect(Collectors.toMap(
+            ticket -> ticket.getTicketNumber().trim().toUpperCase(Locale.ROOT),
+            ticket -> ticket,
+            (left, right) -> left,
+            LinkedHashMap::new
+        ));
+
+    if (request.ticketNumbers().isEmpty()) {
+      return booking.getTickets().stream()
+          .filter(ticket -> cancelledByOperations || !TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus()))
+          .toList();
+    }
+
+    LinkedHashSet<String> normalizedTicketNumbers = new LinkedHashSet<>();
+    for (String ticketNumber : request.ticketNumbers()) {
+      String normalizedTicketNumber = ticketNumber == null ? "" : ticketNumber.trim().toUpperCase(Locale.ROOT);
+      if (normalizedTicketNumber.isBlank() || !normalizedTicketNumbers.add(normalizedTicketNumber)) {
+        throw new BadRequestException(REFUND_TICKET_LIST_MESSAGE);
+      }
+    }
+
+    List<TicketEntity> selectedTickets = new ArrayList<>();
+    for (String ticketNumber : normalizedTicketNumbers) {
+      TicketEntity ticket = ticketByNumber.get(ticketNumber);
+      if (ticket == null) {
+        throw new BadRequestException(REFUND_TICKET_NOT_FOUND_MESSAGE);
+      }
+      if (!cancelledByOperations && TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus())) {
+        throw new BadRequestException(REFUND_NOT_AVAILABLE_MESSAGE);
+      }
+      selectedTickets.add(ticket);
+    }
+
+    if (!cancelledByOperations && selectedTickets.stream()
+        .map(this::resolveFlightScopeKey)
+        .distinct()
+        .count() > 1) {
+      throw new BadRequestException(REFUND_MULTI_FLIGHT_MESSAGE);
+    }
+
+    return selectedTickets;
+  }
+
+  private long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+    long activeTicketCount = booking.getTickets().stream()
+        .filter(ticket -> !TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus()))
+        .count();
+    if (activeTicketCount > 0 && requestedTickets.size() == activeTicketCount) {
+      return booking.getTotalAmount();
+    }
+
+    return requestedTickets.stream()
+        .map(TicketEntity::getSegment)
+        .mapToLong(BookingSegmentEntity::getPricePerPassenger)
+        .sum();
+  }
+
+  private String resolveFlightScopeKey(TicketEntity ticket) {
+    BookingSegmentEntity segment = ticket.getSegment();
+    return segment.getFlightCode()
+        + "|" + segment.getOriginCode()
+        + "|" + segment.getDestinationCode()
+        + "|" + segment.getDepartureAt();
   }
 
   private BookingOverviewResponse.SegmentItem mapSegment(BookingSegmentEntity segment) {
