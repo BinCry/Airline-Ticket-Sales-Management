@@ -238,6 +238,8 @@ export function BackofficeOperationsPageClient() {
   const [flights, setFlights] = useState<BackofficeOperationsFlightItem[]>([]);
   const [drafts, setDrafts] = useState<Record<number, BackofficeOperationsUpdateInput>>({});
   const [pendingFlightAction, setPendingFlightAction] = useState<string | null>(null);
+  // Danh sách chuyến bay đang mở chi tiết (collapsible)
+  const [expandedFlightIds, setExpandedFlightIds] = useState<Set<number>>(new Set());
   const [flightForm, setFlightForm] = useState<BackofficeOperationsFlightCreateInput>(createEmptyFlightForm);
 
   const [voucherState, setVoucherState] = useState<OperationsState>("idle");
@@ -767,205 +769,228 @@ export function BackofficeOperationsPageClient() {
             flights.map((flight) => {
               const draft = drafts[flight.flightId];
               const isWorking = pendingFlightAction?.endsWith(`-${flight.flightId}`) ?? false;
+              const isExpanded = expandedFlightIds.has(flight.flightId);
               const statusOptions =
                 flight.status === "cancelled"
                   ? STATUS_OPTIONS.filter((option) => option.value === "cancelled")
                   : FLIGHT_UPDATE_STATUS_OPTIONS;
               return (
                 <article key={flight.flightId} className="surface-card result-card">
-                  <div className="result-top">
-                    <div>
-                      <span className="section-eyebrow">Chuyến bay {flight.code}</span>
-                      <h3>
-                        {flight.from} → {flight.to}
-                      </h3>
-                      <p>
-                        {flight.originCode} đến {flight.destinationCode}
-                      </p>
-                    </div>
+                  {/* Thanh tóm tắt — nhấn để mở/đóng chi tiết */}
+                  <button
+                    type="button"
+                    className="operations-flight-toggle"
+                    onClick={() =>
+                      setExpandedFlightIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(flight.flightId)) {
+                          next.delete(flight.flightId);
+                        } else {
+                          next.add(flight.flightId);
+                        }
+                        return next;
+                      })
+                    }
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="operations-flight-toggle-icon" aria-hidden="true">
+                      {isExpanded ? "▾" : "▸"}
+                    </span>
+                    <span className="operations-flight-toggle-code">{flight.code}</span>
+                    <span className="operations-flight-toggle-route">
+                      {flight.from} → {flight.to}
+                    </span>
+                    <span className="operations-flight-toggle-time">
+                      {formatDateTime(flight.departureAt)}
+                    </span>
                     <StatusChip tone={toneMap[flight.status as keyof typeof toneMap]} label={flight.statusLabel} />
-                  </div>
+                  </button>
 
-                  <div className="result-grid result-grid-rich">
-                    <div>
-                      <span>Khởi hành</span>
-                      <strong>{formatDateTime(flight.departureAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Hạ cánh</span>
-                      <strong>{formatDateTime(flight.arrivalAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Cửa ra tàu hiện tại</span>
-                      <strong>{flight.gate}</strong>
-                    </div>
-                    <div>
-                      <span>Giá gốc hiện tại</span>
-                      <strong>{formatCurrency(flight.baseFare)}</strong>
-                    </div>
-                  </div>
-
-                  <div className="field-grid compact-grid">
-                    <label className="field">
-                      <span>Trạng thái</span>
-                      <select
-                        value={draft?.status ?? flight.status}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [flight.flightId]: {
-                              ...(draft ?? buildFlightDraft(flight)),
-                              status: event.target.value
-                            }
-                          }))
-                        }
-                        disabled={isWorking}
-                      >
-                        {statusOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="field">
-                      <span>Cửa ra tàu</span>
-                      <input
-                        value={draft?.gate ?? flight.gate}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [flight.flightId]: {
-                              ...(draft ?? buildFlightDraft(flight)),
-                              gate: event.target.value
-                            }
-                          }))
-                        }
-                        disabled={isWorking}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Giá gốc Phổ thông tiết kiệm</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={draft?.baseFare ?? flight.baseFare}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [flight.flightId]: {
-                              ...(draft ?? buildFlightDraft(flight)),
-                              baseFare: capNhatGiaGocHopLe(event.target.value, draft?.baseFare ?? flight.baseFare)
-                            }
-                          }))
-                        }
-                        disabled={isWorking}
-                      />
-                    </label>
-
-                    <label className="field result-grid-span-full">
-                      <span>Ghi chú vận hành</span>
-                      <textarea
-                        className="booking-textarea"
-                        rows={3}
-                        value={draft?.note ?? flight.note}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [flight.flightId]: {
-                              ...(draft ?? buildFlightDraft(flight)),
-                              note: event.target.value
-                            }
-                          }))
-                        }
-                        disabled={isWorking}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="stack-list">
-                    {flight.fareSummaries.map((fareSummary) => (
-                      <article
-                        key={`${flight.flightId}-${fareSummary.fareFamily}`}
-                        className={`surface-card admin-nested-card ${layLopMauGoiGia(fareSummary.fareFamily)}`}
-                      >
-                        <div className="field-grid compact-grid">
-                          <label className="field">
-                            <span>Hạng vé</span>
-                            <input value={fareSummary.title} disabled />
-                          </label>
-                          <label className="field">
-                            <span>Số ghế cố định</span>
-                            <input value={fareSummary.totalSeats} disabled />
-                          </label>
-                          <label className="field">
-                            <span>Vùng ghế</span>
-                            <input value={`Hàng ${fareSummary.rowStart}-${fareSummary.rowEnd}`} disabled />
-                          </label>
-                          <label className="field">
-                            <span>Giá đang bán</span>
-                            <input value={formatCurrency(fareSummary.price)} disabled />
-                          </label>
+                  {/* Chi tiết chuyến bay — chỉ hiện khi mở */}
+                  {isExpanded ? (
+                    <>
+                      <div className="result-grid result-grid-rich">
+                        <div>
+                          <span>Khởi hành</span>
+                          <strong>{formatDateTime(flight.departureAt)}</strong>
                         </div>
-                      </article>
-                    ))}
-                  </div>
+                        <div>
+                          <span>Hạ cánh</span>
+                          <strong>{formatDateTime(flight.arrivalAt)}</strong>
+                        </div>
+                        <div>
+                          <span>Cửa ra tàu hiện tại</span>
+                          <strong>{flight.gate}</strong>
+                        </div>
+                        <div>
+                          <span>Giá gốc hiện tại</span>
+                          <strong>{formatCurrency(flight.baseFare)}</strong>
+                        </div>
+                      </div>
 
-                  <div className="booking-action-list">
-                    <label className="field-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={draft?.salesOpen ?? flight.salesOpen}
-                        onChange={(event) =>
-                          setDrafts((current) => ({
-                            ...current,
-                            [flight.flightId]: {
-                              ...(draft ?? buildFlightDraft(flight)),
-                              salesOpen: event.target.checked
+                      <div className="field-grid compact-grid">
+                        <label className="field">
+                          <span>Trạng thái</span>
+                          <select
+                            value={draft?.status ?? flight.status}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [flight.flightId]: {
+                                  ...(draft ?? buildFlightDraft(flight)),
+                                  status: event.target.value
+                                }
+                              }))
                             }
-                          }))
-                        }
-                        disabled={isWorking || flight.status === "cancelled"}
-                      />
-                      <span>Cho phép tiếp tục mở bán trên chuyến này</span>
-                    </label>
-                    <div className="finance-action-row">
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        onClick={() => void handleSaveFlight(flight.flightId)}
-                        disabled={isWorking || pendingFlightAction !== null}
-                      >
-                        {pendingFlightAction === `save-flight-${flight.flightId}`
-                          ? "Đang lưu..."
-                          : "Lưu thay đổi vận hành"}
-                      </button>
-                      {flight.status === "cancelled" ? (
-                        <button
-                          type="button"
-                          className="button button-primary"
-                          onClick={() => void handleHideCancelledFlight(flight)}
-                          disabled={isWorking || pendingFlightAction !== null}
-                        >
-                          {pendingFlightAction === `hide-flight-${flight.flightId}`
-                            ? "Đang ẩn..."
-                            : "Ẩn chuyến đã hủy"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="button button-primary"
-                          onClick={() => void handleCancelFlight(flight)}
-                          disabled={isWorking || pendingFlightAction !== null}
-                        >
-                          {pendingFlightAction === `cancel-flight-${flight.flightId}`
-                            ? "Đang hủy chuyến..."
-                            : "Hủy chuyến bay"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                            disabled={isWorking}
+                          >
+                            {statusOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label className="field">
+                          <span>Cửa ra tàu</span>
+                          <input
+                            value={draft?.gate ?? flight.gate}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [flight.flightId]: {
+                                  ...(draft ?? buildFlightDraft(flight)),
+                                  gate: event.target.value
+                                }
+                              }))
+                            }
+                            disabled={isWorking}
+                          />
+                        </label>
+                        <label className="field">
+                          <span>Giá gốc Phổ thông tiết kiệm</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={draft?.baseFare ?? flight.baseFare}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [flight.flightId]: {
+                                  ...(draft ?? buildFlightDraft(flight)),
+                                  baseFare: capNhatGiaGocHopLe(event.target.value, draft?.baseFare ?? flight.baseFare)
+                                }
+                              }))
+                            }
+                            disabled={isWorking}
+                          />
+                        </label>
+
+                        <label className="field result-grid-span-full">
+                          <span>Ghi chú vận hành</span>
+                          <textarea
+                            className="booking-textarea"
+                            rows={3}
+                            value={draft?.note ?? flight.note}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [flight.flightId]: {
+                                  ...(draft ?? buildFlightDraft(flight)),
+                                  note: event.target.value
+                                }
+                              }))
+                            }
+                            disabled={isWorking}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="stack-list">
+                        {flight.fareSummaries.map((fareSummary) => (
+                          <article
+                            key={`${flight.flightId}-${fareSummary.fareFamily}`}
+                            className={`surface-card admin-nested-card ${layLopMauGoiGia(fareSummary.fareFamily)}`}
+                          >
+                            <div className="field-grid compact-grid">
+                              <label className="field">
+                                <span>Hạng vé</span>
+                                <input value={fareSummary.title} disabled />
+                              </label>
+                              <label className="field">
+                                <span>Số ghế cố định</span>
+                                <input value={fareSummary.totalSeats} disabled />
+                              </label>
+                              <label className="field">
+                                <span>Vùng ghế</span>
+                                <input value={`Hàng ${fareSummary.rowStart}-${fareSummary.rowEnd}`} disabled />
+                              </label>
+                              <label className="field">
+                                <span>Giá đang bán</span>
+                                <input value={formatCurrency(fareSummary.price)} disabled />
+                              </label>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+
+                      <div className="booking-action-list">
+                        <label className="field-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={draft?.salesOpen ?? flight.salesOpen}
+                            onChange={(event) =>
+                              setDrafts((current) => ({
+                                ...current,
+                                [flight.flightId]: {
+                                  ...(draft ?? buildFlightDraft(flight)),
+                                  salesOpen: event.target.checked
+                                }
+                              }))
+                            }
+                            disabled={isWorking || flight.status === "cancelled"}
+                          />
+                          <span>Cho phép tiếp tục mở bán trên chuyến này</span>
+                        </label>
+                        <div className="finance-action-row">
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => void handleSaveFlight(flight.flightId)}
+                            disabled={isWorking || pendingFlightAction !== null}
+                          >
+                            {pendingFlightAction === `save-flight-${flight.flightId}`
+                              ? "Đang lưu..."
+                              : "Lưu thay đổi vận hành"}
+                          </button>
+                          {flight.status === "cancelled" ? (
+                            <button
+                              type="button"
+                              className="button button-primary"
+                              onClick={() => void handleHideCancelledFlight(flight)}
+                              disabled={isWorking || pendingFlightAction !== null}
+                            >
+                              {pendingFlightAction === `hide-flight-${flight.flightId}`
+                                ? "Đang ẩn..."
+                                : "Ẩn chuyến đã hủy"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="button button-primary"
+                              onClick={() => void handleCancelFlight(flight)}
+                              disabled={isWorking || pendingFlightAction !== null}
+                            >
+                              {pendingFlightAction === `cancel-flight-${flight.flightId}`
+                                ? "Đang hủy chuyến..."
+                                : "Hủy chuyến bay"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </article>
               );
             })

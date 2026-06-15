@@ -6505,6 +6505,88 @@ th {
   margin-top: 6px;
 }
 
+/* Nút thu gọn/mở rộng chuyến bay trên trang operations */
+.operations-flight-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 18px;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  transition: background 160ms ease;
+}
+
+.operations-flight-toggle:hover {
+  background: rgba(18, 61, 105, 0.04);
+}
+
+.operations-flight-toggle-icon {
+  flex-shrink: 0;
+  width: 20px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.operations-flight-toggle-code {
+  flex-shrink: 0;
+  min-width: 90px;
+  color: var(--primary);
+  font-family: var(--font-heading), sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.operations-flight-toggle-route {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.operations-flight-toggle-time {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Khi chuyến bay đang mở chi tiết, thêm viền dưới cho toggle */
+.result-card:has(.operations-flight-toggle[aria-expanded="true"]) .operations-flight-toggle {
+  border-bottom: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  margin-bottom: 8px;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 640px) {
+  .operations-flight-toggle {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .operations-flight-toggle-code {
+    min-width: auto;
+  }
+
+  .operations-flight-toggle-time {
+    width: 100%;
+    padding-left: 32px;
+  }
+}
+
 .booking-payment-qr {
   justify-self: center;
   width: min(320px, 100%);
