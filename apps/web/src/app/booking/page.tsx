@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { BookingPageClient } from "@/components/booking-page-client";
+import { appendBackofficeSalesFlow, hasBackofficeSalesFlow } from "@/lib/backoffice-sales-flow";
 import { parseBookingHandoffState } from "@/lib/booking-flow";
 
 interface BookingPageProps {
@@ -49,7 +50,8 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   const handoffState = parseBookingHandoffState(taoUrlSearchParams(resolvedSearchParams));
 
   if (!handoffState) {
-    redirect("/search?notice=chon-chuyen-bay-truoc&thong-bao=chon-chuyen-bay-truoc#dat-ve");
+    const fallbackUrl = "/search?notice=chon-chuyen-bay-truoc&thong-bao=chon-chuyen-bay-truoc#dat-ve";
+    redirect(hasBackofficeSalesFlow(resolvedSearchParams) ? appendBackofficeSalesFlow(fallbackUrl) : fallbackUrl);
   }
 
   return (

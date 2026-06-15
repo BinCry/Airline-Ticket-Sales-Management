@@ -1,18 +1,18 @@
 "use client";
 
 import type {
-  ApiCreateBookingHoldRequest,
   ApiManageBookingOverview,
   PassengerType
 } from "@qlvmb/shared-types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { SectionHeading } from "@/components/section-heading";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import { createBackofficeSalesSearchHref } from "@/lib/backoffice-sales-flow";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
-  createBackofficeSalesBooking,
   fetchBackofficeSalesBookings,
   issueBackofficeSalesTicket
 } from "@/lib/backoffice-sales-api";
@@ -20,32 +20,6 @@ import { formatCurrency } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 type SalesState = "idle" | "loading" | "success" | "error";
-
-type SalesCreateFormState = {
-  contactEmail: string;
-  contactName: string;
-  contactPhone: string;
-  documentNumber: string;
-  documentType: string;
-  inventoryId: string;
-  passengerDateOfBirth: string;
-  passengerName: string;
-  passengerType: PassengerType;
-  returnInventoryId: string;
-};
-
-const EMPTY_CREATE_FORM: SalesCreateFormState = {
-  contactEmail: "",
-  contactName: "",
-  contactPhone: "",
-  documentNumber: "",
-  documentType: "CCCD",
-  inventoryId: "",
-  passengerDateOfBirth: "",
-  passengerName: "",
-  passengerType: "adult",
-  returnInventoryId: ""
-};
 
 function formatBookingStatus(status: string) {
   switch (status) {
@@ -106,66 +80,36 @@ function formatDateTime(value: string | null) {
   }).format(parsedDate);
 }
 
-function normalizePositiveInteger(value: string) {
-  const normalized = Number(value.trim());
-  if (!Number.isInteger(normalized) || normalized <= 0) {
-    return null;
-  }
-  return normalized;
-}
-
-function buildCreatePayload(form: SalesCreateFormState): ApiCreateBookingHoldRequest | null {
-  const outboundInventoryId = normalizePositiveInteger(form.inventoryId);
-  if (!outboundInventoryId) {
-    return null;
-  }
-
-  const returnInventoryId = form.returnInventoryId.trim()
-    ? normalizePositiveInteger(form.returnInventoryId)
-    : null;
-  if (form.returnInventoryId.trim() && !returnInventoryId) {
-    return null;
-  }
-
-  const payload: ApiCreateBookingHoldRequest = {
-    tripType: returnInventoryId ? "round_trip" : "one_way",
-    contact: {
-      fullName: form.contactName.trim(),
-      email: form.contactEmail.trim().toLowerCase(),
-      phone: form.contactPhone.trim()
-    },
-    passengers: [
-      {
-        fullName: form.passengerName.trim(),
-        passengerType: form.passengerType,
-        dateOfBirth: form.passengerDateOfBirth,
-        documentType: form.documentType.trim(),
-        documentNumber: form.documentNumber.trim()
-      }
-    ],
-    segments: returnInventoryId
-      ? [{ inventoryId: outboundInventoryId }, { inventoryId: returnInventoryId }]
-      : [{ inventoryId: outboundInventoryId }],
-    ancillaries: [],
-    seatSelections: []
-  };
-
-  return payload;
-}
-
 export function BackofficeSalesPageClient() {
+  const searchParams = useSearchParams();
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [state, setState] = useState<SalesState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bookingCode, setBookingCode] = useState("");
   const [email, setEmail] = useState("");
   const [bookings, setBookings] = useState<ApiManageBookingOverview[]>([]);
-  const [createForm, setCreateForm] = useState<SalesCreateFormState>(EMPTY_CREATE_FORM);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   useEffect(() => {
     setAccessToken(loadActiveAuthSession()?.accessToken ?? null);
   }, []);
+
+  useEffect(() => {
+    const bookingCodeFromQuery = searchParams.get("bookingCode")?.trim().toUpperCase() ?? "";
+    const emailFromQuery = searchParams.get("email")?.trim().toLowerCase() ?? "";
+
+    if (!bookingCodeFromQuery && !emailFromQuery) {
+      return;
+    }
+
+    setBookingCode(bookingCodeFromQuery);
+    setEmail(emailFromQuery);
+
+    if (accessToken) {
+      void loadBookings(bookingCodeFromQuery, emailFromQuery, accessToken);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, accessToken]);
 
   async function loadBookings(nextBookingCode: string, nextEmail: string, token: string) {
     setState("loading");
@@ -204,56 +148,6 @@ export function BackofficeSalesPageClient() {
     await loadBookings(normalizedBookingCode, normalizedEmail, accessToken);
   }
 
-  async function handleCreateBooking(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!accessToken || pendingAction !== null) {
-      return;
-    }
-
-    const payload = buildCreatePayload(createForm);
-    if (!payload) {
-      setErrorMessage("Inventory không hợp lệ. Vui lòng nhập số dương cho mã inventory.");
-      return;
-    }
-
-    if (
-      !payload.contact.fullName ||
-      !payload.contact.email ||
-      !payload.contact.phone ||
-      !payload.passengers[0].fullName ||
-      !payload.passengers[0].dateOfBirth ||
-      !payload.passengers[0].documentType ||
-      !payload.passengers[0].documentNumber
-    ) {
-      setErrorMessage("Vui lòng điền đủ thông tin liên hệ và hành khách trước khi tạo booking hộ.");
-      return;
-    }
-
-    setPendingAction("create");
-    setErrorMessage(null);
-    try {
-      const created = await createBackofficeSalesBooking(accessToken, payload);
-      setBookingCode(created.bookingCode);
-      setEmail(payload.contact.email);
-      setCreateForm((current) => ({
-        ...EMPTY_CREATE_FORM,
-        contactEmail: current.contactEmail,
-        contactName: current.contactName,
-        contactPhone: current.contactPhone
-      }));
-      await loadBookings(created.bookingCode, payload.contact.email, accessToken);
-      pushToast({
-        title: "Đã tạo giữ chỗ hộ",
-        message: `Booking ${created.bookingCode} đã được tạo thành công.`,
-        tone: "success"
-      });
-    } catch (error) {
-      setErrorMessage(resolveApiClientErrorMessage(error, "Không thể tạo booking hộ lúc này."));
-    } finally {
-      setPendingAction(null);
-    }
-  }
-
   async function handleIssueTicket(booking: ApiManageBookingOverview) {
     if (!accessToken || pendingAction !== null) {
       return;
@@ -286,7 +180,7 @@ export function BackofficeSalesPageClient() {
         <SectionHeading
           eyebrow="Backoffice bán vé"
           title="Đặt vé hộ, tra cứu booking và xuất vé ngay tại một màn hình"
-          description="Nhân sự chăm sóc khách hàng có thể tạo giữ chỗ hộ theo inventory, theo dõi trạng thái thanh toán và xuất vé khi đã đủ điều kiện."
+          description="Nhân sự chăm sóc khách hàng có thể mở luồng tìm chuyến bay, chọn ghế, tạo booking hộ rồi quay lại đây để theo dõi trạng thái thanh toán và xuất vé."
         />
 
         {errorMessage ? (
@@ -296,198 +190,43 @@ export function BackofficeSalesPageClient() {
           </article>
         ) : null}
 
-        <div className="section-split">
-          <form className="lookup-card" onSubmit={handleLookup}>
-            <SectionHeading
-              eyebrow="Tra cứu booking"
-              title="Tìm nhanh theo mã đặt chỗ hoặc email liên hệ"
-              description="Dùng để mở lại hồ sơ khách đã có và kiểm tra trạng thái giữ chỗ, thanh toán, xuất vé."
-            />
-            <div className="field-grid compact-grid">
-              <label className="field">
-                <span>Mã đặt chỗ</span>
-                <input
-                  value={bookingCode}
-                  onChange={(event) => setBookingCode(event.target.value)}
-                  placeholder="Ví dụ: QC5001"
-                />
-              </label>
-              <label className="field">
-                <span>Email liên hệ</span>
-                <input
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="khach.hang@gmail.com"
-                />
-              </label>
-            </div>
-            <div className="booking-action-list booking-action-list-spacious">
-              <button
-                type="submit"
-                className="button button-secondary"
-                disabled={!accessToken || state === "loading" || pendingAction !== null}
-              >
-                {state === "loading" ? "Đang tra cứu..." : "Tải danh sách booking"}
-              </button>
-            </div>
-          </form>
-
-          <form className="surface-card" onSubmit={handleCreateBooking}>
-            <SectionHeading
-              eyebrow="Đặt vé hộ tối thiểu"
-              title="Tạo giữ chỗ hộ cho khách"
-              description="Luồng v1 dùng inventory ID có sẵn để tạo giữ chỗ nhanh, sau đó có thể xuất vé ngay trên cùng danh sách."
-            />
-            <div className="field-grid compact-grid">
-              <label className="field">
-                <span>Inventory đi</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={createForm.inventoryId}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      inventoryId: event.target.value
-                    }))
-                  }
-                  placeholder="Ví dụ: 101"
-                />
-              </label>
-              <label className="field">
-                <span>Inventory về (nếu khứ hồi)</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={createForm.returnInventoryId}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      returnInventoryId: event.target.value
-                    }))
-                  }
-                  placeholder="Ví dụ: 132"
-                />
-              </label>
-              <label className="field">
-                <span>Tên liên hệ</span>
-                <input
-                  value={createForm.contactName}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      contactName: event.target.value
-                    }))
-                  }
-                  placeholder="Nguyễn Văn A"
-                />
-              </label>
-              <label className="field">
-                <span>Email liên hệ</span>
-                <input
-                  value={createForm.contactEmail}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      contactEmail: event.target.value
-                    }))
-                  }
-                  placeholder="khach.hang@gmail.com"
-                />
-              </label>
-              <label className="field">
-                <span>Số điện thoại</span>
-                <input
-                  value={createForm.contactPhone}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      contactPhone: event.target.value
-                    }))
-                  }
-                  placeholder="0900000001"
-                />
-              </label>
-              <label className="field">
-                <span>Họ tên hành khách</span>
-                <input
-                  value={createForm.passengerName}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      passengerName: event.target.value
-                    }))
-                  }
-                  placeholder="Nguyễn Văn A"
-                />
-              </label>
-              <label className="field">
-                <span>Loại hành khách</span>
-                <select
-                  value={createForm.passengerType}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      passengerType: event.target.value as PassengerType
-                    }))
-                  }
-                >
-                  <option value="adult">Người lớn</option>
-                  <option value="child">Trẻ em</option>
-                  <option value="infant">Em bé</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>Ngày sinh</span>
-                <input
-                  type="date"
-                  value={createForm.passengerDateOfBirth}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      passengerDateOfBirth: event.target.value
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Loại giấy tờ</span>
-                <input
-                  value={createForm.documentType}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      documentType: event.target.value
-                    }))
-                  }
-                  placeholder="CCCD"
-                />
-              </label>
-              <label className="field">
-                <span>Số giấy tờ</span>
-                <input
-                  value={createForm.documentNumber}
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      documentNumber: event.target.value
-                    }))
-                  }
-                  placeholder="012345678901"
-                />
-              </label>
-            </div>
-            <div className="booking-action-list booking-action-list-spacious">
-              <button
-                type="submit"
-                className="button button-primary"
-                disabled={!accessToken || pendingAction !== null}
-              >
-                {pendingAction === "create" ? "Đang tạo giữ chỗ..." : "Tạo booking hộ"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <form className="lookup-card" onSubmit={handleLookup}>
+          <SectionHeading
+            eyebrow="Tra cứu booking"
+            title="Tìm nhanh theo mã đặt chỗ hoặc email liên hệ"
+            description="Dùng để mở lại hồ sơ khách đã có, hoặc chuyển sang luồng tìm chuyến bay và chọn ghế để tạo booking hộ."
+          />
+          <div className="field-grid compact-grid">
+            <label className="field">
+              <span>Mã đặt chỗ</span>
+              <input
+                value={bookingCode}
+                onChange={(event) => setBookingCode(event.target.value)}
+                placeholder="Ví dụ: QC5001"
+              />
+            </label>
+            <label className="field">
+              <span>Email liên hệ</span>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="khach.hang@gmail.com"
+              />
+            </label>
+          </div>
+          <div className="booking-action-list booking-action-list-spacious">
+            <button
+              type="submit"
+              className="button button-secondary"
+              disabled={!accessToken || state === "loading" || pendingAction !== null}
+            >
+              {state === "loading" ? "Đang tra cứu..." : "Tải danh sách booking"}
+            </button>
+            <Link href={createBackofficeSalesSearchHref()} className="button button-primary">
+              Tạo booking hộ
+            </Link>
+          </div>
+        </form>
 
         <div className="section-gap" />
         <article className="table-card support-table-card">

@@ -113,6 +113,29 @@ function taoVoucher(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function taoDuongDanBookingHoNoiBo() {
+  const params = new URLSearchParams({
+    adultCount: "1",
+    childCount: "0",
+    infantCount: "0",
+    tripType: "one_way",
+    segment1FlightId: "18",
+    segment1Code: "VN5201",
+    segment1From: "Thành phố Hồ Chí Minh",
+    segment1To: "Hà Nội",
+    segment1OriginCode: "SGN",
+    segment1DestinationCode: "HAN",
+    segment1DepartureAt: taoThoiDiemTuongLai(24 * 60),
+    segment1ArrivalAt: taoThoiDiemTuongLai(24 * 60 + 130),
+    segment1DepartureTime: "08:30",
+    segment1ArrivalTime: "10:40",
+    segment1BaseFare: "1490000",
+    backofficeSales: "1"
+  });
+
+  return `/booking?${params.toString()}`;
+}
+
 test("backoffice finance duyệt rồi ẩn yêu cầu hoàn vé", async ({ page }) => {
   await seedAuthSession(page, {
     roles: ["customer_support"],
@@ -279,6 +302,39 @@ test("backoffice sales tạo booking hộ rồi xuất vé", async ({ page }) =>
     }
   };
 
+  await page.route("**/api/flights/18/booking-options", async (route) => {
+    await route.fulfill(jsonResponse({
+      flightId: 18,
+      code: "VN5201",
+      originCode: "SGN",
+      destinationCode: "HAN",
+      from: "Thành phố Hồ Chí Minh",
+      to: "Hà Nội",
+      departureAt: taoThoiDiemTuongLai(24 * 60),
+      arrivalAt: taoThoiDiemTuongLai(24 * 60 + 130),
+      baseFare: 1490000,
+      fareOptions: [
+        {
+          inventoryId: 1801,
+          fareFamily: "pho_thong_tiet_kiem",
+          title: "Phổ thông tiết kiệm",
+          price: 1490000,
+          seatsLeft: 120,
+          totalSeats: 120,
+          rowStart: 9,
+          rowEnd: 28
+        }
+      ],
+      seats: []
+    }));
+  });
+
+  await page.route("**/api/bookings/holds", async (route) => {
+    createPayload = route.request().postDataJSON() as Record<string, unknown>;
+    bookings = [taoBookingOverview()];
+    await route.fulfill(jsonResponse(createdHold));
+  });
+
   await page.route(/\/api\/backoffice\/sales\/bookings(?:\/.*)?(?:\?.*)?$/, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -321,24 +377,44 @@ test("backoffice sales tạo booking hộ rồi xuất vé", async ({ page }) =>
 
   await page.goto("/backoffice/sales");
 
-  const createForm = page.locator("form").filter({ hasText: "Đặt vé hộ tối thiểu" });
-  await createForm.getByLabel("Inventory đi").fill("101");
-  await createForm.getByLabel("Tên liên hệ").fill("Nguyễn Văn A");
-  await createForm.getByLabel("Email liên hệ").fill("khach.hang@gmail.com");
-  await createForm.getByLabel("Số điện thoại").fill("0900000001");
-  await createForm.getByLabel("Họ tên hành khách").fill("Nguyễn Văn A");
-  await createForm.getByLabel("Ngày sinh").fill("1995-05-12");
-  await createForm.getByLabel("Số giấy tờ").fill("079123456789");
-  await createForm.getByRole("button", { name: "Tạo booking hộ" }).click();
+  await expect(page.getByRole("link", { name: "Tạo booking hộ" })).toHaveAttribute(
+    "href",
+    "/search?backofficeSales=1#dat-ve"
+  );
+
+  await page.goto(taoDuongDanBookingHoNoiBo());
+  await expect(page.locator(".seat-map-cabin")).toBeVisible();
+  await page.getByLabel("Họ và tên").first().fill("Nguyễn Văn A");
+  await page.getByLabel("Email").fill("khach.hang@gmail.com");
+  await page.getByLabel("Số điện thoại").fill("0900000001");
+  await page.getByLabel("Họ và tên").nth(1).fill("Nguyễn Văn A");
+  await page.getByLabel("Ngày sinh").fill("1995-05-12");
+  await page.getByLabel("Số giấy tờ").fill("079123456789");
+  await page.getByRole("button", { name: /^9A$/ }).click();
+  await page.getByRole("button", { name: "Xác nhận đặt vé hộ" }).click();
 
   await expect.poll(() => createPayload).not.toBeNull();
+  await expect(page).toHaveURL(/\/backoffice\/sales\?bookingCode=A6C2P1/);
   await expect(page.locator("tr", { hasText: "A6C2P1" })).toBeVisible();
   await expect
     .poll(() => (createPayload as { tripType?: string } | null)?.tripType)
     .toBe("one_way");
   await expect
-    .poll(() => (createPayload as { segments?: Array<{ inventoryId: number }> } | null)?.segments?.[0]?.inventoryId)
-    .toBe(101);
+    .poll(() => (createPayload as { segments?: Array<{ flightId: number }> } | null)?.segments?.[0]?.flightId)
+    .toBe(18);
+  await expect
+    .poll(
+      () =>
+        (
+          createPayload as {
+            seatSelections?: Array<{ inventoryId: number; seatNumber: string }>;
+          } | null
+        )?.seatSelections?.[0]
+    )
+    .toMatchObject({
+      inventoryId: 1801,
+      seatNumber: "9A"
+    });
 
   const row = page.locator("tr", { hasText: "A6C2P1" });
   await row.getByRole("button", { name: "Xuất vé hộ" }).click();

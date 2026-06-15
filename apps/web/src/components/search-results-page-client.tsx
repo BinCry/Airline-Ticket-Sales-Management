@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   TRIP_TYPES,
@@ -17,6 +17,11 @@ import {
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { fetchAirportOptions } from "@/lib/airport-api";
+import {
+  BACKOFFICE_SALES_FLOW_QUERY_KEY,
+  appendBackofficeSalesFlow,
+  isBackofficeSalesFlowValue
+} from "@/lib/backoffice-sales-flow";
 import {
   createBookingHandoffUrl,
   createHandoffSegmentFromFlight
@@ -208,23 +213,29 @@ function capNhatDanhSachDaChon<T extends string>(values: T[], nextValue: T): T[]
 
 function taoDuongDanChonChieuDi(
   criteria: ApiFlightSearchCriteria,
-  flight: ApiFlightCard
+  flight: ApiFlightCard,
+  isBackofficeSalesFlow: boolean
 ) {
   const basePath = taoDuongDanTimChuyenBay(criteria);
   const [pathname, queryString] = basePath.split("?");
   const nextSearchParams = new URLSearchParams(queryString ?? "");
   nextSearchParams.set("selectedOutbound", String(flight.flightId));
-  return `${pathname}?${nextSearchParams.toString()}`;
+  const nextPath = `${pathname}?${nextSearchParams.toString()}`;
+
+  return isBackofficeSalesFlow ? appendBackofficeSalesFlow(nextPath) : nextPath;
 }
 
 function taoDuongDanDatVe(
   criteria: ApiFlightSearchCriteria,
-  flights: ApiFlightCard[]
+  flights: ApiFlightCard[],
+  isBackofficeSalesFlow: boolean
 ) {
-  return createBookingHandoffUrl(
+  const bookingUrl = createBookingHandoffUrl(
     criteria,
     flights.map((flight) => createHandoffSegmentFromFlight(flight))
   );
+
+  return isBackofficeSalesFlow ? appendBackofficeSalesFlow(bookingUrl) : bookingUrl;
 }
 
 function taoNhanSoGheToiThieu(value: 0 | 1 | 5 | 10): string {
@@ -280,7 +291,8 @@ function taoTheKetQua(
   tieuDe: string,
   flights: ApiFlightCard[],
   criteria: ApiFlightSearchCriteria,
-  selectedOutboundFlight: ApiFlightCard | null
+  selectedOutboundFlight: ApiFlightCard | null,
+  isBackofficeSalesFlow: boolean
 ) {
   const selectedNotice =
     criteria.tripType === "round_trip" && tieuDe === "Chặng về" && selectedOutboundFlight
@@ -397,12 +409,15 @@ function taoTheKetQua(
               <span className="assurance-chip">Hiển thị điều kiện đổi hoặc hoàn</span>
             </div>
             {criteria.tripType === "one_way" ? (
-              <Link href={taoDuongDanDatVe(criteria, [flight])} className="button button-primary">
+              <Link
+                href={taoDuongDanDatVe(criteria, [flight], isBackofficeSalesFlow)}
+                className="button button-primary"
+              >
                 Chọn chuyến này
               </Link>
             ) : tieuDe === "Chặng đi" ? (
               <Link
-                href={taoDuongDanChonChieuDi(criteria, flight)}
+                href={taoDuongDanChonChieuDi(criteria, flight, isBackofficeSalesFlow)}
                 scroll={false}
                 className={`button ${selectedOutboundFlight?.flightId === flight.flightId
                     ? "button-secondary"
@@ -419,7 +434,7 @@ function taoTheKetQua(
               </button>
             ) : (
               <Link
-                href={taoDuongDanDatVe(criteria, [selectedOutboundFlight, flight])}
+                href={taoDuongDanDatVe(criteria, [selectedOutboundFlight, flight], isBackofficeSalesFlow)}
                 className="button button-primary"
               >
                 Chọn chiều về
@@ -440,6 +455,7 @@ export function SearchResultsPageClient({
   selectedOutboundFlightId
 }: SearchResultsPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tieuChiMacDinh] = useState(() => taoTieuChiTimChuyenBayMacDinh());
   const [ngayHienTai] = useState(() => getVietnamTodayIso());
   const [tripType, setTripType] = useState<TripType>(criteria.tripType);
@@ -462,6 +478,9 @@ export function SearchResultsPageClient({
   const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
   const [filterState, setFilterState] = useState<FlightSearchFilterState>(
     DEFAULT_FLIGHT_SEARCH_FILTER_STATE
+  );
+  const isBackofficeSalesFlow = isBackofficeSalesFlowValue(
+    searchParams.get(BACKOFFICE_SALES_FLOW_QUERY_KEY)
   );
 
   useEffect(() => {
@@ -721,17 +740,19 @@ export function SearchResultsPageClient({
         : null;
 
     startTransition(() => {
+      const nextSearchUrl = taoDuongDanTimChuyenBay({
+        from: from.trim().toUpperCase() || tieuChiMacDinh.from,
+        to: to.trim().toUpperCase() || tieuChiMacDinh.to,
+        departureDate: ngayKhoiHanh,
+        returnDate: ngayVe,
+        tripType,
+        adultCount,
+        childCount,
+        infantCount
+      });
+
       router.push(
-        taoDuongDanTimChuyenBay({
-          from: from.trim().toUpperCase() || tieuChiMacDinh.from,
-          to: to.trim().toUpperCase() || tieuChiMacDinh.to,
-          departureDate: ngayKhoiHanh,
-          returnDate: ngayVe,
-          tripType,
-          adultCount,
-          childCount,
-          infantCount
-        }),
+        isBackofficeSalesFlow ? appendBackofficeSalesFlow(nextSearchUrl) : nextSearchUrl,
         { scroll: false }
       );
     });
@@ -1104,9 +1125,21 @@ export function SearchResultsPageClient({
               </article>
             ) : (
               <>
-                {taoTheKetQua("Chặng đi", outboundFlights, criteria, selectedOutboundFlight)}
+                {taoTheKetQua(
+                  "Chặng đi",
+                  outboundFlights,
+                  criteria,
+                  selectedOutboundFlight,
+                  isBackofficeSalesFlow
+                )}
                 {criteria.tripType === "round_trip"
-                  ? taoTheKetQua("Chặng về", returnFlights, criteria, selectedOutboundFlight)
+                  ? taoTheKetQua(
+                    "Chặng về",
+                    returnFlights,
+                    criteria,
+                    selectedOutboundFlight,
+                    isBackofficeSalesFlow
+                  )
                   : null}
               </>
             )}
