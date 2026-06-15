@@ -212,6 +212,32 @@ export function ManageBookingPageClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, accessToken]);
 
+  useEffect(() => {
+    if (!isRefundModalOpen) {
+      return;
+    }
+
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsRefundModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+    };
+  }, [isRefundModalOpen]);
+
   const danhSachVeCoTheHoan = useMemo(
     () => (bookingOverview ? layVeCoTheYeuCauHoan(bookingOverview) : []),
     [bookingOverview]
@@ -792,10 +818,32 @@ export function ManageBookingPageClient() {
       </div>
 
       {isRefundModalOpen && bookingOverview ? (
-        <div className="booking-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="refund-modal-title">
-          <div className="surface-card booking-modal-card">
-            <span className="section-eyebrow">Yêu cầu hoàn vé</span>
-            <h3 id="refund-modal-title">Xác nhận gửi yêu cầu hoàn vé</h3>
+        <div
+          className="booking-modal-backdrop"
+          role="presentation"
+          onClick={() => setIsRefundModalOpen(false)}
+        >
+          <div
+            className="surface-card booking-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="refund-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="auth-note-head booking-modal-head">
+              <div>
+                <span className="section-eyebrow">Yêu cầu hoàn vé</span>
+                <h3 id="refund-modal-title">Xác nhận gửi yêu cầu hoàn vé</h3>
+              </div>
+              <button
+                type="button"
+                className="profile-password-close"
+                onClick={() => setIsRefundModalOpen(false)}
+                aria-label="Đóng hộp thoại yêu cầu hoàn vé"
+              >
+                ×
+              </button>
+            </div>
             <p>Mã đặt chỗ {bookingOverview.bookingCode} sẽ được chuyển sang trạng thái đang chờ duyệt.</p>
 
             {danhSachNhomVeCoTheHoan.length > 1 ? (
