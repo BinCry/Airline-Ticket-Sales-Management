@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApiClientError,
+  refreshStoredAuthSession,
   requestApi,
   resolveApiClientErrorMessage
 } from "@/lib/api-client";
@@ -182,6 +183,96 @@ describe("api-client", () => {
     const requestHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Headers;
     expect(requestHeaders.get("Authorization")).toBe("Bearer access-token-moi");
     expect(stores.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain("access-token-moi");
+  });
+
+  it("lam moi truoc khi access token sap het han", async () => {
+    const stores = setupWindowStorage(createAuthSession({
+      accessTokenExpiresAt: new Date(Date.now() + 30_000).toISOString()
+    }));
+    const refreshedAuthSession = createAuthSession({
+      accessToken: "access-token-moi",
+      refreshToken: "refresh-token-moi",
+      accessTokenExpiresAt: "2099-01-01T00:00:00Z"
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(refreshedAuthSession), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }));
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(
+      requestApi<{ ok: boolean }>("/api/me/profile", {
+        accessToken: "access-token-cu",
+        method: "GET",
+        showErrorToast: false
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(stores.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain("access-token-moi");
+  });
+
+  it("khong xoa phien khi refresh token loi tam thoi", async () => {
+    const stores = setupWindowStorage(createAuthSession({
+      accessTokenExpiresAt: "2000-01-01T00:00:00Z"
+    }));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        message: "He thong tam thoi ban."
+      }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }));
+
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(
+      requestApi<{ ok: boolean }>("/api/me/profile", {
+        accessToken: "access-token-cu",
+        method: "GET",
+        showErrorToast: false
+      })
+    ).resolves.toEqual({ ok: true });
+
+    expect(stores.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toContain("access-token-cu");
+  });
+
+  it("xoa phien khi refresh token bi tu choi 403", async () => {
+    const stores = setupWindowStorage(createAuthSession({
+      accessTokenExpiresAt: "2000-01-01T00:00:00Z"
+    }));
+
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      message: "Phien dang nhap da het hieu luc."
+    }), {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })) as typeof fetch;
+
+    await expect(refreshStoredAuthSession()).resolves.toBeNull();
+
+    expect(stores.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
+    expect(stores.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY)).toBeNull();
   });
 
   it("retry mot lan bang access token moi khi api bao 401", async () => {

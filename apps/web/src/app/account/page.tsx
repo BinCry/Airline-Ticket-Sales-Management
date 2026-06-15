@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PasswordChecklist } from "@/components/password-checklist";
@@ -294,7 +293,6 @@ function resolveAccountError(error: unknown, fallbackMessage: string) {
 }
 
 export default function AccountPage() {
-  const router = useRouter();
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [hasLoadedSession, setHasLoadedSession] = useState(false);
   const [customerProfile, setCustomerProfile] = useState<MyProfile | null>(null);
@@ -800,7 +798,7 @@ export default function AccountPage() {
       setPasswordActionSuccess("Đã đổi mật khẩu. Vui lòng đăng nhập lại bằng mật khẩu mới.");
       clearStoredAuthSession();
       setAuthSession(null);
-      router.push("/login");
+      window.location.assign("/login");
     } catch (error) {
       setPasswordActionError(
         resolveAccountError(error, "Không thể đổi mật khẩu lúc này.")
@@ -1018,7 +1016,7 @@ export default function AccountPage() {
               </div>
               <p>{BACKOFFICE_MODULE_DESCRIPTIONS[module]}</p>
               <div className="auth-action-row">
-                <Link href={`/backoffice/${module}`} className="button button-primary">
+                <Link href={`/backoffice/${module}`} prefetch={false} className="button button-primary">
                   Mở khu vực
                 </Link>
               </div>

@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
 import { StatusChip } from "@/components/status-chip";
 import { exchangeOAuthCode, resolveAuthErrorMessage } from "@/lib/auth-api";
 import { persistAuthSession } from "@/lib/auth-session";
 
+function resolveSafeRedirectTarget(value: string | null | undefined) {
+  const redirectTo = value?.trim();
+
+  if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
+    return "/";
+  }
+
+  return redirectTo;
+}
+
 function OAuthCallbackContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Đang hoàn tất đăng nhập Google.");
@@ -34,13 +43,13 @@ function OAuthCallbackContent() {
         persistAuthSession(authSession, true);
         setStatus("success");
         setMessage("Đăng nhập Google thành công.");
-        router.replace(redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/");
+        window.location.replace(resolveSafeRedirectTarget(redirectTo));
       })
       .catch((error) => {
         setStatus("error");
         setMessage(resolveAuthErrorMessage(error, "Không thể hoàn tất đăng nhập Google."));
       });
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   return (
     <main className="section auth-page">

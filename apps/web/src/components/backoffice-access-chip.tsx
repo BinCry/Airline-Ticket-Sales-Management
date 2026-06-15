@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { StatusChip } from "@/components/status-chip";
 import {
   AUTH_SESSION_UPDATED_EVENT,
-  loadActiveAuthSession
+  loadValidAuthSession
 } from "@/lib/auth-session";
 import type { BackofficeModuleKey } from "@/lib/access-control";
 import { canAccessBackofficeModule } from "@/lib/access-control";
@@ -19,7 +19,7 @@ export function BackofficeAccessChip({ moduleKey }: BackofficeAccessChipProps) {
 
   useEffect(() => {
     function sync() {
-      const authSession = loadActiveAuthSession();
+      const authSession = loadValidAuthSession();
       const permissions = authSession?.user.permissions ?? [];
       setHasAccess(authSession ? canAccessBackofficeModule(permissions, moduleKey) : false);
     }

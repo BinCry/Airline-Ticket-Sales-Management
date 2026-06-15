@@ -7,7 +7,7 @@ import { BackofficeAccessChip } from "@/components/backoffice-access-chip";
 import { SectionHeading } from "@/components/section-heading";
 import {
   AUTH_SESSION_UPDATED_EVENT,
-  loadActiveAuthSession
+  loadValidAuthSession
 } from "@/lib/auth-session";
 import {
   getAllowedBackofficeModulesByPermissions,
@@ -27,7 +27,7 @@ export default function BackofficePage() {
 
   useEffect(() => {
     function syncPermissions() {
-      const permissions = loadActiveAuthSession()?.user.permissions ?? [];
+      const permissions = loadValidAuthSession()?.user.permissions ?? [];
       setAllowedModules(getAllowedBackofficeModulesByPermissions(permissions));
     }
 
@@ -91,7 +91,7 @@ export default function BackofficePage() {
         ) : visibleModules.length > 0 ? (
           <div className="module-grid">
             {visibleModules.map((module) => (
-              <Link key={module.key} href={module.href} className="surface-card module-card">
+              <Link key={module.key} href={module.href} prefetch={false} className="surface-card module-card">
                 <div className="module-card-head">
                   <BackofficeAccessChip moduleKey={module.key as BackofficeModuleKey} />
                   <span className="pill">Phân khu nội bộ</span>
