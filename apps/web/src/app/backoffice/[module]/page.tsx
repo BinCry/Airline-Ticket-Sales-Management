@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { notFound } from "next/navigation";
 
 import { BackofficeAdminPageClient } from "@/components/backoffice-admin-page-client";
@@ -28,7 +30,11 @@ export default async function BackofficeModulePage({ params }: ModulePageProps) 
 
   switch (module) {
     case "sales":
-      return <BackofficeSalesPageClient />;
+      return (
+        <Suspense fallback={null}>
+          <BackofficeSalesPageClient />
+        </Suspense>
+      );
     case "support":
       return <BackofficeSupportPageClient />;
     case "finance":

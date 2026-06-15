@@ -13,12 +13,20 @@ import type {
 } from "@qlvmb/shared-types";
 
 import { SectionHeading } from "@/components/section-heading";
+import { canAccessBackofficeModule } from "@/lib/access-control";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
+import {
+  BACKOFFICE_SALES_FLOW_QUERY_KEY,
+  appendBackofficeSalesFlow,
+  createBackofficeSalesLookupHref,
+  isBackofficeSalesFlowValue
+} from "@/lib/backoffice-sales-flow";
 import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import { createBookingHold, fetchFlightBookingOptions } from "@/lib/booking-api";
-import { parseBookingHandoffState, type BookingHandoffSegment } from "@/lib/booking-flow";
+import { parseBookingHandoffState } from "@/lib/booking-flow";
 import { layLopMauGoiGia } from "@/lib/display";
 import { formatCurrency } from "@/lib/format";
+import { pushToast } from "@/lib/toast";
 
 interface ContactFormState {
   email: string;
@@ -41,6 +49,8 @@ interface PassengerSegmentChoice {
   inventoryId: number | null;
   seatNumber: string;
 }
+
+type SubmitAction = "checkout" | "backoffice_sales";
 
 const seatRows = Array.from({ length: 28 }, (_, index) => index + 1);
 const seatLetters = ["A", "B", "C", "D", "E", "F"];
@@ -175,6 +185,10 @@ export function BookingPageClient() {
     () => parseBookingHandoffState(new URLSearchParams(searchParams.toString())),
     [searchParams]
   );
+  const isBackofficeSalesFlow = useMemo(
+    () => isBackofficeSalesFlowValue(searchParams.get(BACKOFFICE_SALES_FLOW_QUERY_KEY)),
+    [searchParams]
+  );
 
   const [contact, setContact] = useState<ContactFormState>({
     email: "",
@@ -187,7 +201,8 @@ export function BookingPageClient() {
       : []
   );
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasBackofficeSalesAccess, setHasBackofficeSalesAccess] = useState(false);
+  const [pendingSubmitAction, setPendingSubmitAction] = useState<SubmitAction | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [bookingOptions, setBookingOptions] = useState<ApiFlightBookingOptionsResponse[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
@@ -198,6 +213,9 @@ export function BookingPageClient() {
   useEffect(() => {
     const storedSession = loadActiveAuthSession();
     setAccessToken(storedSession?.accessToken);
+    setHasBackofficeSalesAccess(
+      storedSession ? canAccessBackofficeModule(storedSession.user.permissions, "sales") : false
+    );
 
     if (!storedSession) {
       return;
@@ -281,6 +299,8 @@ export function BookingPageClient() {
   }, [bookingOptions, passengers.length]);
 
   if (!handoffState) {
+    const fallbackSearchHref = isBackofficeSalesFlow ? appendBackofficeSalesFlow("/search") : "/search";
+
     return (
       <section className="section">
         <div className="container">
@@ -288,7 +308,7 @@ export function BookingPageClient() {
             <span className="section-eyebrow">Không tìm thấy dữ liệu</span>
             <h1 className="page-title">Không tìm thấy chuyến bay đã chọn</h1>
             <p>Hãy quay lại trang tìm chuyến bay và chọn lại hành trình trước khi nhập thông tin hành khách.</p>
-            <Link href="/search" className="button button-primary">
+            <Link href={fallbackSearchHref} className="button button-primary">
               Quay lại tìm chuyến bay
             </Link>
           </article>
@@ -299,6 +319,7 @@ export function BookingPageClient() {
 
   const totalPassengerCount = passengers.length;
   const totalAmount = tinhTongTienTamTinh(segmentChoices);
+  const canConfirmBackofficeSales = isBackofficeSalesFlow && hasBackofficeSalesAccess;
 
   function updatePassenger<FieldName extends keyof PassengerFormState>(
     passengerIndex: number,
@@ -368,10 +389,8 @@ export function BookingPageClient() {
     );
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (isSubmitting || !handoffState) {
+  async function taoBookingHoldVaDieuHuong(destination: SubmitAction) {
+    if (pendingSubmitAction !== null || !handoffState) {
       return;
     }
 
@@ -393,7 +412,7 @@ export function BookingPageClient() {
       return;
     }
 
-    setIsSubmitting(true);
+    setPendingSubmitAction(destination);
     setSubmitError(null);
 
     try {
@@ -426,12 +445,32 @@ export function BookingPageClient() {
       };
 
       const response = await createBookingHold(payload, accessToken);
+
+      if (destination === "backoffice_sales") {
+        pushToast({
+          title: "Đã tạo booking hộ",
+          message: `Booking ${response.bookingCode} đã được tạo và đang mở tại tab bán vé nội bộ.`,
+          tone: "success"
+        });
+        router.push(createBackofficeSalesLookupHref(response.bookingCode, payload.contact.email));
+        return;
+      }
+
       router.push(`/booking/${response.bookingCode}/checkout`);
     } catch (error) {
       setSubmitError(resolveApiClientErrorMessage(error, "Không thể giữ chỗ lúc này."));
     } finally {
-      setIsSubmitting(false);
+      setPendingSubmitAction(null);
     }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await taoBookingHoldVaDieuHuong("checkout");
+  }
+
+  async function handleConfirmBackofficeSales() {
+    await taoBookingHoldVaDieuHuong("backoffice_sales");
   }
 
   return (
@@ -803,21 +842,43 @@ export function BookingPageClient() {
                   <span className="section-eyebrow">Tổng tiền tạm tính</span>
                   <strong className="booking-total-amount">{formatCurrency(totalAmount)}</strong>
                 </div>
-                <button type="submit" className="button button-primary" disabled={isSubmitting || isLoadingOptions}>
-                  {isSubmitting ? "Đang xử lý..." : "Tiếp tục / Giữ chỗ"}
-                </button>
+                <div className="booking-action-list">
+                  {canConfirmBackofficeSales ? (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleConfirmBackofficeSales()}
+                      disabled={pendingSubmitAction !== null || isLoadingOptions}
+                    >
+                      {pendingSubmitAction === "backoffice_sales"
+                        ? "Đang tạo booking hộ..."
+                        : "Xác nhận đặt vé hộ"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="button button-primary"
+                    disabled={pendingSubmitAction !== null || isLoadingOptions}
+                  >
+                    {pendingSubmitAction === "checkout" ? "Đang xử lý..." : "Tiếp tục / Giữ chỗ"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       </div>
 
-      {isSubmitting ? (
+      {pendingSubmitAction !== null ? (
         <div className="booking-processing-overlay" role="status" aria-live="polite">
           <div className="surface-card booking-processing-card">
             <span className="section-eyebrow">Đang xử lý</span>
-            <h3>Đang tạo giữ chỗ</h3>
-            <p>Đang giữ chỗ và tạo mã đặt chỗ cho lựa chọn hiện tại.</p>
+            <h3>{pendingSubmitAction === "backoffice_sales" ? "Đang xác nhận đặt vé hộ" : "Đang tạo giữ chỗ"}</h3>
+            <p>
+              {pendingSubmitAction === "backoffice_sales"
+                ? "Hệ thống đang tạo booking hộ và đưa bạn quay lại tab bán vé nội bộ."
+                : "Đang giữ chỗ và tạo mã đặt chỗ cho lựa chọn hiện tại."}
+            </p>
           </div>
         </div>
       ) : null}
