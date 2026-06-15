@@ -8,6 +8,7 @@ import com.qlvmb.airticket.domain.dto.PaymentSessionResponse;
 import com.qlvmb.airticket.domain.dto.SePayWebhookRequest;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
+import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.PaymentTransactionEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
@@ -15,6 +16,7 @@ import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -359,19 +361,57 @@ public class PaymentService {
     memberVoucherService.finalizeVoucherForBooking(booking, currentTime);
 
     if (booking.getTickets().isEmpty()) {
-      for (BookingPassengerEntity passenger : booking.getPassengers()) {
-        booking.addTicket(
-            TicketEntity.issue(
-                booking,
-                passenger,
-                bookingService.generateUniqueTicketNumber(),
-                currentTime
-            )
-        );
+      LinkedHashSet<String> issuedTicketScopes = new LinkedHashSet<>();
+      if (!booking.getSeatSelections().isEmpty()) {
+        for (var seatSelection : booking.getSeatSelections()) {
+          BookingPassengerEntity passenger = seatSelection.getPassenger();
+          BookingSegmentEntity segment = seatSelection.getSegment();
+          if (!issuedTicketScopes.add(buildTicketScopeKey(passenger, segment))) {
+            continue;
+          }
+          booking.addTicket(
+              TicketEntity.issue(
+                  booking,
+                  passenger,
+                  segment,
+                  bookingService.generateUniqueTicketNumber(),
+                  currentTime
+              )
+          );
+        }
+      } else {
+        for (BookingPassengerEntity passenger : booking.getPassengers()) {
+          for (BookingSegmentEntity segment : booking.getSegments()) {
+            if (!issuedTicketScopes.add(buildTicketScopeKey(passenger, segment))) {
+              continue;
+            }
+            booking.addTicket(
+                TicketEntity.issue(
+                    booking,
+                    passenger,
+                    segment,
+                    bookingService.generateUniqueTicketNumber(),
+                    currentTime
+                )
+            );
+          }
+        }
       }
     }
 
     notificationOutboxService.createAndSendTicketEmail(booking);
+  }
+
+  private String buildTicketScopeKey(BookingPassengerEntity passenger, BookingSegmentEntity segment) {
+    return resolveEntityKey(passenger == null ? null : passenger.getId(), passenger)
+        + "|" + resolveEntityKey(segment == null ? null : segment.getId(), segment);
+  }
+
+  private String resolveEntityKey(Long id, Object entity) {
+    if (id != null) {
+      return id.toString();
+    }
+    return String.valueOf(System.identityHashCode(entity));
   }
 
   private PaymentSessionResponse mapPaymentSession(BookingEntity booking, PaymentTransactionEntity transaction) {

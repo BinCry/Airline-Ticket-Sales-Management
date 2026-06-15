@@ -138,7 +138,9 @@ public class BackofficeRevenueService {
     }
 
     bucket.refundedAmount += refundRequest.getRefundAmount();
-    bucket.refundedTicketCount += refundRequest.getBooking().getTickets().size();
+    bucket.refundedTicketCount += refundRequest.getRequestedTickets().isEmpty()
+        ? refundRequest.getBooking().getTickets().size()
+        : refundRequest.getRequestedTickets().size();
   }
 
   private String resolveBucketKey(RevenueGranularity granularity, OffsetDateTime value) {

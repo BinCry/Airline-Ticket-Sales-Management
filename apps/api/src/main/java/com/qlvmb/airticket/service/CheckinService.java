@@ -5,9 +5,9 @@ import com.qlvmb.airticket.domain.dto.CheckinCompleteResponse;
 import com.qlvmb.airticket.domain.entity.BoardingPassEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
+import com.qlvmb.airticket.domain.entity.BookingSeatSelectionEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
-import com.qlvmb.airticket.domain.entity.BookingSeatSelectionEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.BoardingPassRepository;
@@ -25,26 +25,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CheckinService {
 
-  private static final String CHECKIN_NOT_SUPPORTED_MESSAGE =
-      "L\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn cho h\u00e0nh tr\u00ecnh kh\u1ee9 h\u1ed3i ch\u01b0a \u0111\u01b0\u1ee3c h\u1ed7 tr\u1ee3 \u1edf giai \u0111o\u1ea1n n\u00e0y.";
   private static final String CHECKIN_STATUS_MESSAGE =
-      "M\u00e3 \u0111\u1eb7t ch\u1ed7 ch\u01b0a \u1edf tr\u1ea1ng th\u00e1i c\u00f3 th\u1ec3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn.";
+      "Mã đặt chỗ chưa ở trạng thái có thể làm thủ tục trực tuyến.";
   private static final String CHECKIN_TICKET_LIST_MESSAGE =
-      "Danh s\u00e1ch v\u00e9 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn kh\u00f4ng h\u1ee3p l\u1ec7.";
+      "Danh sách vé làm thủ tục trực tuyến không hợp lệ.";
   private static final String CHECKIN_TICKET_NOT_FOUND_MESSAGE =
-      "Kh\u00f4ng t\u00ecm th\u1ea5y v\u00e9 ph\u00f9 h\u1ee3p v\u1edbi m\u00e3 \u0111\u1eb7t ch\u1ed7 \u0111\u00e3 nh\u1eadp.";
+      "Không tìm thấy vé phù hợp với mã đặt chỗ đã nhập.";
   private static final String CHECKIN_TICKET_USED_MESSAGE =
-      "V\u00e9 \u0111\u00e3 \u0111\u01b0\u1ee3c l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn tr\u01b0\u1edbc \u0111\u00f3 ho\u1eb7c kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7.";
+      "Vé đã được làm thủ tục trực tuyến trước đó hoặc không còn hợp lệ.";
+  private static final String CHECKIN_MULTI_FLIGHT_MESSAGE =
+      "Mỗi lần làm thủ tục chỉ áp dụng cho một chiều bay.";
   private static final String CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE =
-      "Kh\u00f4ng th\u1ec3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn khi chuy\u1ebfn bay \u0111\u00e3 b\u1eaft \u0111\u1ea7u ho\u1eb7c kh\u00f4ng c\u00f2n h\u1ee3p l\u1ec7.";
+      "Không thể làm thủ tục trực tuyến khi chuyến bay đã bắt đầu hoặc không còn hợp lệ.";
   private static final String CHECKIN_CANCELLED_MESSAGE =
-      "Kh\u00f4ng th\u1ec3 l\u00e0m th\u1ee7 t\u1ee5c tr\u1ef1c tuy\u1ebfn cho chuy\u1ebfn bay \u0111\u00e3 h\u1ee7y.";
+      "Không thể làm thủ tục trực tuyến cho chuyến bay đã hủy.";
   private static final String CHECKIN_SEAT_INVALID_MESSAGE =
-      "Gh\u1ebf \u0111\u01b0\u1ee3c ch\u1ecdn khi l\u00e0m th\u1ee7 t\u1ee5c kh\u00f4ng h\u1ee3p l\u1ec7.";
+      "Ghế được chọn khi làm thủ tục không hợp lệ.";
   private static final String CHECKIN_SEAT_UNAVAILABLE_MESSAGE =
-      "Gh\u1ebf \u0111\u01b0\u1ee3c ch\u1ecdn kh\u00f4ng c\u00f2n tr\u1ed1ng cho thao t\u00e1c n\u00e0y.";
+      "Ghế được chọn không còn trống cho thao tác này.";
   private static final String SEAT_ASSIGNMENT_FAILED_MESSAGE =
-      "Kh\u00f4ng th\u1ec3 ph\u00e2n b\u1ed5 gh\u1ebf l\u00ean t\u00e0u bay v\u00e0o l\u00fac n\u00e0y.";
+      "Không thể phân bổ ghế lên tàu bay vào lúc này.";
   private static final char[] SEAT_COLUMNS = {'A', 'B', 'C', 'D', 'E', 'F'};
   private static final char[] GATE_ZONES = {'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -67,24 +67,8 @@ public class CheckinService {
         bookingService.getBookingNotFoundMessage()
     );
 
-    if (!booking.isTicketed()) {
+    if (!booking.isTicketed() || booking.getSegments().isEmpty()) {
       throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
-    }
-
-    if (!"one_way".equals(booking.getTripType())) {
-      throw new BadRequestException(CHECKIN_NOT_SUPPORTED_MESSAGE);
-    }
-
-    if (booking.getSegments().isEmpty()) {
-      throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
-    }
-
-    OffsetDateTime currentTime = OffsetDateTime.now();
-    if (!BookingBusinessPolicy.coTheTuPhucVuLamThuTuc(booking.getSegments(), currentTime)) {
-      if (BookingBusinessPolicy.coPhanDoanBiHuy(booking.getSegments())) {
-        throw new BadRequestException(CHECKIN_CANCELLED_MESSAGE);
-      }
-      throw new BadRequestException(CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE);
     }
 
     LinkedHashSet<String> normalizedTicketNumbers = new LinkedHashSet<>();
@@ -93,6 +77,9 @@ public class CheckinService {
       if (normalizedTicketNumber.isBlank() || !normalizedTicketNumbers.add(normalizedTicketNumber)) {
         throw new BadRequestException(CHECKIN_TICKET_LIST_MESSAGE);
       }
+    }
+    if (normalizedTicketNumbers.isEmpty()) {
+      throw new BadRequestException(CHECKIN_TICKET_LIST_MESSAGE);
     }
 
     Map<String, TicketEntity> ticketByNumber = new LinkedHashMap<>();
@@ -110,20 +97,36 @@ public class CheckinService {
       selectedTickets.add(ticket);
     }
 
+    if (selectedTickets.stream().map(this::resolveFlightScopeKey).distinct().count() > 1) {
+      throw new BadRequestException(CHECKIN_MULTI_FLIGHT_MESSAGE);
+    }
+
+    OffsetDateTime currentTime = OffsetDateTime.now();
+    TicketEntity representativeTicket = selectedTickets.getFirst();
+    BookingSegmentEntity representativeSegment = representativeTicket.getSegment();
+    if (representativeSegment == null) {
+      throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
+    }
+
+    if (!BookingBusinessPolicy.coTheTuPhucVuLamThuTuc(representativeSegment, currentTime)) {
+      if ("cancelled".equals(resolveFlightStatus(representativeSegment))) {
+        throw new BadRequestException(CHECKIN_CANCELLED_MESSAGE);
+      }
+      throw new BadRequestException(CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE);
+    }
+
+    String selectedFlightScopeKey = resolveFlightScopeKey(representativeTicket);
     Set<String> usedSeats = new LinkedHashSet<>();
     booking.getTickets().stream()
+        .filter(ticket -> selectedFlightScopeKey.equals(resolveFlightScopeKey(ticket)))
         .map(TicketEntity::getBoardingPass)
         .filter(boardingPass -> boardingPass != null)
         .map(BoardingPassEntity::getSeatNumber)
         .forEach(usedSeats::add);
 
-    BookingSegmentEntity representativeSegment = booking.getSegments().iterator().next();
     FlightEntity flight = representativeSegment.getInventory() == null
         ? null
         : representativeSegment.getInventory().getFlight();
-    if (flight != null && "cancelled".equals(flight.getStatus())) {
-      throw new BadRequestException("Không thể làm thủ tục trực tuyến cho chuyến bay đã hủy.");
-    }
     OffsetDateTime boardingTime = representativeSegment.getDepartureAt().minusMinutes(45);
     String gate = resolveGate(flight);
     List<CheckinCompleteResponse.BoardingPassItem> boardingPasses = new ArrayList<>();
@@ -132,7 +135,6 @@ public class CheckinService {
     for (TicketEntity ticket : selectedTickets) {
       String seatNumber = resolveSeatNumber(
           booking,
-          representativeSegment,
           ticket,
           requestedSeatByTicketNumber,
           usedSeats
@@ -154,6 +156,7 @@ public class CheckinService {
       usedSeats.add(seatNumber);
 
       boardingPasses.add(new CheckinCompleteResponse.BoardingPassItem(
+          ticket.getSegment().getInventory().getId(),
           ticket.getTicketNumber(),
           ticket.getPassenger().getFullName(),
           seatNumber,
@@ -178,7 +181,9 @@ public class CheckinService {
     Set<String> normalizedSeatNumbers = new LinkedHashSet<>();
 
     for (CheckinCompleteRequest.SeatSelectionRequest seatSelectionRequest : request.seatSelections()) {
-      String normalizedTicketNumber = seatSelectionRequest.ticketNumber().trim().toUpperCase();
+      String normalizedTicketNumber = seatSelectionRequest.ticketNumber() == null
+          ? ""
+          : seatSelectionRequest.ticketNumber().trim().toUpperCase();
       if (!normalizedTicketNumbers.contains(normalizedTicketNumber)) {
         throw new BadRequestException(CHECKIN_SEAT_INVALID_MESSAGE);
       }
@@ -197,7 +202,6 @@ public class CheckinService {
 
   private String resolveSeatNumber(
       BookingEntity booking,
-      BookingSegmentEntity representativeSegment,
       TicketEntity ticket,
       Map<String, String> requestedSeatByTicketNumber,
       Set<String> usedSeats
@@ -210,15 +214,10 @@ public class CheckinService {
       return requestedSeatNumber;
     }
 
-    Long flightId = representativeSegment.getInventory() == null
-        || representativeSegment.getInventory().getFlight() == null
-        ? null
-        : representativeSegment.getInventory().getFlight().getId();
-
     return booking.getSeatSelections().stream()
         .filter(seatSelection -> isSamePassenger(seatSelection, ticket))
-        .filter(seatSelection -> isSeatSelectionBelongToFlight(seatSelection, flightId))
-        .map(seatSelection -> seatSelection.getSeatNumber())
+        .filter(seatSelection -> isSeatSelectionBelongToSegment(seatSelection, ticket.getSegment()))
+        .map(BookingSeatSelectionEntity::getSeatNumber)
         .filter(seatNumber -> !usedSeats.contains(seatNumber))
         .findFirst()
         .orElseGet(() -> generateSeatNumber(usedSeats));
@@ -238,20 +237,45 @@ public class CheckinService {
     return seatPassenger == ticketPassenger;
   }
 
-  private boolean isSeatSelectionBelongToFlight(
+  private boolean isSeatSelectionBelongToSegment(
       BookingSeatSelectionEntity seatSelection,
-      Long flightId
+      BookingSegmentEntity ticketSegment
   ) {
-    if (flightId == null) {
+    if (ticketSegment == null) {
       return false;
     }
 
     BookingSegmentEntity segment = seatSelection.getSegment();
-    if (segment == null || segment.getInventory() == null || segment.getInventory().getFlight() == null) {
+    if (segment == null) {
       return false;
     }
 
-    return flightId.equals(segment.getInventory().getFlight().getId());
+    if (segment.getId() != null && ticketSegment.getId() != null) {
+      return segment.getId().equals(ticketSegment.getId());
+    }
+
+    return segment == ticketSegment;
+  }
+
+  private String resolveFlightScopeKey(TicketEntity ticket) {
+    BookingSegmentEntity segment = ticket.getSegment();
+    return segment.getFlightCode()
+        + "|" + segment.getOriginCode()
+        + "|" + segment.getDestinationCode()
+        + "|" + segment.getDepartureAt();
+  }
+
+  private String resolveFlightStatus(BookingSegmentEntity segment) {
+    if (segment == null || segment.getInventory() == null || segment.getInventory().getFlight() == null) {
+      return null;
+    }
+
+    FlightEntity flight = segment.getInventory().getFlight();
+    if (flight.getStatus() == null || flight.getStatus().isBlank()) {
+      return null;
+    }
+
+    return flight.getStatus().trim().toLowerCase();
   }
 
   private String generateSeatNumber(Set<String> usedSeats) {

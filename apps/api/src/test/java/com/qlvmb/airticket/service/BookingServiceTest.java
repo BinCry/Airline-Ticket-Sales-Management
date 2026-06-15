@@ -446,6 +446,28 @@ class BookingServiceTest {
     assertThat(response.refundRequest().status()).isEqualTo("pending");
   }
 
+  @Test
+  void requestRefund_shouldAllowRefundReturnLegAfterOutboundCheckedIn() {
+    BookingEntity booking = roundTripBookingWithCheckedInOutbound("A6C2P9");
+    when(bookingRepository.lockDetailedByBookingCode("A6C2P9")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2P9",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest(
+            "Khong bay chang ve",
+            List.of("7380000000002")
+        )
+    );
+
+    assertThat(response.status()).isEqualTo("refund_pending");
+    assertThat(response.refundRequest()).isNotNull();
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1490000L);
+    assertThat(booking.getRefundRequests()).hasSize(1);
+    assertThat(booking.getRefundRequests().iterator().next().getRequestedTickets())
+        .extracting(TicketEntity::getTicketNumber)
+        .containsExactly("7380000000002");
+  }
+
   private BookingHoldRequest oneWayHoldRequest(
       List<BookingHoldRequest.AncillaryRequest> ancillaries,
       List<Long> inventoryIds
@@ -719,6 +741,124 @@ class BookingServiceTest {
     if (cancelledByOperations) {
       booking.markCancelled(createdAt.plusMinutes(6));
     }
+
+    return booking;
+  }
+
+  private BookingEntity roundTripBookingWithCheckedInOutbound(String bookingCode) {
+    OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
+    OffsetDateTime outboundDepartureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime returnDepartureAt = OffsetDateTime.now().plusDays(7);
+
+    FlightFareInventoryEntity outboundInventory = mockInventoryOnFlight(
+        20101L,
+        20101L,
+        "AU201",
+        5,
+        1490000L,
+        "pho_thong_tiet_kiem",
+        outboundDepartureAt,
+        outboundDepartureAt.plusHours(2),
+        "scheduled"
+    );
+    FlightFareInventoryEntity returnInventory = mockInventoryOnFlight(
+        20102L,
+        20102L,
+        "AU202",
+        5,
+        1490000L,
+        "pho_thong_tiet_kiem",
+        returnDepartureAt,
+        returnDepartureAt.plusHours(2),
+        "scheduled"
+    );
+
+    BookingEntity booking = BookingEntity.createHold(
+        bookingCode,
+        "round_trip",
+        2980000L,
+        0L,
+        2980000L,
+        "VND",
+        createdAt,
+        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
+    );
+
+    booking.assignContact(BookingContactEntity.create(
+        booking,
+        "Nguyen Van A",
+        "a@example.com",
+        "0912345678"
+    ));
+
+    BookingPassengerEntity passenger = BookingPassengerEntity.create(
+        booking,
+        "Nguyen Van A",
+        "adult",
+        LocalDate.of(1995, 5, 12),
+        "CCCD",
+        "079123456789",
+        createdAt
+    );
+    booking.addPassenger(passenger);
+
+    BookingSegmentEntity outboundSegment = BookingSegmentEntity.create(
+        booking,
+        outboundInventory,
+        "AU201",
+        "Thanh pho Ho Chi Minh",
+        "Ha Noi",
+        "SGN",
+        "HAN",
+        outboundDepartureAt,
+        outboundDepartureAt.plusHours(2),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(outboundSegment);
+
+    BookingSegmentEntity returnSegment = BookingSegmentEntity.create(
+        booking,
+        returnInventory,
+        "AU202",
+        "Ha Noi",
+        "Thanh pho Ho Chi Minh",
+        "HAN",
+        "SGN",
+        returnDepartureAt,
+        returnDepartureAt.plusHours(2),
+        "pho_thong_tiet_kiem",
+        "Pho thong tiet kiem",
+        1490000L,
+        1,
+        1490000L,
+        createdAt
+    );
+    booking.addSegment(returnSegment);
+
+    booking.markTicketed("SANDBOX-000000000001", createdAt.plusMinutes(5));
+
+    TicketEntity outboundTicket = TicketEntity.issue(
+        booking,
+        passenger,
+        outboundSegment,
+        "7380000000001",
+        createdAt.plusMinutes(5)
+    );
+    outboundTicket.markCheckedIn(createdAt.plusMinutes(6));
+    booking.addTicket(outboundTicket);
+
+    booking.addTicket(TicketEntity.issue(
+        booking,
+        passenger,
+        returnSegment,
+        "7380000000002",
+        createdAt.plusMinutes(5)
+    ));
 
     return booking;
   }

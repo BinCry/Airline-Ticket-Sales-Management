@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
@@ -28,9 +29,13 @@ public class TicketEntity {
   @JoinColumn(name = "booking_id", nullable = false)
   private BookingEntity booking;
 
-  @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "booking_passenger_id", nullable = false, unique = true)
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "booking_passenger_id", nullable = false)
   private BookingPassengerEntity passenger;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "booking_segment_id", nullable = false)
+  private BookingSegmentEntity segment;
 
   @OneToOne(mappedBy = "ticket", fetch = FetchType.LAZY, orphanRemoval = true)
   private BoardingPassEntity boardingPass;
@@ -56,18 +61,32 @@ public class TicketEntity {
   public static TicketEntity issue(
       BookingEntity booking,
       BookingPassengerEntity passenger,
+      BookingSegmentEntity segment,
       String ticketNumber,
       OffsetDateTime issuedAt
   ) {
     TicketEntity ticket = new TicketEntity();
     ticket.booking = booking;
     ticket.passenger = passenger;
+    ticket.segment = segment;
     ticket.ticketNumber = ticketNumber;
     ticket.status = STATUS_ISSUED;
     ticket.issuedAt = issuedAt;
     ticket.createdAt = issuedAt;
     ticket.updatedAt = issuedAt;
     return ticket;
+  }
+
+  public static TicketEntity issue(
+      BookingEntity booking,
+      BookingPassengerEntity passenger,
+      String ticketNumber,
+      OffsetDateTime issuedAt
+  ) {
+    BookingSegmentEntity segment = booking.getSegments().stream()
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("Không thể phát hành vé khi booking chưa có chặng bay."));
+    return issue(booking, passenger, segment, ticketNumber, issuedAt);
   }
 
   public Long getId() {
@@ -80,6 +99,10 @@ public class TicketEntity {
 
   public BookingPassengerEntity getPassenger() {
     return passenger;
+  }
+
+  public BookingSegmentEntity getSegment() {
+    return segment;
   }
 
   public BoardingPassEntity getBoardingPass() {

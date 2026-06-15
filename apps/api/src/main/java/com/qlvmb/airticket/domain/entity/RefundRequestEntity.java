@@ -7,9 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "refund_request")
@@ -45,6 +50,14 @@ public class RefundRequestEntity {
   @Column(name = "hidden_at")
   private OffsetDateTime hiddenAt;
 
+  @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(
+      name = "refund_request_ticket",
+      joinColumns = @JoinColumn(name = "refund_request_id"),
+      inverseJoinColumns = @JoinColumn(name = "ticket_id")
+  )
+  private Set<TicketEntity> requestedTickets = new LinkedHashSet<>();
+
   protected RefundRequestEntity() {
   }
 
@@ -54,6 +67,16 @@ public class RefundRequestEntity {
       long refundAmount,
       OffsetDateTime createdAt
   ) {
+    return createPending(booking, reason, refundAmount, createdAt, booking.getTickets());
+  }
+
+  public static RefundRequestEntity createPending(
+      BookingEntity booking,
+      String reason,
+      long refundAmount,
+      OffsetDateTime createdAt,
+      Collection<TicketEntity> requestedTickets
+  ) {
     RefundRequestEntity refundRequest = new RefundRequestEntity();
     refundRequest.booking = booking;
     refundRequest.reason = reason;
@@ -61,6 +84,7 @@ public class RefundRequestEntity {
     refundRequest.status = STATUS_PENDING;
     refundRequest.createdAt = createdAt;
     refundRequest.updatedAt = createdAt;
+    refundRequest.requestedTickets.addAll(requestedTickets);
     return refundRequest;
   }
 
@@ -94,6 +118,10 @@ public class RefundRequestEntity {
 
   public OffsetDateTime getHiddenAt() {
     return hiddenAt;
+  }
+
+  public Set<TicketEntity> getRequestedTickets() {
+    return requestedTickets;
   }
 
   public boolean isPending() {

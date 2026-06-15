@@ -3,11 +3,13 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import type { ApiBoardingPass, ApiManageBookingSegment, ApiManageBookingTicket } from "@qlvmb/shared-types";
+
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import { completeCheckin } from "@/lib/booking-api";
-import { layVeCoTheCheckin } from "@/lib/booking-self-service";
+import { layVeCoTheCheckin, timPhanDoanChoVe } from "@/lib/booking-self-service";
 import {
   fetchManageBooking,
   requestBookingLookupOtp,
@@ -17,6 +19,12 @@ import {
 import { pushToast } from "@/lib/toast";
 
 type LookupState = "idle" | "loading" | "error" | "success";
+
+interface NhomCheckin {
+  key: string;
+  segment: ApiManageBookingSegment | null;
+  tickets: ApiManageBookingTicket[];
+}
 
 function formatDateTime(value: string) {
   const parsedDate = new Date(value);
@@ -34,6 +42,66 @@ function taoMaVachGia(count: number) {
   return Array.from({ length: count }, (_, index) => index);
 }
 
+function taoKhoaNhomBay(segment: ApiManageBookingSegment | null, ticketNumber: string) {
+  if (!segment) {
+    return `ticket-${ticketNumber}`;
+  }
+
+  return [
+    segment.code,
+    segment.originCode,
+    segment.destinationCode,
+    segment.departureAt
+  ].join("|");
+}
+
+function taoNhanNhomBay(segment: ApiManageBookingSegment | null) {
+  if (!segment) {
+    return "Chặng chưa xác định";
+  }
+
+  return `${segment.code} • ${segment.from} - ${segment.to} • ${formatDateTime(segment.departureAt)}`;
+}
+
+function taoDanhSachNhomCheckin(
+  bookingOverview: ManageBookingOverview | null,
+  tickets: ApiManageBookingTicket[]
+): NhomCheckin[] {
+  if (!bookingOverview) {
+    return [];
+  }
+
+  const groupMap = new Map<string, NhomCheckin>();
+  tickets.forEach((ticket) => {
+    const segment = timPhanDoanChoVe(bookingOverview, ticket);
+    const key = taoKhoaNhomBay(segment, ticket.ticketNumber);
+    const existingGroup = groupMap.get(key);
+    if (existingGroup) {
+      existingGroup.tickets.push(ticket);
+      return;
+    }
+
+    groupMap.set(key, {
+      key,
+      segment,
+      tickets: [ticket]
+    });
+  });
+
+  return Array.from(groupMap.values());
+}
+
+function timPhanDoanChoBoardingPass(
+  bookingOverview: ManageBookingOverview | null,
+  boardingPass: ApiBoardingPass
+) {
+  if (!bookingOverview || typeof boardingPass.inventoryId !== "number") {
+    return null;
+  }
+
+  return bookingOverview.segments.find((segment) => segment.inventoryId === boardingPass.inventoryId) ?? null;
+}
+
 export function CheckInPageClient() {
   const searchParams = useSearchParams();
   const [bookingCode, setBookingCode] = useState("");
@@ -46,6 +114,7 @@ export function CheckInPageClient() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [bookingOverview, setBookingOverview] = useState<ManageBookingOverview | null>(null);
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+  const [selectedFlightGroupKey, setSelectedFlightGroupKey] = useState<string | null>(null);
   const [selectedTicketNumbers, setSelectedTicketNumbers] = useState<string[]>([]);
   const [boardingPasses, setBoardingPasses] = useState<ManageBookingOverview["boardingPasses"]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,6 +149,16 @@ export function CheckInPageClient() {
     [bookingOverview]
   );
 
+  const danhSachNhomCheckin = useMemo(
+    () => taoDanhSachNhomCheckin(bookingOverview, danhSachVeCoTheCheckin),
+    [bookingOverview, danhSachVeCoTheCheckin]
+  );
+
+  const nhomCheckinDangChon = useMemo(
+    () => danhSachNhomCheckin.find((group) => group.key === selectedFlightGroupKey) ?? null,
+    [danhSachNhomCheckin, selectedFlightGroupKey]
+  );
+
   async function traCuuBooking(nextBookingCode: string, nextLookupToken?: string | null) {
     setLookupState("loading");
     setLookupError(null);
@@ -91,12 +170,18 @@ export function CheckInPageClient() {
         accessToken,
         accessToken ? undefined : nextLookupToken ?? lookupToken ?? undefined
       );
+      const nextTickets = layVeCoTheCheckin(nextBookingOverview);
+      const nextGroups = taoDanhSachNhomCheckin(nextBookingOverview, nextTickets);
+      const firstGroup = nextGroups[0] ?? null;
+
       setBookingOverview(nextBookingOverview);
-      setSelectedTicketNumbers(layVeCoTheCheckin(nextBookingOverview).map((ticket) => ticket.ticketNumber));
+      setSelectedFlightGroupKey(firstGroup?.key ?? null);
+      setSelectedTicketNumbers(firstGroup ? firstGroup.tickets.map((ticket) => ticket.ticketNumber) : []);
       setLookupState("success");
       return true;
     } catch (error) {
       setBookingOverview(null);
+      setSelectedFlightGroupKey(null);
       setSelectedTicketNumbers([]);
       if (!accessToken && error instanceof ApiClientError && error.status === 401) {
         setLookupToken(null);
@@ -189,6 +274,12 @@ export function CheckInPageClient() {
     await traCuuBooking(normalizedBookingCode);
   }
 
+  function handleSelectFlightGroup(groupKey: string) {
+    const selectedGroup = danhSachNhomCheckin.find((group) => group.key === groupKey);
+    setSelectedFlightGroupKey(groupKey);
+    setSelectedTicketNumbers(selectedGroup ? selectedGroup.tickets.map((ticket) => ticket.ticketNumber) : []);
+  }
+
   function toggleTicket(ticketNumber: string) {
     setSelectedTicketNumbers((currentTickets) =>
       currentTickets.includes(ticketNumber)
@@ -220,9 +311,14 @@ export function CheckInPageClient() {
         accessToken,
         accessToken ? undefined : lookupToken ?? undefined
       );
+      const nextTickets = layVeCoTheCheckin(latestBookingOverview);
+      const nextGroups = taoDanhSachNhomCheckin(latestBookingOverview, nextTickets);
+      const firstGroup = nextGroups[0] ?? null;
+
       setBookingOverview(latestBookingOverview);
       setBoardingPasses(response.boardingPasses);
-      setSelectedTicketNumbers([]);
+      setSelectedFlightGroupKey(firstGroup?.key ?? null);
+      setSelectedTicketNumbers(firstGroup ? firstGroup.tickets.map((ticket) => ticket.ticketNumber) : []);
       pushToast({
         message: "Làm thủ tục trực tuyến thành công.",
         title: "Đã tạo thẻ lên máy bay",
@@ -245,15 +341,19 @@ export function CheckInPageClient() {
         <div className="page-hero-card">
           <div>
             <span className="section-eyebrow">Làm thủ tục trực tuyến</span>
-            <h1 className="page-title">Tra cứu PNR, chọn hành khách và nhận thẻ lên máy bay.</h1>
+            <h1 className="page-title">Tra cứu PNR, chọn chặng bay và nhận thẻ lên máy bay.</h1>
             <p className="page-hero-copy">
-              Kiểm tra vé đủ điều kiện, hoàn tất làm thủ tục và xem vị trí ghế trên sơ đồ khoang bay.
+              Kiểm tra vé đủ điều kiện, làm thủ tục theo từng chiều bay và xem vị trí ghế ngay sau khi hoàn tất.
             </p>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Self-service</span>
             <h3>{bookingOverview?.bookingCode ?? "Chưa có PNR"}</h3>
-            <p>{bookingOverview ? "Đã sẵn sàng làm thủ tục cho booking này." : "Nhập mã đặt chỗ để bắt đầu làm thủ tục."}</p>
+            <p>
+              {bookingOverview
+                ? "Đã sẵn sàng làm thủ tục cho booking này."
+                : "Nhập mã đặt chỗ để bắt đầu làm thủ tục."}
+            </p>
           </div>
         </div>
 
@@ -300,8 +400,8 @@ export function CheckInPageClient() {
                   />
                   <small>
                     {lookupToken
-                      ? "Phi\u00ean OTP \u0111\u00e3 h\u1ee3p l\u1ec7. B\u1ea1n c\u00f3 th\u1ec3 tra c\u1ee9u tr\u1ef1c ti\u1ebfp."
-                      : "Nh\u1ea5n tra c\u1ee9u \u0111\u1ec3 nh\u1eadn OTP, sau \u0111\u00f3 x\u00e1c minh tr\u01b0\u1edbc khi xem th\u00f4ng tin."}
+                      ? "Phiên OTP đã hợp lệ. Bạn có thể tra cứu trực tiếp."
+                      : "Nhấn tra cứu để nhận OTP, sau đó xác minh trước khi xem thông tin."}
                   </small>
                 </label>
               </>
@@ -324,7 +424,7 @@ export function CheckInPageClient() {
                     : lookupState === "loading"
                       ? "Đang tải thông tin đặt chỗ."
                       : lookupState === "success"
-                        ? "Đã sẵn sàng để chọn hành khách."
+                        ? "Đã sẵn sàng để chọn chặng và hành khách."
                         : lookupError}
                 </p>
               </div>
@@ -357,26 +457,45 @@ export function CheckInPageClient() {
                 <SectionHeading
                   eyebrow="Danh sách hành khách"
                   title="Chọn vé cần làm thủ tục"
-                  description="Check-in pha này chỉ hỗ trợ booking một chiều có ticket đang ở trạng thái đã xuất vé."
+                  description="Mỗi lần check-in chỉ xử lý một chiều bay. Bạn có thể đổi sang chặng khác và tiếp tục làm thủ tục ở thời điểm phù hợp."
                 />
 
-                {bookingOverview.tripType !== "one_way" ? (
-                  <p>Làm thủ tục trực tuyến cho hành trình khứ hồi chưa được hỗ trợ ở giai đoạn này.</p>
-                ) : danhSachVeCoTheCheckin.length > 0 ? (
+                {danhSachNhomCheckin.length > 0 ? (
                   <div className="stack-list">
-                    {danhSachVeCoTheCheckin.map((ticket) => (
-                      <label key={ticket.ticketNumber} className="booking-ticket-option">
-                        <input
-                          type="checkbox"
-                          checked={selectedTicketNumbers.includes(ticket.ticketNumber)}
-                          onChange={() => toggleTicket(ticket.ticketNumber)}
-                        />
-                        <div>
-                          <strong>{ticket.passengerName}</strong>
-                          <p>{ticket.ticketNumber}</p>
-                        </div>
-                      </label>
-                    ))}
+                    {danhSachNhomCheckin.length > 1 ? (
+                      <div className="stack-list">
+                        {danhSachNhomCheckin.map((group) => (
+                          <label key={group.key} className="booking-ticket-option">
+                            <input
+                              type="radio"
+                              name="checkin-flight-group"
+                              checked={selectedFlightGroupKey === group.key}
+                              onChange={() => handleSelectFlightGroup(group.key)}
+                            />
+                            <div>
+                              <strong>{taoNhanNhomBay(group.segment)}</strong>
+                              <p>{group.tickets.length} vé có thể làm thủ tục ở chặng này.</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="stack-list">
+                      {(nhomCheckinDangChon?.tickets ?? []).map((ticket) => (
+                        <label key={ticket.ticketNumber} className="booking-ticket-option">
+                          <input
+                            type="checkbox"
+                            checked={selectedTicketNumbers.includes(ticket.ticketNumber)}
+                            onChange={() => toggleTicket(ticket.ticketNumber)}
+                          />
+                          <div>
+                            <strong>{ticket.passengerName}</strong>
+                            <p>{ticket.ticketNumber}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <p>Không tìm thấy vé đủ điều kiện làm thủ tục.</p>
@@ -384,8 +503,12 @@ export function CheckInPageClient() {
 
                 <div className="booking-submit-row">
                   <div>
-                    <span className="section-eyebrow">Số vé đã chọn</span>
-                    <strong className="booking-total-amount">{selectedTicketNumbers.length}</strong>
+                    <span className="section-eyebrow">
+                      {nhomCheckinDangChon ? "Chặng đang chọn" : "Số vé đã chọn"}
+                    </span>
+                    <strong className="booking-total-amount">
+                      {nhomCheckinDangChon ? taoNhanNhomBay(nhomCheckinDangChon.segment) : selectedTicketNumbers.length}
+                    </strong>
                   </div>
                   <button
                     type="button"
@@ -404,44 +527,48 @@ export function CheckInPageClient() {
                 <SectionHeading
                   eyebrow="Boarding pass"
                   title="Thẻ lên máy bay"
-                  description="Sau khi làm thủ tục thành công, thẻ lên máy bay sẽ hiển thị ngay tại đây."
+                  description="Sau khi làm thủ tục thành công, thẻ lên máy bay của đúng chặng đã chọn sẽ hiển thị ngay tại đây."
                 />
                 <div className="stack-list">
                   {hienThiBoardingPasses.length > 0 ? (
-                    hienThiBoardingPasses.map((boardingPass) => (
-                      <article key={boardingPass.ticketNumber} className="boarding-pass-card">
-                        <div className="boarding-pass-head">
-                          <div>
-                            <span className="section-eyebrow">Boarding pass</span>
-                            <h3>{boardingPass.passengerName}</h3>
-                            <p>{bookingOverview.bookingCode} • {boardingPass.ticketNumber}</p>
+                    hienThiBoardingPasses.map((boardingPass) => {
+                      const segment = timPhanDoanChoBoardingPass(bookingOverview, boardingPass);
+                      return (
+                        <article key={boardingPass.ticketNumber} className="boarding-pass-card">
+                          <div className="boarding-pass-head">
+                            <div>
+                              <span className="section-eyebrow">Boarding pass</span>
+                              <h3>{boardingPass.passengerName}</h3>
+                              <p>{bookingOverview.bookingCode} • {boardingPass.ticketNumber}</p>
+                              {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
+                            </div>
+                            <span className="pill">Ghế {boardingPass.seatNumber}</span>
                           </div>
-                          <span className="pill">Ghế {boardingPass.seatNumber}</span>
-                        </div>
-                        <div className="result-grid result-grid-rich">
-                          <div>
-                            <span>Cửa ra tàu</span>
-                            <strong>{boardingPass.gate}</strong>
+                          <div className="result-grid result-grid-rich">
+                            <div>
+                              <span>Cửa ra tàu</span>
+                              <strong>{boardingPass.gate}</strong>
+                            </div>
+                            <div>
+                              <span>Giờ boarding</span>
+                              <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
+                            </div>
+                            <div>
+                              <span>Mã barcode</span>
+                              <strong>{boardingPass.barcode}</strong>
+                            </div>
                           </div>
-                          <div>
-                            <span>Giờ boarding</span>
-                            <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
+                          <div className="barcode-strip" aria-hidden="true">
+                            {taoMaVachGia(28).map((barIndex) => (
+                              <span
+                                key={`${boardingPass.ticketNumber}-${barIndex}`}
+                                className={barIndex % 3 === 0 ? "barcode-bar barcode-bar-thick" : "barcode-bar"}
+                              />
+                            ))}
                           </div>
-                          <div>
-                            <span>Mã barcode</span>
-                            <strong>{boardingPass.barcode}</strong>
-                          </div>
-                        </div>
-                        <div className="barcode-strip" aria-hidden="true">
-                          {taoMaVachGia(28).map((barIndex) => (
-                            <span
-                              key={`${boardingPass.ticketNumber}-${barIndex}`}
-                              className={barIndex % 3 === 0 ? "barcode-bar barcode-bar-thick" : "barcode-bar"}
-                            />
-                          ))}
-                        </div>
-                      </article>
-                    ))
+                        </article>
+                      );
+                    })
                   ) : (
                     <article className="surface-card">
                       <p>Chưa có thẻ lên máy bay được tạo.</p>
