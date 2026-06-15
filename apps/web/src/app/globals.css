@@ -5820,17 +5820,39 @@ th {
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   padding: 20px;
   background: rgba(12, 34, 61, 0.42);
   backdrop-filter: blur(10px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .booking-modal-card {
   width: min(560px, 100%);
   display: grid;
   gap: 18px;
+  max-height: calc(100dvh - 40px);
+  margin: auto 0;
+  overflow-y: auto;
+}
+
+.booking-modal-head {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+
+.booking-modal-head > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.booking-modal-head h3 {
+  margin: 0;
 }
 
 .booking-modal-actions {
@@ -6580,6 +6602,20 @@ th {
   .booking-seat-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .booking-modal-backdrop {
+    align-items: flex-end;
+    padding: 12px;
+  }
+
+  .booking-modal-card {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+  }
+
+  .booking-modal-head {
+    gap: 12px;
   }
 
   .seat-map-airframe {
