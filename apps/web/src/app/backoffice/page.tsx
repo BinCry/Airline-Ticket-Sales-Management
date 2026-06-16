@@ -15,6 +15,8 @@ import {
 } from "@/lib/access-control";
 import { backofficeModules } from "@/lib/backoffice-content";
 
+const hiddenModuleKeys = new Set<BackofficeModuleKey>(["cms"]);
+
 const releaseNotes = [
   "Mỗi phân hệ chỉ mở khi phiên đăng nhập có đúng quyền tương ứng.",
   "Mọi thao tác nội bộ đều được kiểm tra quyền trước khi xử lý.",
@@ -45,7 +47,9 @@ export default function BackofficePage() {
       return [];
     }
 
-    return backofficeModules.filter((module) => allowedModules.includes(module.key));
+    return backofficeModules.filter((module) => {
+      return allowedModules.includes(module.key) && !hiddenModuleKeys.has(module.key);
+    });
   }, [allowedModules]);
 
   return (
