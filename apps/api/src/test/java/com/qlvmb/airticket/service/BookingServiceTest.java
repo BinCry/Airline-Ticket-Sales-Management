@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -354,13 +355,15 @@ class BookingServiceTest {
     FlightFareInventoryEntity inventory = mockInventory(20101L, 1, 1490000L, "pho_thong_tiet_kiem");
     BookingEntity booking = expiredBooking("A6C2P1", inventory);
 
-    when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
+    when(bookingRepository.findDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
     when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
 
     BookingOverviewResponse response = bookingService.getBookingOverview("A6C2P1");
 
     assertThat(response.status()).isEqualTo("cancelled");
     assertThat(response.paymentStatus()).isEqualTo("expired");
+    verify(bookingRepository).findDetailedByBookingCode("A6C2P1");
+    verify(bookingRepository, never()).lockDetailedByBookingCode(any());
     verify(inventory).releaseSeats(1);
   }
 
