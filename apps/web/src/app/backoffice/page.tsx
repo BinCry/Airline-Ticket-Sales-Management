@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { BackofficeAccessChip } from "@/components/backoffice-access-chip";
 import { SectionHeading } from "@/components/section-heading";
 import {
   AUTH_SESSION_UPDATED_EVENT,
@@ -96,6 +97,7 @@ export default function BackofficePage() {
             {visibleModules.map((module) => (
               <Link key={module.key} href={module.href} prefetch={false} className="surface-card module-card">
                 <div className="module-card-head">
+                  <BackofficeAccessChip moduleKey={module.key as BackofficeModuleKey} />
                   <span className="pill">Phân khu nội bộ</span>
                   <strong>↗</strong>
                 </div>
