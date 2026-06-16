@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
@@ -276,6 +277,7 @@ class PaymentServiceTest {
     assertThat(response.status()).isEqualTo("ticketed");
     assertThat(response.paymentStatus()).isEqualTo("paid");
     assertThat(response.tickets()).hasSize(1);
+    verify(notificationOutboxService).createAndSendTicketEmail(booking);
   }
 
   @Test

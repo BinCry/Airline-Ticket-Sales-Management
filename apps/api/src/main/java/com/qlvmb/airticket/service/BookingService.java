@@ -259,7 +259,7 @@ public class BookingService {
 
   @Transactional
   public BookingOverviewResponse getBookingOverview(String bookingCode) {
-    BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
+    BookingEntity booking = findDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
     reconcileBookingExpiration(booking, OffsetDateTime.now());
     return mapOverviewResponse(booking);
   }
@@ -364,6 +364,12 @@ public class BookingService {
   public BookingEntity lockDetailedBooking(String bookingCode, String notFoundMessage) {
     String normalizedBookingCode = normalizeBookingCode(bookingCode, notFoundMessage);
     return bookingRepository.lockDetailedByBookingCode(normalizedBookingCode)
+        .orElseThrow(() -> new NotFoundException(notFoundMessage));
+  }
+
+  private BookingEntity findDetailedBooking(String bookingCode, String notFoundMessage) {
+    String normalizedBookingCode = normalizeBookingCode(bookingCode, notFoundMessage);
+    return bookingRepository.findDetailedByBookingCode(normalizedBookingCode)
         .orElseThrow(() -> new NotFoundException(notFoundMessage));
   }
 
