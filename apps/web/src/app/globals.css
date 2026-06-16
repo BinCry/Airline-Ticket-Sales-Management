@@ -161,6 +161,8 @@ img {
   font-weight: 700;
   letter-spacing: -0.03em;
   overflow-wrap: anywhere;
+  /* Giảm tình trạng tiêu đề dài bị rơi một chữ xuống dòng riêng. */
+  text-wrap: pretty;
 }
 
 .hero-copy h1 {
@@ -171,6 +173,7 @@ img {
   font-weight: 700;
   letter-spacing: -0.045em;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .page-title {
@@ -181,6 +184,7 @@ img {
   font-weight: 700;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .page-title {
