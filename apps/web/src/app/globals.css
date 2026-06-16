@@ -1571,10 +1571,14 @@ img {
 }
 
 .feature-card-rich p,
-.promo-card p,
-.module-card p {
+.promo-card p {
   margin: 0;
   max-width: 30ch;
+}
+
+.module-card p {
+  margin: 0;
+  max-width: none;
 }
 
 .feature-card span:last-child {
