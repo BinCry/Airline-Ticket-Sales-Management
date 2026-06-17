@@ -17,21 +17,9 @@ import {
   removeVoucherFromBooking
 } from "@/lib/booking-api";
 import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { fetchMyVouchers, type MyVoucher } from "@/lib/my-account-api";
 import { pushToast } from "@/lib/toast";
-
-function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
-}
 
 const HOLD_EXPIRED_NOTICE =
   "Thời gian giữ chỗ đã hết. Booking này không còn nhận thanh toán, vui lòng tra cứu lại đặt chỗ hoặc chọn chuyến bay mới.";
@@ -323,6 +311,7 @@ export default function BookingCheckoutPage() {
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
   const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
   const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
+  const hasAppliedVoucher = Boolean(session?.appliedVoucherCode || (session?.discountAmount ?? 0) > 0);
 
   async function handleLocalPaymentConfirmation() {
     if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local") {
@@ -388,11 +377,11 @@ export default function BookingCheckoutPage() {
       ]);
 
       setSession(nextSession);
+      setMemberVouchers(nextVouchers);
       if (isClosedPaymentStatus(nextSession.paymentStatus)) {
         setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
         return;
       }
-      setMemberVouchers(nextVouchers);
       setVoucherCode(nextSession.appliedVoucherCode ?? normalizedVoucherCode);
       setVoucherNotice(
         `Đã áp voucher ${nextSession.appliedVoucherCode ?? normalizedVoucherCode} cho booking này.`
@@ -695,6 +684,16 @@ export default function BookingCheckoutPage() {
                   >
                     {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
                   </button>
+                  {hasAppliedVoucher ? (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleRemoveVoucher()}
+                      disabled={isApplyingVoucher || isLoading || isPaymentClosed}
+                    >
+                      Bỏ voucher
+                    </button>
+                  ) : null}
                 </div>
                 {session?.appliedVoucherCode ? (
                   <div className="auth-action-row">

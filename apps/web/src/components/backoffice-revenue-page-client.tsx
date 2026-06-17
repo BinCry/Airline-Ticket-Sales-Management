@@ -11,7 +11,7 @@ import {
   type BackofficeRevenueDashboardQuery,
   type BackofficeRevenueGranularity
 } from "@/lib/backoffice-revenue-api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 
 type RevenueState = "idle" | "loading" | "success" | "error";
 
@@ -19,16 +19,8 @@ const LINE_CHART_WIDTH = 960;
 const LINE_CHART_HEIGHT = 320;
 const LINE_CHART_PADDING = 36;
 
-function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+function formatInputDate(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 
 function getCurrentYearValue() {
@@ -89,6 +81,7 @@ export function BackofficeRevenuePageClient() {
   const [appliedFromDate, setAppliedFromDate] = useState(getCurrentMonthStartValue);
   const [appliedToDate, setAppliedToDate] = useState(getCurrentMonthEndValue);
   const [selectedYear, setSelectedYear] = useState(getCurrentYearValue);
+  const [appliedDateRange, setAppliedDateRange] = useState(getCurrentDateRangeValues);
   const [appliedYear, setAppliedYear] = useState(getCurrentYearValue);
   const [reloadKey, setReloadKey] = useState(0);
   const [dashboard, setDashboard] = useState<BackofficeRevenueDashboard>(() =>
@@ -161,7 +154,7 @@ export function BackofficeRevenuePageClient() {
       setDashboard(nextDashboard);
       setState("success");
     } catch (error) {
-      setDashboard(createFallbackDashboard(nextGranularity));
+      setDashboard(createFallbackDashboard(options.granularity));
       setErrorMessage(
         resolveApiClientErrorMessage(error, "Không thể tải dashboard doanh thu lúc này.")
       );
@@ -303,7 +296,7 @@ export function BackofficeRevenuePageClient() {
             disabled={!accessToken || state === "loading"}
             onClick={applySelectedPeriod}
           >
-            {state === "loading" ? "Đang tải..." : "Tải lại"}
+            {state === "loading" ? "Đang tải..." : "Áp dụng"}
           </button>
         </div>
 

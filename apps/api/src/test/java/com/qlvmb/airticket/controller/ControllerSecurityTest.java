@@ -24,6 +24,7 @@ import com.qlvmb.airticket.service.AuthService;
 import com.qlvmb.airticket.service.AuthSummaryService;
 import com.qlvmb.airticket.service.AdminUserService;
 import com.qlvmb.airticket.service.BackofficeOperationsService;
+import com.qlvmb.airticket.service.BackofficeRevenueService;
 import com.qlvmb.airticket.service.BackofficeSalesService;
 import com.qlvmb.airticket.service.BackofficeVoucherService;
 import com.qlvmb.airticket.service.BookingLookupSessionService;
@@ -76,7 +77,8 @@ import org.springframework.test.web.servlet.MockMvc;
         CmsController.class,
         ApiMetaController.class,
         BackofficeOperationsController.class,
-        BackofficeVoucherController.class
+        BackofficeVoucherController.class,
+        BackofficeRevenueController.class
     },
     properties = {
         "app.auth.jwt.issuer=airticket-api",
@@ -152,6 +154,9 @@ class ControllerSecurityTest {
 
   @MockitoBean
   private BackofficeVoucherService backofficeVoucherService;
+
+  @MockitoBean
+  private BackofficeRevenueService backofficeRevenueService;
 
   @MockitoBean
   private UserAccountRepository userAccountRepository;
@@ -399,6 +404,23 @@ class ControllerSecurityTest {
                   "voucherCode": "MEM52026"
                 }
                 """)
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void removeVoucher_shouldAllowMemberRole() throws Exception {
+    mockMvc.perform(delete("/api/bookings/A6C2P1/apply-voucher")
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                bearerToken(List.of("member"), List.of("customer.self_service", "member.loyalty"))
+            ))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void removeVoucher_shouldRejectCustomerRole() throws Exception {
+    mockMvc.perform(delete("/api/bookings/A6C2P1/apply-voucher")
             .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
         .andExpect(status().isForbidden());
   }
@@ -720,6 +742,20 @@ class ControllerSecurityTest {
   @Test
   void getBackofficeOperationsVouchers_shouldRejectCustomerSupportPermission() throws Exception {
     mockMvc.perform(get("/api/backoffice/operations/vouchers")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer_support"), List.of("backoffice.support", "backoffice.finance"))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void getBackofficeRevenueDashboard_shouldAllowOperationsPermission() throws Exception {
+    mockMvc.perform(get("/api/backoffice/operations/revenue")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("operations_staff"), List.of("backoffice.operations"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void getBackofficeRevenueDashboard_shouldRejectCustomerSupportPermission() throws Exception {
+    mockMvc.perform(get("/api/backoffice/operations/revenue")
             .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer_support"), List.of("backoffice.support", "backoffice.finance"))))
         .andExpect(status().isForbidden());
   }

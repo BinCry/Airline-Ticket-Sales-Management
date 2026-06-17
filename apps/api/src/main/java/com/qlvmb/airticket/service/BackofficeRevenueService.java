@@ -3,8 +3,10 @@ package com.qlvmb.airticket.service;
 import com.qlvmb.airticket.domain.dto.BackofficeRevenueDashboardResponse;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
+import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.RefundRequestRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.OffsetDateTime;
@@ -29,18 +31,28 @@ public class BackofficeRevenueService {
 
   private final BookingRepository bookingRepository;
   private final RefundRequestRepository refundRequestRepository;
+  private final Clock reportClock;
 
   public BackofficeRevenueService(
       BookingRepository bookingRepository,
       RefundRequestRepository refundRequestRepository
   ) {
+    this(bookingRepository, refundRequestRepository, Clock.system(REPORT_ZONE_ID));
+  }
+
+  BackofficeRevenueService(
+      BookingRepository bookingRepository,
+      RefundRequestRepository refundRequestRepository,
+      Clock reportClock
+  ) {
     this.bookingRepository = bookingRepository;
     this.refundRequestRepository = refundRequestRepository;
+    this.reportClock = reportClock;
   }
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity) {
-    return getRevenueDashboard(granularity, null);
+    return getRevenueDashboard(granularity, null, null, null);
   }
 
   @Transactional(readOnly = true)
@@ -237,11 +249,13 @@ public class BackofficeRevenueService {
       OffsetDateTime from = currentMonth.atDay(1)
           .atStartOfDay(REPORT_ZONE_ID)
           .toOffsetDateTime();
-      OffsetDateTime to = currentMonth.plusMonths(1)
-          .atDay(1)
+      OffsetDateTime to = toDateValue.plusDays(1)
           .atStartOfDay(REPORT_ZONE_ID)
           .toOffsetDateTime();
-      String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
+      String label = "Từ %s đến %s".formatted(
+          formatRangeDateLabel(fromDateValue),
+          formatRangeDateLabel(toDateValue)
+      );
       return new RevenueWindow(granularity, from, to, label);
     }
 
