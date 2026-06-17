@@ -7,7 +7,7 @@ function padNumber(value: string | number) {
 }
 
 function getVietnamDateParts(referenceDate: Date) {
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat("vi-VN", {
     timeZone: VIETNAM_TIME_ZONE,
     year: "numeric",
     month: "2-digit",

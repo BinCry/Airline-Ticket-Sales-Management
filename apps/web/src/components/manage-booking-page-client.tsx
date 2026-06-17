@@ -24,6 +24,7 @@ import {
   verifyBookingLookupOtp,
   type ManageBookingOverview
 } from "@/lib/manage-booking-api";
+import { xuatPdfTheLenMayBay } from "@/lib/boarding-pass-pdf";
 import { pushToast } from "@/lib/toast";
 
 type LookupState = "idle" | "loading" | "error" | "success";
@@ -109,6 +110,28 @@ function formatDateTime(value: string | null) {
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
     timeStyle: "short"
+  }).format(parsedDate);
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "Khong co du lieu";
+  }
+
+  const ketQuaNgayIso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (ketQuaNgayIso) {
+    return `${ketQuaNgayIso[3]}/${ketQuaNgayIso[2]}/${ketQuaNgayIso[1]}`;
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
   }).format(parsedDate);
 }
 
@@ -637,7 +660,7 @@ export function ManageBookingPageClient() {
                       <div className="result-grid result-grid-rich">
                         <div>
                           <span>Ngày sinh</span>
-                          <strong>{passenger.dateOfBirth}</strong>
+                          <strong>{formatDate(passenger.dateOfBirth)}</strong>
                         </div>
                         <div>
                           <span>Giấy tờ</span>
@@ -748,6 +771,28 @@ export function ManageBookingPageClient() {
                           <p>{boardingPass.ticketNumber} • Ghế {boardingPass.seatNumber} • Cửa {boardingPass.gate}</p>
                           {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
                           <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
+                          <div className="auth-action-row">
+                            <button
+                              type="button"
+                              className="button button-secondary"
+                              onClick={() => {
+                                const daMoXemTruoc = xuatPdfTheLenMayBay({
+                                  boardingPass,
+                                  bookingCode: bookingOverview.bookingCode,
+                                  segment
+                                });
+                                if (!daMoXemTruoc) {
+                                  pushToast({
+                                    title: "Khong the xuat PDF",
+                                    message: "Trinh duyet dang chan cua so in. Vui long cho phep popup roi thu lai.",
+                                    tone: "warning"
+                                  });
+                                }
+                              }}
+                            >
+                              Xuat PDF
+                            </button>
+                          </div>
                         </article>
                       );
                     })

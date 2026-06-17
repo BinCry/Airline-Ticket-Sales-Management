@@ -639,6 +639,7 @@ export function BookingPageClient() {
                             <input
                               required
                               type="date"
+                              lang="vi"
                               value={passenger.dateOfBirth}
                               onChange={(event) => updatePassenger(index, "dateOfBirth", event.target.value)}
                             />

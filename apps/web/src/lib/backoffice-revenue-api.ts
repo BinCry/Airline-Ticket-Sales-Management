@@ -10,6 +10,12 @@ export type BackofficeRevenueGranularity = ApiBackofficeRevenueGranularity;
 export type BackofficeRevenueBucket = ApiBackofficeRevenueBucket;
 export type BackofficeRevenueDashboard = ApiBackofficeRevenueDashboard;
 
+export interface BackofficeRevenueDashboardQuery {
+  fromDate?: string;
+  period?: string;
+  toDate?: string;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
 }
@@ -52,11 +58,17 @@ function isRevenueDashboard(value: unknown): value is BackofficeRevenueDashboard
 export async function fetchBackofficeRevenueDashboard(
   accessToken: string,
   granularity: BackofficeRevenueGranularity,
-  period?: string
+  query: BackofficeRevenueDashboardQuery = {}
 ): Promise<BackofficeRevenueDashboard> {
   const searchParams = new URLSearchParams({ granularity });
-  if (period) {
-    searchParams.set("period", period);
+  if (query.period) {
+    searchParams.set("period", query.period);
+  }
+  if (query.fromDate) {
+    searchParams.set("fromDate", query.fromDate);
+  }
+  if (query.toDate) {
+    searchParams.set("toDate", query.toDate);
   }
 
   const payload = await requestApi<unknown>(

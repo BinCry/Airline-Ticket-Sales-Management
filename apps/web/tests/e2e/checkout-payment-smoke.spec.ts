@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { jsonResponse, taoThoiDiemTuongLai } from "./e2e-helpers";
+import { jsonResponse, seedAuthSession, taoThoiDiemTuongLai } from "./e2e-helpers";
 
 test("checkout hien thi dung phien thanh toan live cua SePay", async ({ page }) => {
   const liveSession = {
@@ -149,4 +149,108 @@ test("checkout local cho xac nhan thu cong va chuyen sang manage booking", async
   await expect.poll(() => callbackPayload?.bookingCode).toBe("B7D4Q2");
   await expect.poll(() => callbackPayload?.result).toBe("success");
   await expect(page).toHaveURL(/\/manage-booking\?bookingCode=B7D4Q2/);
+});
+
+test("checkout cho phep bo voucher va khoi phuc tong tien", async ({ page }) => {
+  await seedAuthSession(page, {
+    roles: ["member"],
+    permissions: ["customer.self_service", "member.loyalty"],
+    email: "member@example.com",
+    displayName: "Hoi vien"
+  });
+
+  const sessionCoVoucher = {
+    bookingCode: "V7U8C1",
+    provider: "sepay",
+    sessionMode: "live",
+    paymentUrl: "https://qr.sepay.vn/img?acc=0985512831&bank=MBBank&amount=890000&des=SEPAY-000000000005",
+    paymentStatus: "pending",
+    expiresAt: taoThoiDiemTuongLai(20),
+    referenceCode: "SEPAY-000000000005",
+    amount: 890000,
+    bankName: "MB Bank",
+    accountNumber: "0985512831",
+    accountHolderName: "Vietnam Airlines",
+    qrCodeUrl: "https://qr.sepay.vn/img?acc=0985512831&bank=MBBank&amount=890000&des=SEPAY-000000000005",
+    qrCodeDataUrl: null,
+    discountAmount: 100000,
+    appliedVoucherCode: "VNA-100K"
+  };
+  const sessionKhongVoucher = {
+    ...sessionCoVoucher,
+    amount: 990000,
+    discountAmount: 0,
+    appliedVoucherCode: null,
+    paymentUrl: "https://qr.sepay.vn/img?acc=0985512831&bank=MBBank&amount=990000&des=SEPAY-000000000005",
+    qrCodeUrl: "https://qr.sepay.vn/img?acc=0985512831&bank=MBBank&amount=990000&des=SEPAY-000000000005"
+  };
+  let daBoVoucher = false;
+
+  await page.route("**/api/bookings/V7U8C1/payments/session", async (route) => {
+    await route.fulfill(jsonResponse(daBoVoucher ? sessionKhongVoucher : sessionCoVoucher));
+  });
+
+  await page.route("**/api/me/vouchers", async (route) => {
+    await route.fulfill(jsonResponse([
+      {
+        voucherCode: "VNA-100K",
+        title: "Giam 100.000 dong",
+        description: "Ap dung cho booking hoi vien",
+        discountAmount: 100000,
+        currency: "VND",
+        status: daBoVoucher ? "AVAILABLE" : "RESERVED",
+        expiresAt: "2026-07-01T23:59:00+07:00",
+        usedAt: null,
+        bookingCode: daBoVoucher ? null : "V7U8C1"
+      }
+    ]));
+  });
+
+  await page.route("**/api/bookings/V7U8C1/applied-voucher", async (route) => {
+    daBoVoucher = true;
+    await route.fulfill(jsonResponse({
+      bookingCode: "V7U8C1",
+      status: "held",
+      paymentStatus: "pending",
+      holdExpiresAt: taoThoiDiemTuongLai(20),
+      ticketedAt: null,
+      tripType: "one_way",
+      steps: ["Giữ chỗ thành công"],
+      segments: [],
+      contact: {
+        fullName: "Nguyen Van A",
+        email: "member@example.com",
+        phone: "0912345678"
+      },
+      passengers: [],
+      ancillaries: [],
+      seatSelections: [],
+      tickets: [],
+      boardingPasses: [],
+      refundRequest: null,
+      paymentMethods: ["Chuyển khoản SePay"],
+      priceSummary: {
+        baseAmount: 990000,
+        ancillaryAmount: 0,
+        discountAmount: 0,
+        totalAmount: 990000,
+        currency: "VND",
+        appliedVoucherCode: null
+      }
+    }));
+  });
+
+  await page.goto("/booking/V7U8C1/checkout");
+
+  const tongTienTomTat = page.locator(".booking-summary-card strong");
+
+  await expect(page.getByRole("button", { name: "Bo voucher" })).toBeVisible();
+  await expect(tongTienTomTat).toContainText("890.000");
+
+  await page.getByRole("button", { name: "Bo voucher" }).click();
+
+  await expect.poll(() => daBoVoucher).toBe(true);
+  await expect(page.getByRole("button", { name: "Bo voucher" })).toHaveCount(0);
+  await expect(tongTienTomTat).toContainText("990.000");
+  await expect(page.locator('input[placeholder="VNA-MEMBER-01"]')).toHaveValue("");
 });

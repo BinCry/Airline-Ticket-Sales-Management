@@ -739,6 +739,7 @@ export function BackofficeOperationsPageClient() {
                 <span>Giờ cất cánh</span>
                 <input
                   type="datetime-local"
+                  lang="vi"
                   value={flightForm.departureAt}
                   onChange={(event) => updateFlightFormField("departureAt", event.target.value)}
                 />
@@ -747,6 +748,7 @@ export function BackofficeOperationsPageClient() {
                 <span>Giờ hạ cánh</span>
                 <input
                   type="datetime-local"
+                  lang="vi"
                   value={flightForm.arrivalAt}
                   onChange={(event) => updateFlightFormField("arrivalAt", event.target.value)}
                 />
@@ -854,7 +856,7 @@ export function BackofficeOperationsPageClient() {
                 </label>
                 <label className="field">
                   <span>Ngày bay</span>
-                  <input value={date} onChange={(event) => setDate(event.target.value)} type="date" />
+                  <input value={date} onChange={(event) => setDate(event.target.value)} type="date" lang="vi" />
                 </label>
               </div>
               <div className="booking-action-list">
@@ -1216,6 +1218,7 @@ export function BackofficeOperationsPageClient() {
                 <span>Hết hạn lúc</span>
                 <input
                   type="datetime-local"
+                  lang="vi"
                   value={voucherForm.expiresAt}
                   onChange={(event) =>
                     setVoucherForm((current) => ({
@@ -1425,6 +1428,7 @@ export function BackofficeOperationsPageClient() {
                       <span>Hết hạn lúc</span>
                       <input
                         type="datetime-local"
+                        lang="vi"
                         value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({

@@ -25,6 +25,7 @@ public class BackofficeRevenueService {
   private static final ZoneId REPORT_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final DateTimeFormatter DAILY_KEY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
   private static final DateTimeFormatter MONTHLY_KEY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+  private static final DateTimeFormatter RANGE_LABEL_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
   private final BookingRepository bookingRepository;
   private final RefundRequestRepository refundRequestRepository;
@@ -44,9 +45,19 @@ public class BackofficeRevenueService {
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity, String period) {
+    return getRevenueDashboard(granularity, period, null, null);
+  }
+
+  @Transactional(readOnly = true)
+  public BackofficeRevenueDashboardResponse getRevenueDashboard(
+      String granularity,
+      String period,
+      String fromDate,
+      String toDate
+  ) {
     RevenueGranularity revenueGranularity = RevenueGranularity.from(granularity);
     OffsetDateTime generatedAt = OffsetDateTime.now(REPORT_ZONE_ID);
-    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period);
+    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period, fromDate, toDate);
     Map<String, MutableRevenueBucket> buckets = createEmptyBuckets(window);
 
     bookingRepository.findPaidRevenueBookings(
@@ -186,7 +197,13 @@ public class BackofficeRevenueService {
       String label
   ) {
 
-    static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime, String period) {
+    static RevenueWindow create(
+        RevenueGranularity granularity,
+        OffsetDateTime currentTime,
+        String period,
+        String fromDate,
+        String toDate
+    ) {
       if (granularity == RevenueGranularity.MONTH) {
         Year selectedYear = resolveYearPeriod(period, currentTime);
         OffsetDateTime from = selectedYear.atMonth(Month.JANUARY).atDay(1)
@@ -196,6 +213,24 @@ public class BackofficeRevenueService {
             .atStartOfDay(REPORT_ZONE_ID)
             .toOffsetDateTime();
         return new RevenueWindow(granularity, from, to, "Năm " + selectedYear.getValue());
+      }
+
+      if (coKhoangNgay(fromDate, toDate)) {
+        LocalDate ngayBatDau = resolveDateRangeBoundary(fromDate, currentTime.toLocalDate().withDayOfMonth(1));
+        LocalDate ngayKetThuc = resolveDateRangeBoundary(toDate, ngayBatDau);
+        if (ngayBatDau.isAfter(ngayKetThuc)) {
+          LocalDate tam = ngayBatDau;
+          ngayBatDau = ngayKetThuc;
+          ngayKetThuc = tam;
+        }
+
+        OffsetDateTime from = ngayBatDau.atStartOfDay(REPORT_ZONE_ID).toOffsetDateTime();
+        OffsetDateTime to = ngayKetThuc.plusDays(1).atStartOfDay(REPORT_ZONE_ID).toOffsetDateTime();
+        String label = ngayBatDau.equals(ngayKetThuc)
+            ? "NgÃ y " + ngayBatDau.format(RANGE_LABEL_FORMATTER)
+            : "Tá»« " + ngayBatDau.format(RANGE_LABEL_FORMATTER)
+                + " Ä‘áº¿n " + ngayKetThuc.format(RANGE_LABEL_FORMATTER);
+        return new RevenueWindow(granularity, from, to, label);
       }
 
       YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
@@ -208,6 +243,22 @@ public class BackofficeRevenueService {
           .toOffsetDateTime();
       String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
       return new RevenueWindow(granularity, from, to, label);
+    }
+
+    private static boolean coKhoangNgay(String fromDate, String toDate) {
+      return (fromDate != null && !fromDate.isBlank()) || (toDate != null && !toDate.isBlank());
+    }
+
+    private static LocalDate resolveDateRangeBoundary(String value, LocalDate fallbackDate) {
+      if (value == null || value.isBlank()) {
+        return fallbackDate;
+      }
+
+      try {
+        return LocalDate.parse(value.trim(), DAILY_KEY_FORMATTER);
+      } catch (RuntimeException exception) {
+        return fallbackDate;
+      }
     }
 
     private static YearMonth resolveMonthPeriod(String period, OffsetDateTime currentTime) {

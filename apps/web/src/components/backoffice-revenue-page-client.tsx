@@ -8,6 +8,7 @@ import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   fetchBackofficeRevenueDashboard,
   type BackofficeRevenueDashboard,
+  type BackofficeRevenueDashboardQuery,
   type BackofficeRevenueGranularity
 } from "@/lib/backoffice-revenue-api";
 import { formatCurrency } from "@/lib/format";
@@ -30,38 +31,32 @@ function formatDateTime(value: string) {
   }).format(parsedDate);
 }
 
-function formatCompactCurrency(value: number) {
-  if (Math.abs(value) >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
-  }
-
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)} triệu`;
-  }
-
-  return formatCurrency(value);
-}
-
-function getCurrentMonthValue() {
-  const currentDate = new Date();
-  return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
-}
-
 function getCurrentYearValue() {
   return String(new Date().getFullYear());
 }
 
-function shiftMonthValue(value: string, monthOffset: number) {
-  const [yearPart, monthPart] = value.split("-");
-  const year = Number(yearPart);
-  const monthIndex = Number(monthPart) - 1;
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
 
-  if (!Number.isInteger(year) || !Number.isInteger(monthIndex)) {
-    return getCurrentMonthValue();
-  }
+function getCurrentMonthDateRange(referenceDate = new Date()) {
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth();
+  const firstDate = new Date(currentYear, currentMonth, 1);
+  const lastDate = new Date(currentYear, currentMonth + 1, 0);
 
-  const nextDate = new Date(year, monthIndex + monthOffset, 1);
-  return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+  return {
+    fromDate: `${firstDate.getFullYear()}-${padDatePart(firstDate.getMonth() + 1)}-${padDatePart(firstDate.getDate())}`,
+    toDate: `${lastDate.getFullYear()}-${padDatePart(lastDate.getMonth() + 1)}-${padDatePart(lastDate.getDate())}`
+  };
+}
+
+function getCurrentMonthStartValue() {
+  return getCurrentMonthDateRange().fromDate;
+}
+
+function getCurrentMonthEndValue() {
+  return getCurrentMonthDateRange().toDate;
 }
 
 function buildLinePath(points: Array<{ x: number; y: number }>) {
@@ -76,7 +71,7 @@ function createFallbackDashboard(granularity: BackofficeRevenueGranularity): Bac
     generatedAt: new Date().toISOString(),
     granularity,
     paidAmount: 0,
-    periodLabel: granularity === "day" ? "Tháng hiện tại" : "Năm hiện tại",
+    periodLabel: granularity === "day" ? "Giai đoạn hiện tại" : "Năm hiện tại",
     refundedAmount: 0,
     refundedTicketCount: 0,
     soldTicketCount: 0,
@@ -89,7 +84,10 @@ export function BackofficeRevenuePageClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<BackofficeRevenueGranularity>("day");
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
+  const [selectedFromDate, setSelectedFromDate] = useState(getCurrentMonthStartValue);
+  const [selectedToDate, setSelectedToDate] = useState(getCurrentMonthEndValue);
+  const [appliedFromDate, setAppliedFromDate] = useState(getCurrentMonthStartValue);
+  const [appliedToDate, setAppliedToDate] = useState(getCurrentMonthEndValue);
   const [selectedYear, setSelectedYear] = useState(getCurrentYearValue);
   const [appliedYear, setAppliedYear] = useState(getCurrentYearValue);
   const [reloadKey, setReloadKey] = useState(0);
@@ -106,8 +104,8 @@ export function BackofficeRevenuePageClient() {
       return;
     }
 
-    void loadDashboard(accessToken, granularity, resolveAppliedPeriod());
-  }, [accessToken, granularity, selectedMonth, appliedYear, reloadKey]);
+    void loadDashboard(accessToken, granularity, resolveAppliedQuery());
+  }, [accessToken, granularity, appliedFromDate, appliedToDate, appliedYear, reloadKey]);
 
   const lineChart = useMemo(() => {
     const values = dashboard.buckets.map((bucket) => bucket.netRevenue);
@@ -149,7 +147,7 @@ export function BackofficeRevenuePageClient() {
   async function loadDashboard(
     nextAccessToken: string,
     nextGranularity: BackofficeRevenueGranularity,
-    nextPeriod: string
+    query: BackofficeRevenueDashboardQuery
   ) {
     setState("loading");
     setErrorMessage(null);
@@ -158,7 +156,7 @@ export function BackofficeRevenuePageClient() {
       const nextDashboard = await fetchBackofficeRevenueDashboard(
         nextAccessToken,
         nextGranularity,
-        nextPeriod
+        query
       );
       setDashboard(nextDashboard);
       setState("success");
@@ -171,12 +169,36 @@ export function BackofficeRevenuePageClient() {
     }
   }
 
-  function resolveAppliedPeriod() {
-    return granularity === "month" ? appliedYear : selectedMonth;
+  function resolveAppliedQuery(): BackofficeRevenueDashboardQuery {
+    if (granularity === "month") {
+      return {
+        period: appliedYear
+      };
+    }
+
+    return {
+      fromDate: appliedFromDate,
+      toDate: appliedToDate
+    };
   }
 
   function normalizeSelectedYear() {
     return selectedYear.trim() || getCurrentYearValue();
+  }
+
+  function normalizeSelectedDateRange() {
+    const currentMonthDateRange = getCurrentMonthDateRange();
+    const fromDate = selectedFromDate.trim() || currentMonthDateRange.fromDate;
+    const toDate = selectedToDate.trim() || currentMonthDateRange.toDate;
+
+    if (fromDate <= toDate) {
+      return { fromDate, toDate };
+    }
+
+    return {
+      fromDate: toDate,
+      toDate: fromDate
+    };
   }
 
   function applySelectedPeriod() {
@@ -187,17 +209,22 @@ export function BackofficeRevenuePageClient() {
         setAppliedYear(nextYear);
         return;
       }
+    } else {
+      const nextDateRange = normalizeSelectedDateRange();
+      setSelectedFromDate(nextDateRange.fromDate);
+      setSelectedToDate(nextDateRange.toDate);
+      if (nextDateRange.fromDate !== appliedFromDate || nextDateRange.toDate !== appliedToDate) {
+        setAppliedFromDate(nextDateRange.fromDate);
+        setAppliedToDate(nextDateRange.toDate);
+        return;
+      }
     }
 
     setReloadKey((currentReloadKey) => currentReloadKey + 1);
   }
 
-  function changeSelectedMonth(monthOffset: number) {
-    setSelectedMonth((currentMonth) => shiftMonthValue(currentMonth, monthOffset));
-  }
-
   const revenueSummaryLabel = granularity === "day"
-    ? "Tổng doanh thu tháng này"
+    ? "Tổng doanh thu giai đoạn này"
     : "Tổng doanh thu năm này";
 
   return (
@@ -232,31 +259,25 @@ export function BackofficeRevenuePageClient() {
             </button>
           </div>
           {granularity === "day" ? (
-            <div className="revenue-month-switcher">
-              <button
-                type="button"
-                className="revenue-month-button"
-                aria-label="Tháng trước"
-                onClick={() => changeSelectedMonth(-1)}
-              >
-                ‹
-              </button>
+            <div className="revenue-date-range">
               <label className="revenue-month-picker">
-                <span>Chọn tháng</span>
+                <span>Từ ngày</span>
                 <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
+                  type="date"
+                  lang="vi"
+                  value={selectedFromDate}
+                  onChange={(event) => setSelectedFromDate(event.target.value || getCurrentMonthStartValue())}
                 />
               </label>
-              <button
-                type="button"
-                className="revenue-month-button"
-                aria-label="Tháng sau"
-                onClick={() => changeSelectedMonth(1)}
-              >
-                ›
-              </button>
+              <label className="revenue-month-picker">
+                <span>Đến ngày</span>
+                <input
+                  type="date"
+                  lang="vi"
+                  value={selectedToDate}
+                  onChange={(event) => setSelectedToDate(event.target.value || getCurrentMonthEndValue())}
+                />
+              </label>
             </div>
           ) : (
             <label className="revenue-month-picker">

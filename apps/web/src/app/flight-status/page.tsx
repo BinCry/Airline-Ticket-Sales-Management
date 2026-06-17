@@ -99,6 +99,7 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
                 defaultValue={date || ngayHienTai}
                 min={ngayHienTai}
                 type="date"
+                lang="vi"
               />
             </label>
             <button className="button button-primary" type="submit">

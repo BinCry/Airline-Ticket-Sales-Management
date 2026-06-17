@@ -247,6 +247,26 @@ export async function applyVoucherToBooking(
   return response;
 }
 
+export async function removeVoucherFromBooking(
+  bookingCode: string,
+  accessToken?: string
+): Promise<ApiManageBookingOverview> {
+  const response = await requestApi<unknown>(
+    `/api/bookings/${encodeURIComponent(bookingCode.trim())}/applied-voucher`,
+    {
+      accessToken,
+      fallbackMessage: "KhÃ´ng thá»ƒ bá» voucher cho booking nÃ y lÃºc nÃ y.",
+      method: "DELETE"
+    }
+  );
+
+  if (!isManageOverview(response)) {
+    throw new ApiClientError("Dá»¯ liá»‡u bá» voucher tráº£ vá» khÃ´ng há»£p lá»‡.", 500);
+  }
+
+  return response;
+}
+
 export async function confirmLocalPayment(
   payload: ApiPaymentCallbackRequest,
   accessToken?: string

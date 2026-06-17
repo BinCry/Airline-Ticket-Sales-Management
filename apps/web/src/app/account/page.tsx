@@ -1530,6 +1530,7 @@ export default function AccountPage() {
                         <span>Ngày sinh</span>
                         <input
                           type="date"
+                          lang="vi"
                           value={passengerForm.dateOfBirth}
                           onChange={(event) =>
                             handlePassengerFieldChange("dateOfBirth", event.target.value)

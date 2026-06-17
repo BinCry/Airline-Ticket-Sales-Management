@@ -271,6 +271,7 @@ export function FlightSearchPanel() {
           <span>Ngày đi</span>
           <input
             type="date"
+            lang="vi"
             min={ngayHienTai}
             value={departureDate}
             onChange={(event) => setDepartureDate(event.target.value)}
@@ -280,6 +281,7 @@ export function FlightSearchPanel() {
           <span>Ngày về</span>
           <input
             type="date"
+            lang="vi"
             min={departureDate || ngayHienTai}
             value={tripType === "one_way" ? "" : returnDate}
             disabled={tripType === "one_way"}

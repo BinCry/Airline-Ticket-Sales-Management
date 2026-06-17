@@ -6185,6 +6185,13 @@ th {
   font-weight: 700;
 }
 
+.revenue-date-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(148px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
 .revenue-month-switcher {
   display: grid;
   grid-template-columns: auto minmax(148px, 1fr) auto;
@@ -6624,6 +6631,10 @@ th {
 
   .revenue-month-switcher {
     grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .revenue-date-range {
+    grid-template-columns: 1fr;
   }
 
   .revenue-month-picker input {

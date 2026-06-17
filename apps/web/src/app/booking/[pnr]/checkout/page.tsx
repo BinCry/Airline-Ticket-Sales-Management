@@ -13,7 +13,8 @@ import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   applyVoucherToBooking,
   confirmLocalPayment,
-  createPaymentSession
+  createPaymentSession,
+  removeVoucherFromBooking
 } from "@/lib/booking-api";
 import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
 import { formatCurrency } from "@/lib/format";
@@ -127,6 +128,7 @@ export default function BookingCheckoutPage() {
   const [isLoadingVouchers, setIsLoadingVouchers] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [isRemovingVoucher, setIsRemovingVoucher] = useState(false);
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
   const [isMemberSession, setIsMemberSession] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -268,9 +270,7 @@ export default function BookingCheckoutPage() {
   }, [accessToken, isMemberSession]);
 
   useEffect(() => {
-    if (session?.appliedVoucherCode) {
-      setVoucherCode(session.appliedVoucherCode);
-    }
+    setVoucherCode(session?.appliedVoucherCode ?? "");
   }, [session?.appliedVoucherCode]);
 
   useEffect(() => {
@@ -409,6 +409,59 @@ export default function BookingCheckoutPage() {
       );
     } finally {
       setIsApplyingVoucher(false);
+    }
+  }
+
+  async function handleRemoveVoucher() {
+    if (
+      !bookingCode ||
+      !accessToken ||
+      !isMemberSession ||
+      !session?.appliedVoucherCode ||
+      isApplyingVoucher ||
+      isRemovingVoucher ||
+      isPaymentClosed
+    ) {
+      return;
+    }
+
+    setIsRemovingVoucher(true);
+    setVoucherErrorMessage(null);
+    setVoucherNotice(null);
+
+    try {
+      const maVoucherDangAp = session.appliedVoucherCode;
+      await removeVoucherFromBooking(bookingCode, accessToken);
+
+      const [nextSession, nextVouchers] = await Promise.all([
+        createPaymentSession(bookingCode, accessToken),
+        fetchMyVouchers(accessToken)
+      ]);
+
+      setSession(nextSession);
+      setMemberVouchers(nextVouchers);
+      setVoucherCode(nextSession.appliedVoucherCode ?? "");
+
+      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
+        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+        return;
+      }
+
+      setVoucherNotice(
+        `Da bo voucher ${maVoucherDangAp}. Tong thanh toan da duoc khoi phuc theo gia tri booking hien tai.`
+      );
+
+      pushToast({
+        message: "Tong tien da duoc cap nhat lai sau khi bo voucher.",
+        title: "Da bo voucher",
+        tone: "success"
+      });
+    } catch (error) {
+      setVoucherErrorMessage(
+        resolveApiClientErrorMessage(error, "Khong the bo voucher cho booking nay.")
+      );
+    } finally {
+      setIsRemovingVoucher(false);
     }
   }
 
@@ -638,11 +691,23 @@ export default function BookingCheckoutPage() {
                     type="button"
                     className="button button-primary"
                     onClick={() => void handleApplyVoucher()}
-                    disabled={!voucherCode.trim() || isApplyingVoucher || isLoading || isPaymentClosed}
+                    disabled={!voucherCode.trim() || isApplyingVoucher || isRemovingVoucher || isLoading || isPaymentClosed}
                   >
                     {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
                   </button>
                 </div>
+                {session?.appliedVoucherCode ? (
+                  <div className="auth-action-row">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleRemoveVoucher()}
+                      disabled={isApplyingVoucher || isRemovingVoucher || isLoading || isPaymentClosed}
+                    >
+                      {isRemovingVoucher ? "Dang bo..." : "Bo voucher"}
+                    </button>
+                  </div>
+                ) : null}
                 {voucherErrorMessage ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
@@ -677,7 +742,7 @@ export default function BookingCheckoutPage() {
                             type="button"
                             className="button button-secondary"
                             onClick={() => void handleApplyVoucher(voucher.voucherCode)}
-                            disabled={isApplyingVoucher || isLoading || isPaymentClosed}
+                            disabled={isApplyingVoucher || isRemovingVoucher || isLoading || isPaymentClosed}
                           >
                             Dùng {voucher.voucherCode}
                           </button>
