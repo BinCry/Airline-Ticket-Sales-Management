@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { DateField } from "@/components/date-field";
 import { PasswordChecklist } from "@/components/password-checklist";
 import { PasswordField } from "@/components/password-field";
 import { SectionHeading } from "@/components/section-heading";
@@ -40,6 +41,7 @@ import {
   type UpdateMyProfilePayload,
   type UpsertMyPassengerPayload
 } from "@/lib/my-account-api";
+import { formatDate, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 const EMPTY_PROFILE_FORM: UpdateMyProfilePayload = {
@@ -106,13 +108,7 @@ function getPassengerTypeLabel(passengerType: string) {
 }
 
 function formatPassengerDate(dateOfBirth: string) {
-  const parsedDate = new Date(dateOfBirth);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return dateOfBirth;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN").format(parsedDate);
+  return formatDate(dateOfBirth);
 }
 
 function buildPassengerMeta(passenger: MyPassenger) {
@@ -221,16 +217,7 @@ function formatVoucherAmount(amount: number, currency: string) {
 }
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 function formatVoucherStatus(status: string) {
@@ -1528,11 +1515,11 @@ export default function AccountPage() {
                       </label>
                       <label className="field auth-field">
                         <span>Ngày sinh</span>
-                        <input
-                          type="date"
+                        <DateField
                           value={passengerForm.dateOfBirth}
-                          onChange={(event) =>
-                            handlePassengerFieldChange("dateOfBirth", event.target.value)
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(value) =>
+                            handlePassengerFieldChange("dateOfBirth", value)
                           }
                           required
                         />

@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { DateField } from "@/components/date-field";
 import { SectionHeading } from "@/components/section-heading";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   fetchBackofficeRevenueDashboard,
   type BackofficeRevenueDashboard,
+  type BackofficeRevenueDashboardFilters,
   type BackofficeRevenueGranularity
 } from "@/lib/backoffice-revenue-api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 
 type RevenueState = "idle" | "loading" | "success" | "error";
 
@@ -18,50 +20,21 @@ const LINE_CHART_WIDTH = 960;
 const LINE_CHART_HEIGHT = 320;
 const LINE_CHART_PADDING = 36;
 
-function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
-}
-
-function formatCompactCurrency(value: number) {
-  if (Math.abs(value) >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
-  }
-
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)} triệu`;
-  }
-
-  return formatCurrency(value);
-}
-
-function getCurrentMonthValue() {
+function getCurrentMonthRange() {
   const currentDate = new Date();
-  return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDate = new Date(year, month, 1);
+  const lastDate = new Date(year, month + 1, 0);
+
+  return {
+    fromDate: `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, "0")}-${String(firstDate.getDate()).padStart(2, "0")}`,
+    toDate: `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, "0")}-${String(lastDate.getDate()).padStart(2, "0")}`
+  };
 }
 
 function getCurrentYearValue() {
   return String(new Date().getFullYear());
-}
-
-function shiftMonthValue(value: string, monthOffset: number) {
-  const [yearPart, monthPart] = value.split("-");
-  const year = Number(yearPart);
-  const monthIndex = Number(monthPart) - 1;
-
-  if (!Number.isInteger(year) || !Number.isInteger(monthIndex)) {
-    return getCurrentMonthValue();
-  }
-
-  const nextDate = new Date(year, monthIndex + monthOffset, 1);
-  return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function buildLinePath(points: Array<{ x: number; y: number }>) {
@@ -76,7 +49,7 @@ function createFallbackDashboard(granularity: BackofficeRevenueGranularity): Bac
     generatedAt: new Date().toISOString(),
     granularity,
     paidAmount: 0,
-    periodLabel: granularity === "day" ? "Tháng hiện tại" : "Năm hiện tại",
+    periodLabel: granularity === "day" ? "Khoảng ngày hiện tại" : "Năm hiện tại",
     refundedAmount: 0,
     refundedTicketCount: 0,
     soldTicketCount: 0,
@@ -89,7 +62,10 @@ export function BackofficeRevenuePageClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [granularity, setGranularity] = useState<BackofficeRevenueGranularity>("day");
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
+  const [selectedFromDate, setSelectedFromDate] = useState(() => getCurrentMonthRange().fromDate);
+  const [selectedToDate, setSelectedToDate] = useState(() => getCurrentMonthRange().toDate);
+  const [appliedFromDate, setAppliedFromDate] = useState(() => getCurrentMonthRange().fromDate);
+  const [appliedToDate, setAppliedToDate] = useState(() => getCurrentMonthRange().toDate);
   const [selectedYear, setSelectedYear] = useState(getCurrentYearValue);
   const [appliedYear, setAppliedYear] = useState(getCurrentYearValue);
   const [reloadKey, setReloadKey] = useState(0);
@@ -106,8 +82,9 @@ export function BackofficeRevenuePageClient() {
       return;
     }
 
-    void loadDashboard(accessToken, granularity, resolveAppliedPeriod());
-  }, [accessToken, granularity, selectedMonth, appliedYear, reloadKey]);
+    void loadDashboard(accessToken, granularity, resolveAppliedFilters());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, granularity, appliedFromDate, appliedToDate, appliedYear, reloadKey]);
 
   const lineChart = useMemo(() => {
     const values = dashboard.buckets.map((bucket) => bucket.netRevenue);
@@ -132,9 +109,7 @@ export function BackofficeRevenuePageClient() {
     });
     const linePath = buildLinePath(points);
     const areaPath = points.length > 0
-      ? `${linePath} L ${points[points.length - 1].x} ${LINE_CHART_HEIGHT - LINE_CHART_PADDING} L ${points[0].x} ${
-        LINE_CHART_HEIGHT - LINE_CHART_PADDING
-      } Z`
+      ? `${linePath} L ${points[points.length - 1].x} ${LINE_CHART_HEIGHT - LINE_CHART_PADDING} L ${points[0].x} ${LINE_CHART_HEIGHT - LINE_CHART_PADDING} Z`
       : "";
     const zeroY = Math.round(LINE_CHART_PADDING + (maxValue / valueRange) * plotHeight);
 
@@ -149,7 +124,7 @@ export function BackofficeRevenuePageClient() {
   async function loadDashboard(
     nextAccessToken: string,
     nextGranularity: BackofficeRevenueGranularity,
-    nextPeriod: string
+    nextFilters: BackofficeRevenueDashboardFilters
   ) {
     setState("loading");
     setErrorMessage(null);
@@ -158,7 +133,7 @@ export function BackofficeRevenuePageClient() {
       const nextDashboard = await fetchBackofficeRevenueDashboard(
         nextAccessToken,
         nextGranularity,
-        nextPeriod
+        nextFilters
       );
       setDashboard(nextDashboard);
       setState("success");
@@ -171,33 +146,62 @@ export function BackofficeRevenuePageClient() {
     }
   }
 
-  function resolveAppliedPeriod() {
-    return granularity === "month" ? appliedYear : selectedMonth;
+  function resolveAppliedFilters(): BackofficeRevenueDashboardFilters {
+    if (granularity === "month") {
+      return {
+        period: appliedYear
+      };
+    }
+
+    return {
+      fromDate: appliedFromDate,
+      toDate: appliedToDate
+    };
   }
 
   function normalizeSelectedYear() {
     return selectedYear.trim() || getCurrentYearValue();
   }
 
-  function applySelectedPeriod() {
+  function applySelectedFilters() {
     if (granularity === "month") {
       const nextYear = normalizeSelectedYear();
       setSelectedYear(nextYear);
+      setErrorMessage(null);
+
       if (nextYear !== appliedYear) {
         setAppliedYear(nextYear);
         return;
       }
+
+      setReloadKey((currentReloadKey) => currentReloadKey + 1);
+      return;
+    }
+
+    if (!selectedFromDate || !selectedToDate) {
+      setState("error");
+      setErrorMessage("Vui lòng chọn đầy đủ từ ngày và đến ngày.");
+      return;
+    }
+
+    if (selectedFromDate > selectedToDate) {
+      setState("error");
+      setErrorMessage("Từ ngày không được lớn hơn đến ngày.");
+      return;
+    }
+
+    setErrorMessage(null);
+    if (selectedFromDate !== appliedFromDate || selectedToDate !== appliedToDate) {
+      setAppliedFromDate(selectedFromDate);
+      setAppliedToDate(selectedToDate);
+      return;
     }
 
     setReloadKey((currentReloadKey) => currentReloadKey + 1);
   }
 
-  function changeSelectedMonth(monthOffset: number) {
-    setSelectedMonth((currentMonth) => shiftMonthValue(currentMonth, monthOffset));
-  }
-
   const revenueSummaryLabel = granularity === "day"
-    ? "Tổng doanh thu tháng này"
+    ? "Tổng doanh thu trong khoảng ngày"
     : "Tổng doanh thu năm này";
 
   return (
@@ -215,6 +219,7 @@ export function BackofficeRevenuePageClient() {
             <strong>{dashboard.periodLabel}</strong>
             <small>Cập nhật: {formatDateTime(dashboard.generatedAt)}</small>
           </div>
+
           <div className="revenue-segmented-control" aria-label="Chọn cách nhóm doanh thu">
             <button
               type="button"
@@ -231,32 +236,25 @@ export function BackofficeRevenuePageClient() {
               Theo tháng
             </button>
           </div>
+
           {granularity === "day" ? (
-            <div className="revenue-month-switcher">
-              <button
-                type="button"
-                className="revenue-month-button"
-                aria-label="Tháng trước"
-                onClick={() => changeSelectedMonth(-1)}
-              >
-                ‹
-              </button>
+            <div className="revenue-range-grid">
               <label className="revenue-month-picker">
-                <span>Chọn tháng</span>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(event) => setSelectedMonth(event.target.value || getCurrentMonthValue())}
+                <span>Từ ngày</span>
+                <DateField
+                  value={selectedFromDate}
+                  max={selectedToDate || undefined}
+                  onChange={setSelectedFromDate}
                 />
               </label>
-              <button
-                type="button"
-                className="revenue-month-button"
-                aria-label="Tháng sau"
-                onClick={() => changeSelectedMonth(1)}
-              >
-                ›
-              </button>
+              <label className="revenue-month-picker">
+                <span>Đến ngày</span>
+                <DateField
+                  value={selectedToDate}
+                  min={selectedFromDate || undefined}
+                  onChange={setSelectedToDate}
+                />
+              </label>
             </div>
           ) : (
             <label className="revenue-month-picker">
@@ -270,19 +268,20 @@ export function BackofficeRevenuePageClient() {
                 onChange={(event) => setSelectedYear(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
-                    applySelectedPeriod();
+                    applySelectedFilters();
                   }
                 }}
               />
             </label>
           )}
+
           <button
             type="button"
             className="button button-secondary"
             disabled={!accessToken || state === "loading"}
-            onClick={applySelectedPeriod}
+            onClick={applySelectedFilters}
           >
-            {state === "loading" ? "Đang tải..." : "Tải lại"}
+            {state === "loading" ? "Đang tải..." : "Áp dụng"}
           </button>
         </div>
 

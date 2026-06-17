@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import type { AirportOption } from "@qlvmb/shared-types";
 
+import { DateField } from "@/components/date-field";
+import { DateTimeField } from "@/components/date-time-field";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
@@ -29,6 +31,7 @@ import {
   updateBackofficeOperationsVoucher
 } from "@/lib/backoffice-operations-api";
 import { layLopMauGoiGia } from "@/lib/display";
+import { formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 type OperationsState = "idle" | "loading" | "success" | "error";
@@ -77,15 +80,7 @@ const HANG_VE_CO_DINH = [
 ] as const;
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 function formatCurrency(value: number, currency = "VND") {
@@ -737,18 +732,16 @@ export function BackofficeOperationsPageClient() {
               </label>
               <label className="field">
                 <span>Giờ cất cánh</span>
-                <input
-                  type="datetime-local"
+                <DateTimeField
                   value={flightForm.departureAt}
-                  onChange={(event) => updateFlightFormField("departureAt", event.target.value)}
+                  onChange={(nextValue) => updateFlightFormField("departureAt", nextValue)}
                 />
               </label>
               <label className="field">
                 <span>Giờ hạ cánh</span>
-                <input
-                  type="datetime-local"
+                <DateTimeField
                   value={flightForm.arrivalAt}
-                  onChange={(event) => updateFlightFormField("arrivalAt", event.target.value)}
+                  onChange={(nextValue) => updateFlightFormField("arrivalAt", nextValue)}
                 />
               </label>
               <label className="field">
@@ -854,7 +847,7 @@ export function BackofficeOperationsPageClient() {
                 </label>
                 <label className="field">
                   <span>Ngày bay</span>
-                  <input value={date} onChange={(event) => setDate(event.target.value)} type="date" />
+                  <DateField value={date} onChange={setDate} />
                 </label>
               </div>
               <div className="booking-action-list">
@@ -1214,13 +1207,12 @@ export function BackofficeOperationsPageClient() {
               </label>
               <label className="field">
                 <span>Hết hạn lúc</span>
-                <input
-                  type="datetime-local"
+                <DateTimeField
                   value={voucherForm.expiresAt}
-                  onChange={(event) =>
+                  onChange={(nextValue) =>
                     setVoucherForm((current) => ({
                       ...current,
-                      expiresAt: event.target.value
+                      expiresAt: nextValue
                     }))
                   }
                 />
@@ -1423,15 +1415,14 @@ export function BackofficeOperationsPageClient() {
                     </label>
                     <label className="field">
                       <span>Hết hạn lúc</span>
-                      <input
-                        type="datetime-local"
+                      <DateTimeField
                         value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
-                        onChange={(event) =>
+                        onChange={(nextValue) =>
                           setVoucherDrafts((current) => ({
                             ...current,
                             [voucher.voucherId]: {
                               ...(draft ?? buildVoucherDraft(voucher)),
-                              expiresAt: event.target.value
+                              expiresAt: nextValue
                             }
                           }))
                         }

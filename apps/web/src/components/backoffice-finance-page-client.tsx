@@ -12,7 +12,7 @@ import {
   rejectBackofficeRefund,
   type BackofficeRefundItem
 } from "@/lib/backoffice-finance-api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 type FinanceState = "idle" | "loading" | "success" | "error";
@@ -44,15 +44,7 @@ function formatBookingStatus(status: BackofficeRefundItem["bookingStatus"]) {
 }
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 export function BackofficeFinancePageClient() {

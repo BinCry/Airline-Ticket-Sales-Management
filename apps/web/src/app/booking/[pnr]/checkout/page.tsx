@@ -16,20 +16,12 @@ import {
   createPaymentSession
 } from "@/lib/booking-api";
 import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { fetchMyVouchers, type MyVoucher } from "@/lib/my-account-api";
 import { pushToast } from "@/lib/toast";
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 const HOLD_EXPIRED_NOTICE =

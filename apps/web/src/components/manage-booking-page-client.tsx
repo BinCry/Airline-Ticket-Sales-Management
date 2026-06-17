@@ -17,7 +17,7 @@ import {
   layVeCoTheYeuCauHoan,
   timPhanDoanChoVe
 } from "@/lib/booking-self-service";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime as formatDateTimeText } from "@/lib/format";
 import {
   fetchManageBooking,
   requestBookingLookupOtp,
@@ -101,15 +101,7 @@ function formatDateTime(value: string | null) {
     return "Không có dữ liệu";
   }
 
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 function taoKhoaNhomBay(segment: ApiManageBookingSegment | null, ticketNumber: string) {
@@ -637,7 +629,7 @@ export function ManageBookingPageClient() {
                       <div className="result-grid result-grid-rich">
                         <div>
                           <span>Ngày sinh</span>
-                          <strong>{passenger.dateOfBirth}</strong>
+                          <strong>{formatDate(passenger.dateOfBirth)}</strong>
                         </div>
                         <div>
                           <span>Giấy tờ</span>

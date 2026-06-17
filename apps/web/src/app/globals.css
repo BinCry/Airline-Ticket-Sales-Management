@@ -1301,6 +1301,55 @@ img {
   font-size: 0.74rem;
 }
 
+.date-input-shell {
+  position: relative;
+}
+
+.date-input-shell input[type="text"] {
+  padding-right: 52px;
+}
+
+.date-input-shell.is-disabled {
+  opacity: 0.72;
+}
+
+.date-input-picker-button {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.date-input-picker-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.date-input-picker-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.date-input-native-proxy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .route-field input {
   font-size: 0.95rem;
   font-weight: 700;
@@ -6173,6 +6222,12 @@ th {
   font-weight: 700;
 }
 
+.revenue-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(148px, 1fr));
+  gap: 10px;
+}
+
 .revenue-month-picker input {
   min-height: 40px;
   min-width: 148px;
@@ -6619,6 +6674,11 @@ th {
   }
 
   .revenue-segmented-control {
+    width: 100%;
+  }
+
+  .revenue-range-grid {
+    grid-template-columns: 1fr;
     width: 100%;
   }
 

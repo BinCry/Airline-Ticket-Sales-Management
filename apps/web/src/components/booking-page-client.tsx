@@ -12,6 +12,7 @@ import type {
   PassengerType
 } from "@qlvmb/shared-types";
 
+import { DateField } from "@/components/date-field";
 import { SectionHeading } from "@/components/section-heading";
 import { canAccessBackofficeModule } from "@/lib/access-control";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
@@ -25,7 +26,7 @@ import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import { createBookingHold, fetchFlightBookingOptions } from "@/lib/booking-api";
 import { parseBookingHandoffState } from "@/lib/booking-flow";
 import { layLopMauGoiGia } from "@/lib/display";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 interface ContactFormState {
@@ -92,18 +93,6 @@ function formatPassengerType(passengerType: PassengerType) {
     default:
       return passengerType;
   }
-}
-
-function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
 }
 
 function hydrateContactFromSession(
@@ -636,11 +625,11 @@ export function BookingPageClient() {
                           </label>
                           <label className="field">
                             <span>Ngày sinh</span>
-                            <input
+                            <DateField
                               required
-                              type="date"
+                              max={new Date().toISOString().slice(0, 10)}
                               value={passenger.dateOfBirth}
-                              onChange={(event) => updatePassenger(index, "dateOfBirth", event.target.value)}
+                              onChange={(value) => updatePassenger(index, "dateOfBirth", value)}
                             />
                           </label>
                           <label className="field">

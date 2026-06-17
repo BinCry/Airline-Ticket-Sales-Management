@@ -16,7 +16,7 @@ import {
   fetchBackofficeSalesBookings,
   issueBackofficeSalesTicket
 } from "@/lib/backoffice-sales-api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 type SalesState = "idle" | "loading" | "success" | "error";
@@ -69,15 +69,7 @@ function formatDateTime(value: string | null) {
     return "Chưa có dữ liệu";
   }
 
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 export function BackofficeSalesPageClient() {
