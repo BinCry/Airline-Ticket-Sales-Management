@@ -28,6 +28,7 @@ import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.BookingSeatSelectionRepository;
 import com.qlvmb.airticket.repository.FlightFareInventoryRepository;
 import com.qlvmb.airticket.repository.TicketRepository;
+import com.qlvmb.airticket.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -365,6 +366,43 @@ class BookingServiceTest {
     verify(bookingRepository).findDetailedByBookingCode("A6C2P1");
     verify(bookingRepository, never()).lockDetailedByBookingCode(any());
     verify(inventory).releaseSeats(1);
+  }
+
+  @Test
+  void removeVoucher_shouldDelegateToMemberVoucherServiceAndReturnUpdatedOverview() {
+    OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(5);
+    BookingEntity booking = BookingEntity.createHold(
+        "A6C2P1",
+        "one_way",
+        1490000L,
+        200000L,
+        1690000L,
+        "VND",
+        createdAt,
+        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
+    );
+    booking.assignContact(BookingContactEntity.create(
+        booking,
+        "Hoi vien A",
+        "member@example.com",
+        "0912345678"
+    ));
+    booking.applyVoucher("MEM52026", 180000L, createdAt.plusMinutes(1));
+    when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.removeVoucher(
+        "A6C2P1",
+        new AuthenticatedUser(
+            151L,
+            "member@example.com",
+            "Hoi vien A",
+            List.of("member"),
+            List.of("customer.self_service", "member.loyalty")
+        )
+    );
+
+    assertThat(response.bookingCode()).isEqualTo("A6C2P1");
+    verify(memberVoucherService).removeVoucherFromBooking(any(), any(), any());
   }
 
   @Test
