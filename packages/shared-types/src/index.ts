@@ -538,7 +538,7 @@ export interface ApiBackofficeRefundItem {
   createdAt: string;
 }
 
-export type ApiBackofficeRevenueGranularity = "day" | "month" | "custom";
+export type ApiBackofficeRevenueGranularity = "day" | "month";
 
 export interface ApiBackofficeRevenueBucket {
   key: string;

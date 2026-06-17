@@ -23,10 +23,8 @@ public class BackofficeRevenueController {
   @GetMapping
   public BackofficeRevenueDashboardResponse getRevenueDashboard(
       @RequestParam(required = false, defaultValue = "day") String granularity,
-      @RequestParam(required = false) String period,
-      @RequestParam(required = false) String fromDate,
-      @RequestParam(required = false) String toDate
+      @RequestParam(required = false) String period
   ) {
-    return backofficeRevenueService.getRevenueDashboard(granularity, period, fromDate, toDate);
+    return backofficeRevenueService.getRevenueDashboard(granularity, period);
   }
 }

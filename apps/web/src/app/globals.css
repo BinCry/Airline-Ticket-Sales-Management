@@ -5775,8 +5775,7 @@ th {
 @media (max-width: 420px) {
   .revenue-chart,
   .revenue-chart-day,
-  .revenue-chart-month,
-  .revenue-chart-custom {
+  .revenue-chart-month {
     grid-template-columns: 1fr;
   }
 }
@@ -6142,7 +6141,7 @@ th {
 
 .revenue-segmented-control {
   display: inline-grid;
-  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  grid-template-columns: repeat(2, minmax(104px, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--border);
@@ -6189,13 +6188,6 @@ th {
 .revenue-month-switcher {
   display: grid;
   grid-template-columns: auto minmax(148px, 1fr) auto;
-  align-items: end;
-  gap: 8px;
-}
-
-.revenue-date-range {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(148px, 1fr));
   align-items: end;
   gap: 8px;
 }
@@ -6632,10 +6624,6 @@ th {
 
   .revenue-month-switcher {
     grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-
-  .revenue-date-range {
-    grid-template-columns: 1fr;
   }
 
   .revenue-month-picker input {

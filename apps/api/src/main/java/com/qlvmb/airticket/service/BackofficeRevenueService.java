@@ -39,24 +39,14 @@ public class BackofficeRevenueService {
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity) {
-    return getRevenueDashboard(granularity, null, null, null);
+    return getRevenueDashboard(granularity, null);
   }
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity, String period) {
-    return getRevenueDashboard(granularity, period, null, null);
-  }
-
-  @Transactional(readOnly = true)
-  public BackofficeRevenueDashboardResponse getRevenueDashboard(
-      String granularity,
-      String period,
-      String fromDate,
-      String toDate
-  ) {
     RevenueGranularity revenueGranularity = RevenueGranularity.from(granularity);
     OffsetDateTime generatedAt = OffsetDateTime.now(REPORT_ZONE_ID);
-    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period, fromDate, toDate);
+    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period);
     Map<String, MutableRevenueBucket> buckets = createEmptyBuckets(window);
 
     bookingRepository.findPaidRevenueBookings(
@@ -164,8 +154,7 @@ public class BackofficeRevenueService {
 
   private enum RevenueGranularity {
     DAY("day"),
-    MONTH("month"),
-    CUSTOM("custom");
+    MONTH("month");
 
     private final String apiValue;
 
@@ -185,7 +174,6 @@ public class BackofficeRevenueService {
       String normalizedValue = value.trim().toLowerCase(Locale.ROOT);
       return switch (normalizedValue) {
         case "month", "monthly", "year" -> MONTH;
-        case "custom", "range", "date_range" -> CUSTOM;
         default -> DAY;
       };
     }
@@ -198,13 +186,7 @@ public class BackofficeRevenueService {
       String label
   ) {
 
-    static RevenueWindow create(
-        RevenueGranularity granularity,
-        OffsetDateTime currentTime,
-        String period,
-        String fromDate,
-        String toDate
-    ) {
+    static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime, String period) {
       if (granularity == RevenueGranularity.MONTH) {
         Year selectedYear = resolveYearPeriod(period, currentTime);
         OffsetDateTime from = selectedYear.atMonth(Month.JANUARY).atDay(1)
@@ -214,10 +196,6 @@ public class BackofficeRevenueService {
             .atStartOfDay(REPORT_ZONE_ID)
             .toOffsetDateTime();
         return new RevenueWindow(granularity, from, to, "Năm " + selectedYear.getValue());
-      }
-
-      if (granularity == RevenueGranularity.CUSTOM) {
-        return createCustomWindow(currentTime, fromDate, toDate);
       }
 
       YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
@@ -230,38 +208,6 @@ public class BackofficeRevenueService {
           .toOffsetDateTime();
       String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
       return new RevenueWindow(granularity, from, to, label);
-    }
-
-    private static RevenueWindow createCustomWindow(
-        OffsetDateTime currentTime,
-        String fromDate,
-        String toDate
-    ) {
-      LocalDate defaultFromDate = currentTime.toLocalDate().withDayOfMonth(1);
-      LocalDate defaultToDate = currentTime.toLocalDate();
-      LocalDate selectedFromDate = resolveDate(fromDate, defaultFromDate);
-      LocalDate selectedToDate = resolveDate(toDate, defaultToDate);
-      if (selectedFromDate.isAfter(selectedToDate)) {
-        LocalDate swappedFromDate = selectedToDate;
-        selectedToDate = selectedFromDate;
-        selectedFromDate = swappedFromDate;
-      }
-
-      OffsetDateTime from = selectedFromDate
-          .atStartOfDay(REPORT_ZONE_ID)
-          .toOffsetDateTime();
-      OffsetDateTime to = selectedToDate.plusDays(1)
-          .atStartOfDay(REPORT_ZONE_ID)
-          .toOffsetDateTime();
-      String label = "Từ %02d/%02d/%d đến %02d/%02d/%d".formatted(
-          selectedFromDate.getDayOfMonth(),
-          selectedFromDate.getMonthValue(),
-          selectedFromDate.getYear(),
-          selectedToDate.getDayOfMonth(),
-          selectedToDate.getMonthValue(),
-          selectedToDate.getYear()
-      );
-      return new RevenueWindow(RevenueGranularity.CUSTOM, from, to, label);
     }
 
     private static YearMonth resolveMonthPeriod(String period, OffsetDateTime currentTime) {
@@ -285,18 +231,6 @@ public class BackofficeRevenueService {
         return Year.parse(period.trim());
       } catch (RuntimeException exception) {
         return Year.from(currentTime);
-      }
-    }
-
-    private static LocalDate resolveDate(String value, LocalDate fallbackDate) {
-      if (value == null || value.isBlank()) {
-        return fallbackDate;
-      }
-
-      try {
-        return LocalDate.parse(value.trim(), DAILY_KEY_FORMATTER);
-      } catch (RuntimeException exception) {
-        return fallbackDate;
       }
     }
   }
