@@ -101,6 +101,40 @@ class MemberVoucherServiceTest {
   }
 
   @Test
+  void cancelVoucherForBooking_shouldReleaseVoucherAndUpdateBookingTotal() {
+    OffsetDateTime currentTime = OffsetDateTime.parse("2026-05-17T10:00:00Z");
+    AuthenticatedUser authenticatedUser = new AuthenticatedUser(
+        151L,
+        "nnn045856@gmail.com",
+        "Hoi vien",
+        List.of("member"),
+        List.of("customer.self_service", "member.loyalty")
+    );
+    UserAccountEntity memberAccount = createUserAccount(151L, "nnn045856@gmail.com", RoleCode.MEMBER);
+    BookingEntity booking = createHeldBooking("QC5004", "nnn045856@gmail.com", 1490000L, 200000L, currentTime);
+    MemberVoucherEntity voucher = createVoucher(
+        151L,
+        "MEM52026",
+        180000L,
+        MemberVoucherEntity.STATUS_RESERVED,
+        currentTime.plusDays(5),
+        "QC5004"
+    );
+    booking.applyVoucher("MEM52026", 180000L, currentTime);
+
+    when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(memberAccount));
+    when(memberVoucherRepository.findByVoucherCodeIgnoreCase("MEM52026")).thenReturn(Optional.of(voucher));
+
+    memberVoucherService.cancelVoucherForBooking(authenticatedUser, booking, currentTime.plusMinutes(2));
+
+    assertThat(booking.getAppliedVoucherCode()).isNull();
+    assertThat(booking.getDiscountAmount()).isZero();
+    assertThat(booking.getTotalAmount()).isEqualTo(1690000L);
+    assertThat(voucher.getStatus()).isEqualTo(MemberVoucherEntity.STATUS_AVAILABLE);
+    assertThat(voucher.getBookingCode()).isNull();
+  }
+
+  @Test
   void applyVoucherToBooking_shouldRejectCustomerRole() {
     OffsetDateTime currentTime = OffsetDateTime.parse("2026-05-17T10:00:00Z");
     AuthenticatedUser authenticatedUser = new AuthenticatedUser(

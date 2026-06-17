@@ -350,6 +350,20 @@ public class BookingService {
   }
 
   @Transactional
+  public BookingOverviewResponse cancelAppliedVoucher(String bookingCode, AuthenticatedUser authenticatedUser) {
+    BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
+    OffsetDateTime currentTime = OffsetDateTime.now();
+    reconcileBookingExpiration(booking, currentTime);
+
+    if (!booking.isHold()) {
+      throw new BadRequestException(VOUCHER_NOT_AVAILABLE_MESSAGE);
+    }
+
+    memberVoucherService.cancelVoucherForBooking(authenticatedUser, booking, currentTime);
+    return mapOverviewResponse(booking);
+  }
+
+  @Transactional
   public BookingEntity findBookingForPayment(String bookingCode) {
     BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_EXPIRED_MESSAGE);
     reconcileBookingExpiration(booking, OffsetDateTime.now());

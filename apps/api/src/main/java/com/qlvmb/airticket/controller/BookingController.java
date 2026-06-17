@@ -19,6 +19,7 @@ import com.qlvmb.airticket.service.PaymentService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -91,6 +92,15 @@ public class BookingController {
       @Valid @RequestBody ApplyVoucherRequest request
   ) {
     return bookingService.applyVoucher(bookingCode, requireAuthenticatedUser(authentication), request);
+  }
+
+  @PreAuthorize("hasAuthority('" + PermissionCode.MEMBER_LOYALTY + "')")
+  @DeleteMapping("/{bookingCode}/apply-voucher")
+  public BookingOverviewResponse cancelAppliedVoucher(
+      Authentication authentication,
+      @PathVariable String bookingCode
+  ) {
+    return bookingService.cancelAppliedVoucher(bookingCode, requireAuthenticatedUser(authentication));
   }
 
   @PostMapping("/{bookingCode}/payments/session")
