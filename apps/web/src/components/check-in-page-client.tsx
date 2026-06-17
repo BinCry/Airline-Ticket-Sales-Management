@@ -8,6 +8,7 @@ import type { ApiBoardingPass, ApiManageBookingSegment, ApiManageBookingTicket }
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
+import { xuatBoardingPassPdf } from "@/lib/boarding-pass-pdf";
 import { completeCheckin } from "@/lib/booking-api";
 import { layVeCoTheCheckin, timPhanDoanChoVe } from "@/lib/booking-self-service";
 import {
@@ -118,6 +119,7 @@ export function CheckInPageClient() {
   const [selectedTicketNumbers, setSelectedTicketNumbers] = useState<string[]>([]);
   const [boardingPasses, setBoardingPasses] = useState<ManageBookingOverview["boardingPasses"]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [exportingTicketNumber, setExportingTicketNumber] = useState<string | null>(null);
 
   useEffect(() => {
     setAccessToken(loadActiveAuthSession()?.accessToken);
@@ -331,6 +333,37 @@ export function CheckInPageClient() {
     }
   }
 
+  async function handleExportBoardingPass(boardingPass: ApiBoardingPass) {
+    if (!bookingOverview || exportingTicketNumber) {
+      return;
+    }
+
+    const segment = timPhanDoanChoBoardingPass(bookingOverview, boardingPass);
+    setExportingTicketNumber(boardingPass.ticketNumber);
+
+    try {
+      await xuatBoardingPassPdf({
+        bookingCode: bookingOverview.bookingCode,
+        boardingPass,
+        boardingTimeLabel: formatDateTime(boardingPass.boardingTime),
+        segmentLabel: segment ? taoNhanNhomBay(segment) : null
+      });
+      pushToast({
+        title: "Đã xuất file PDF",
+        message: "Thẻ lên máy bay đã được tải về thiết bị.",
+        tone: "success"
+      });
+    } catch (error) {
+      pushToast({
+        title: "Không thể xuất PDF",
+        message: error instanceof Error ? error.message : "Đã có lỗi khi tạo file thẻ lên máy bay.",
+        tone: "danger"
+      });
+    } finally {
+      setExportingTicketNumber(null);
+    }
+  }
+
   const hienThiBoardingPasses = boardingPasses.length > 0
     ? boardingPasses
     : bookingOverview?.boardingPasses ?? [];
@@ -533,6 +566,7 @@ export function CheckInPageClient() {
                   {hienThiBoardingPasses.length > 0 ? (
                     hienThiBoardingPasses.map((boardingPass) => {
                       const segment = timPhanDoanChoBoardingPass(bookingOverview, boardingPass);
+                      const isDangXuatPdf = exportingTicketNumber === boardingPass.ticketNumber;
                       return (
                         <article key={boardingPass.ticketNumber} className="boarding-pass-card">
                           <div className="boarding-pass-head">
@@ -542,7 +576,17 @@ export function CheckInPageClient() {
                               <p>{bookingOverview.bookingCode} • {boardingPass.ticketNumber}</p>
                               {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
                             </div>
-                            <span className="pill">Ghế {boardingPass.seatNumber}</span>
+                            <div className="boarding-pass-actions">
+                              <span className="pill">Ghế {boardingPass.seatNumber}</span>
+                              <button
+                                type="button"
+                                className="button button-secondary"
+                                onClick={() => void handleExportBoardingPass(boardingPass)}
+                                disabled={Boolean(exportingTicketNumber)}
+                              >
+                                {isDangXuatPdf ? "Đang xuất..." : "Xuất pdf"}
+                              </button>
+                            </div>
                           </div>
                           <div className="result-grid result-grid-rich">
                             <div>
