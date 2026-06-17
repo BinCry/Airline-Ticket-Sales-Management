@@ -41,6 +41,34 @@ describe("boarding-pass-pdf", () => {
     expect(svgMarkup).toContain("BP-A6C2P1-7380000000001");
   });
 
+  it("giu cac cot ma vach nam gon trong khung ben phai", () => {
+    const svgMarkup = taoSvgBoardingPass({
+      bookingCode: "MSLCY2",
+      boardingPass: {
+        ticketNumber: "7387960608662",
+        passengerName: "truong",
+        seatNumber: "9C",
+        gate: "G1",
+        boardingTime: "2026-06-18T05:15:00+07:00",
+        barcode: "BP-MSLCY2-7387960608662"
+      },
+      boardingTimeLabel: "05:15 18 thg 6, 2026",
+      segmentLabel: "QC010618 • Thành phố Hồ Chí Minh - Hà Nội • 06:00 18 thg 6, 2026"
+    });
+    const danhSachCot = Array.from(
+      svgMarkup.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#(?:123d69|234f85)" \/>/g)
+    );
+
+    expect(danhSachCot.length).toBeGreaterThan(0);
+    danhSachCot.forEach(([, x, y, width, height]) => {
+      expect(Number(x)).toBeGreaterThanOrEqual(0);
+      expect(Number(y)).toBeGreaterThanOrEqual(0);
+      expect(Number(x) + Number(width)).toBeLessThanOrEqual(204.1);
+      expect(Number(y) + Number(height)).toBeLessThanOrEqual(52.1);
+    });
+    expect(svgMarkup).toContain('textLength="248"');
+  });
+
   it("dong goi pdf voi object anh nhung khong doi du lieu boarding pass", () => {
     const pdfBytes = taoPdfTuJpeg(new Uint8Array([255, 216, 255, 217]), {
       width: 1200,
