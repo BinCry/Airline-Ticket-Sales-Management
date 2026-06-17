@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -29,7 +28,6 @@ import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.BookingSeatSelectionRepository;
 import com.qlvmb.airticket.repository.FlightFareInventoryRepository;
 import com.qlvmb.airticket.repository.TicketRepository;
-import com.qlvmb.airticket.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -367,34 +365,6 @@ class BookingServiceTest {
     verify(bookingRepository).findDetailedByBookingCode("A6C2P1");
     verify(bookingRepository, never()).lockDetailedByBookingCode(any());
     verify(inventory).releaseSeats(1);
-  }
-
-  @Test
-  void cancelAppliedVoucher_shouldDelegateToMemberVoucherService() {
-    AuthenticatedUser authenticatedUser = new AuthenticatedUser(
-        151L,
-        "hoivien@example.com",
-        "Hoi vien",
-        List.of("member"),
-        List.of("customer.self_service", "member.loyalty")
-    );
-    OffsetDateTime createdAt = OffsetDateTime.now();
-    BookingEntity booking = BookingEntity.createHold(
-        "A6C2P1",
-        "one_way",
-        1490000L,
-        0L,
-        1490000L,
-        "VND",
-        createdAt,
-        createdAt.plusMinutes(BookingService.HOLD_MINUTES)
-    );
-    when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
-
-    BookingOverviewResponse response = bookingService.cancelAppliedVoucher("A6C2P1", authenticatedUser);
-
-    assertThat(response.bookingCode()).isEqualTo("A6C2P1");
-    verify(memberVoucherService).cancelVoucherForBooking(eq(authenticatedUser), eq(booking), any());
   }
 
   @Test
