@@ -41,7 +41,7 @@ describe("boarding-pass-pdf", () => {
     expect(svgMarkup).toContain("BP-A6C2P1-7380000000001");
   });
 
-  it("giu cac cot ma vach nam gon trong khung ben phai", () => {
+  it("giu cac cot ma vach nam gon trong khung duoi dong chang bay", () => {
     const svgMarkup = taoSvgBoardingPass({
       bookingCode: "MSLCY2",
       boardingPass: {
@@ -58,15 +58,20 @@ describe("boarding-pass-pdf", () => {
     const danhSachCot = Array.from(
       svgMarkup.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#(?:123d69|234f85)" \/>/g)
     );
+    const khungMaVach = svgMarkup.match(
+      /<rect x="862" y="([\d.]+)" width="194" height="64" rx="18" fill="#edf3f8" \/>/
+    );
 
     expect(danhSachCot.length).toBeGreaterThan(0);
     danhSachCot.forEach(([, x, y, width, height]) => {
       expect(Number(x)).toBeGreaterThanOrEqual(0);
       expect(Number(y)).toBeGreaterThanOrEqual(0);
-      expect(Number(x) + Number(width)).toBeLessThanOrEqual(204.1);
-      expect(Number(y) + Number(height)).toBeLessThanOrEqual(52.1);
+      expect(Number(x) + Number(width)).toBeLessThanOrEqual(158.1);
+      expect(Number(y) + Number(height)).toBeLessThanOrEqual(44.1);
     });
-    expect(svgMarkup).toContain('textLength="248"');
+    expect(khungMaVach).not.toBeNull();
+    expect(Number(khungMaVach?.[1])).toBeGreaterThan(468);
+    expect(svgMarkup).toContain('textLength="264"');
   });
 
   it("dong goi pdf voi object anh nhung khong doi du lieu boarding pass", () => {
