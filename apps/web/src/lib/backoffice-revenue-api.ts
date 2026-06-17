@@ -10,6 +10,12 @@ export type BackofficeRevenueGranularity = ApiBackofficeRevenueGranularity;
 export type BackofficeRevenueBucket = ApiBackofficeRevenueBucket;
 export type BackofficeRevenueDashboard = ApiBackofficeRevenueDashboard;
 
+export interface BackofficeRevenueDashboardParams {
+  period?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
 }
@@ -36,7 +42,7 @@ function isRevenueDashboard(value: unknown): value is BackofficeRevenueDashboard
   }
 
   return (
-    (value.granularity === "day" || value.granularity === "month") &&
+    (value.granularity === "day" || value.granularity === "month" || value.granularity === "custom") &&
     typeof value.periodLabel === "string" &&
     typeof value.generatedAt === "string" &&
     typeof value.totalRevenue === "number" &&
@@ -52,11 +58,17 @@ function isRevenueDashboard(value: unknown): value is BackofficeRevenueDashboard
 export async function fetchBackofficeRevenueDashboard(
   accessToken: string,
   granularity: BackofficeRevenueGranularity,
-  period?: string
+  params: BackofficeRevenueDashboardParams = {}
 ): Promise<BackofficeRevenueDashboard> {
   const searchParams = new URLSearchParams({ granularity });
-  if (period) {
-    searchParams.set("period", period);
+  if (params.period) {
+    searchParams.set("period", params.period);
+  }
+  if (params.fromDate) {
+    searchParams.set("fromDate", params.fromDate);
+  }
+  if (params.toDate) {
+    searchParams.set("toDate", params.toDate);
   }
 
   const payload = await requestApi<unknown>(
