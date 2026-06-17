@@ -3,6 +3,7 @@ import type { ApiFlightStatusResponse } from "@qlvmb/shared-types";
 
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
+import { VietnamDateInput } from "@/components/vietnam-date-input";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { fetchFlightStatus, taoDuongDanTinhTrangChuyenBay } from "@/lib/flight-status-api";
 import { getVietnamTodayIso } from "@/lib/public-flight-date";
@@ -94,11 +95,10 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
             </label>
             <label className="field">
               <span>Ngày bay</span>
-              <input
+              <VietnamDateInput
                 name="date"
-                defaultValue={date || ngayHienTai}
+                value={date || ngayHienTai}
                 min={ngayHienTai}
-                type="date"
               />
             </label>
             <button className="button button-primary" type="submit">

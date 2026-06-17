@@ -13,6 +13,7 @@ import type {
 } from "@qlvmb/shared-types";
 
 import { SectionHeading } from "@/components/section-heading";
+import { VietnamDateInput } from "@/components/vietnam-date-input";
 import { canAccessBackofficeModule } from "@/lib/access-control";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import {
@@ -636,11 +637,10 @@ export function BookingPageClient() {
                           </label>
                           <label className="field">
                             <span>Ngày sinh</span>
-                            <input
+                            <VietnamDateInput
                               required
-                              type="date"
                               value={passenger.dateOfBirth}
-                              onChange={(event) => updatePassenger(index, "dateOfBirth", event.target.value)}
+                              onChange={(value) => updatePassenger(index, "dateOfBirth", value)}
                             />
                           </label>
                           <label className="field">

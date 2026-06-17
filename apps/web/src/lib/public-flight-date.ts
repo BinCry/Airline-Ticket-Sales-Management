@@ -7,7 +7,7 @@ function padNumber(value: string | number) {
 }
 
 function getVietnamDateParts(referenceDate: Date) {
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat("vi-VN", {
     timeZone: VIETNAM_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
@@ -37,6 +37,39 @@ export function addDaysToIsoDate(isoDate: string, daysToAdd: number) {
   const year = parsedDate.getUTCFullYear();
   const month = padNumber(parsedDate.getUTCMonth() + 1);
   const day = padNumber(parsedDate.getUTCDate());
+  return `${year}-${month}-${day}`;
+}
+
+export function formatIsoDateForDisplay(isoDate: string) {
+  const [year, month, day] = isoDate.split("-");
+  if (!year || !month || !day) {
+    return isoDate;
+  }
+
+  return `${day}/${month}/${year}`;
+}
+
+export function parseDisplayDateToIso(displayDate: string) {
+  const normalizedDate = displayDate.trim().replaceAll("-", "/");
+  const match = normalizedDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, day, month, year] = match;
+  const parsedDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  if (
+    parsedDate.getUTCFullYear() !== Number(year) ||
+    parsedDate.getUTCMonth() + 1 !== Number(month) ||
+    parsedDate.getUTCDate() !== Number(day)
+  ) {
+    return null;
+  }
+
   return `${year}-${month}-${day}`;
 }
 

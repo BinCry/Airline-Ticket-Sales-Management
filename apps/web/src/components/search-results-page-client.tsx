@@ -16,6 +16,7 @@ import {
 
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
+import { VietnamDateInput } from "@/components/vietnam-date-input";
 import { fetchAirportOptions } from "@/lib/airport-api";
 import {
   BACKOFFICE_SALES_FLOW_QUERY_KEY,
@@ -860,22 +861,20 @@ export function SearchResultsPageClient({
               <div className="search-toolbar-detail-grid">
                 <label className="field">
                   <span>Ngày đi</span>
-                  <input
-                    type="date"
+                  <VietnamDateInput
                     min={ngayHienTai}
                     value={departureDate}
-                    onChange={(event) => setDepartureDate(event.target.value)}
+                    onChange={setDepartureDate}
                   />
                 </label>
 
                 <label className="field">
                   <span>Ngày về</span>
-                  <input
-                    type="date"
+                  <VietnamDateInput
                     min={departureDate || ngayHienTai}
                     value={tripType === "one_way" ? "" : returnDate}
                     disabled={tripType === "one_way"}
-                    onChange={(event) => setReturnDate(event.target.value)}
+                    onChange={setReturnDate}
                   />
                 </label>
               </div>
