@@ -52,19 +52,7 @@ public class MemberVoucherService {
       String voucherCode,
       OffsetDateTime currentTime
   ) {
-    if (!booking.isHold()) {
-      throw new BadRequestException(BOOKING_NOT_ELIGIBLE_MESSAGE);
-    }
-
-    BookingContactEntity contact = booking.getContact();
-    if (contact == null) {
-      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
-    }
-
-    UserAccountEntity memberAccount = loadMemberAccount(authenticatedUser);
-    if (!contact.getEmail().equalsIgnoreCase(memberAccount.getEmail())) {
-      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
-    }
+    UserAccountEntity memberAccount = assertMemberOwnsBooking(authenticatedUser, booking);
 
     String normalizedVoucherCode = normalizeVoucherCode(voucherCode);
     if (booking.getAppliedVoucherCode() != null
@@ -102,6 +90,15 @@ public class MemberVoucherService {
     );
   }
 
+  public void releaseVoucherForBooking(
+      AuthenticatedUser authenticatedUser,
+      BookingEntity booking,
+      OffsetDateTime currentTime
+  ) {
+    assertMemberOwnsBooking(authenticatedUser, booking);
+    releaseVoucherForBooking(booking, currentTime);
+  }
+
   public void releaseVoucherForBooking(BookingEntity booking, OffsetDateTime currentTime) {
     if (booking.getAppliedVoucherCode() == null || booking.getBookingCode() == null) {
       return;
@@ -128,6 +125,27 @@ public class MemberVoucherService {
             voucher.markUsed(booking.getBookingCode(), currentTime);
           }
         });
+  }
+
+  private UserAccountEntity assertMemberOwnsBooking(
+      AuthenticatedUser authenticatedUser,
+      BookingEntity booking
+  ) {
+    if (!booking.isHold()) {
+      throw new BadRequestException(BOOKING_NOT_ELIGIBLE_MESSAGE);
+    }
+
+    BookingContactEntity contact = booking.getContact();
+    if (contact == null) {
+      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
+    }
+
+    UserAccountEntity memberAccount = loadMemberAccount(authenticatedUser);
+    if (!contact.getEmail().equalsIgnoreCase(memberAccount.getEmail())) {
+      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
+    }
+
+    return memberAccount;
   }
 
   private UserAccountEntity loadMemberAccount(AuthenticatedUser authenticatedUser) {

@@ -5,6 +5,7 @@ import {
   createBookingHold,
   createPaymentSession,
   createRefundRequest,
+  removeVoucherFromBooking,
   submitSandboxPayment
 } from "@/lib/booking-api";
 
@@ -258,5 +259,57 @@ describe("booking-api", () => {
       bookingCode: "A6C2P1",
       status: "refund_pending"
     });
+  });
+
+  it("goi api go voucher khoi booking", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          bookingCode: "A6C2P1",
+          status: "held",
+          paymentStatus: "pending",
+          holdExpiresAt: "2026-03-11T14:15:00+07:00",
+          ticketedAt: null,
+          tripType: "one_way",
+          steps: ["Giữ chỗ thành công"],
+          segments: [],
+          contact: null,
+          passengers: [],
+          ancillaries: [],
+          seatSelections: [],
+          tickets: [],
+          boardingPasses: [],
+          refundRequest: null,
+          paymentMethods: ["Chuyển khoản SePay"],
+          priceSummary: {
+            baseAmount: 1490000,
+            ancillaryAmount: 0,
+            discountAmount: 0,
+            totalAmount: 1490000,
+            currency: "VND",
+            appliedVoucherCode: null
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    ) as typeof fetch;
+
+    await expect(removeVoucherFromBooking("A6C2P1", "token-hop-le")).resolves.toMatchObject({
+      bookingCode: "A6C2P1",
+      paymentStatus: "pending",
+      status: "held"
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8080/api/bookings/A6C2P1/apply-voucher",
+      expect.objectContaining({
+        method: "DELETE"
+      })
+    );
   });
 });

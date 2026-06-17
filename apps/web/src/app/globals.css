@@ -6165,6 +6165,13 @@ th {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
+.revenue-range-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(148px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
 .revenue-month-picker {
   display: grid;
   gap: 5px;
@@ -6620,6 +6627,10 @@ th {
 
   .revenue-segmented-control {
     width: 100%;
+  }
+
+  .revenue-range-picker {
+    grid-template-columns: 1fr;
   }
 
   .revenue-month-switcher {

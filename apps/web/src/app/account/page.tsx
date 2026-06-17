@@ -18,6 +18,7 @@ import {
   persistAuthSession,
   type AuthSession
 } from "@/lib/auth-session";
+import { formatDate } from "@/lib/format";
 import {
   changeMyPassword,
   createMyPassenger,
@@ -106,13 +107,7 @@ function getPassengerTypeLabel(passengerType: string) {
 }
 
 function formatPassengerDate(dateOfBirth: string) {
-  const parsedDate = new Date(dateOfBirth);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return dateOfBirth;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN").format(parsedDate);
+  return formatDate(dateOfBirth, dateOfBirth);
 }
 
 function buildPassengerMeta(passenger: MyPassenger) {

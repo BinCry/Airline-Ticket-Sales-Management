@@ -10,6 +10,10 @@ import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
+import {
+  buildBoardingPassPrintHtml,
+  buildBoardingPassPrintModel
+} from "@/lib/boarding-pass-print";
 import { createRefundRequest } from "@/lib/booking-api";
 import {
   coTheLamThuTuc,
@@ -17,7 +21,7 @@ import {
   layVeCoTheYeuCauHoan,
   timPhanDoanChoVe
 } from "@/lib/booking-self-service";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime as dinhDangNgayGio } from "@/lib/format";
 import {
   fetchManageBooking,
   requestBookingLookupOtp,
@@ -97,19 +101,7 @@ function formatTripType(tripType: ManageBookingOverview["tripType"]) {
 }
 
 function formatDateTime(value: string | null) {
-  if (!value) {
-    return "Không có dữ liệu";
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return dinhDangNgayGio(value);
 }
 
 function taoKhoaNhomBay(segment: ApiManageBookingSegment | null, ticketNumber: string) {
@@ -366,6 +358,45 @@ export function ManageBookingPageClient() {
       setSelectedRefundScopeKey(danhSachNhomVeCoTheHoan[0]?.key ?? KHOA_HOAN_TOAN_BO);
     }
     setIsRefundModalOpen(true);
+  }
+
+  function handleExportBoardingPassPdf(boardingPass: ApiBoardingPass) {
+    if (!bookingOverview) {
+      return;
+    }
+
+    const segment = timPhanDoanChoBoardingPass(bookingOverview, boardingPass);
+    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=960,height=720");
+    if (!printWindow) {
+      pushToast({
+        title: "Không thể mở bản in",
+        message: "Trình duyệt đang chặn cửa sổ in. Vui lòng cho phép popup rồi thử lại.",
+        tone: "warning"
+      });
+      return;
+    }
+
+    try {
+      const printModel = buildBoardingPassPrintModel(
+        bookingOverview.bookingCode,
+        boardingPass,
+        segment
+      );
+      printWindow.document.open();
+      printWindow.document.write(buildBoardingPassPrintHtml(printModel));
+      printWindow.document.close();
+      window.setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 200);
+    } catch {
+      printWindow.close();
+      pushToast({
+        title: "Xuất PDF thất bại",
+        message: "Không thể chuẩn bị bản in thẻ lên máy bay lúc này.",
+        tone: "danger"
+      });
+    }
   }
 
   async function handleRefundRequest() {
@@ -637,7 +668,7 @@ export function ManageBookingPageClient() {
                       <div className="result-grid result-grid-rich">
                         <div>
                           <span>Ngày sinh</span>
-                          <strong>{passenger.dateOfBirth}</strong>
+                          <strong>{formatDate(passenger.dateOfBirth)}</strong>
                         </div>
                         <div>
                           <span>Giấy tờ</span>
@@ -748,6 +779,15 @@ export function ManageBookingPageClient() {
                           <p>{boardingPass.ticketNumber} • Ghế {boardingPass.seatNumber} • Cửa {boardingPass.gate}</p>
                           {segment ? <p>{taoNhanNhomBay(segment)}</p> : null}
                           <strong>{formatDateTime(boardingPass.boardingTime)}</strong>
+                          <div className="auth-action-row">
+                            <button
+                              type="button"
+                              className="button button-secondary"
+                              onClick={() => handleExportBoardingPassPdf(boardingPass)}
+                            >
+                              Xuất PDF
+                            </button>
+                          </div>
                         </article>
                       );
                     })
