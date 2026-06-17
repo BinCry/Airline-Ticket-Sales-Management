@@ -14,6 +14,7 @@ import {
   type TripType
 } from "@qlvmb/shared-types";
 
+import { DateField } from "@/components/date-field";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { fetchAirportOptions } from "@/lib/airport-api";
@@ -860,22 +861,20 @@ export function SearchResultsPageClient({
               <div className="search-toolbar-detail-grid">
                 <label className="field">
                   <span>Ngày đi</span>
-                  <input
-                    type="date"
+                  <DateField
                     min={ngayHienTai}
                     value={departureDate}
-                    onChange={(event) => setDepartureDate(event.target.value)}
+                    onChange={setDepartureDate}
                   />
                 </label>
 
                 <label className="field">
                   <span>Ngày về</span>
-                  <input
-                    type="date"
+                  <DateField
                     min={departureDate || ngayHienTai}
                     value={tripType === "one_way" ? "" : returnDate}
                     disabled={tripType === "one_way"}
-                    onChange={(event) => setReturnDate(event.target.value)}
+                    onChange={setReturnDate}
                   />
                 </label>
               </div>

@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format";
 import { rewriteNewsImageUrl } from "@/lib/news-images";
 import { getNewsDataApiKey } from "@/lib/server-env";
 
@@ -231,11 +232,7 @@ function formatPublishedDate(value: string | null | undefined) {
     return "Tin mới cập nhật";
   }
 
-  return `Đăng ngày ${new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric"
-  }).format(publishedAt)}`;
+  return `Đăng ngày ${formatDate(publishedAt)}`;
 }
 
 function scoreArticle(article: NewsDataArticle) {

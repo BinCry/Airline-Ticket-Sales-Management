@@ -3,6 +3,7 @@ package com.qlvmb.airticket.service;
 import com.qlvmb.airticket.domain.dto.BackofficeRevenueDashboardResponse;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
+import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.RefundRequestRepository;
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ public class BackofficeRevenueService {
   private static final ZoneId REPORT_ZONE_ID = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final DateTimeFormatter DAILY_KEY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
   private static final DateTimeFormatter MONTHLY_KEY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+  private static final DateTimeFormatter DISPLAY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
   private final BookingRepository bookingRepository;
   private final RefundRequestRepository refundRequestRepository;
@@ -39,14 +41,30 @@ public class BackofficeRevenueService {
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity) {
-    return getRevenueDashboard(granularity, null);
+    return getRevenueDashboard(granularity, null, null, null);
   }
 
   @Transactional(readOnly = true)
   public BackofficeRevenueDashboardResponse getRevenueDashboard(String granularity, String period) {
+    return getRevenueDashboard(granularity, period, null, null);
+  }
+
+  @Transactional(readOnly = true)
+  public BackofficeRevenueDashboardResponse getRevenueDashboard(
+      String granularity,
+      String period,
+      String fromDate,
+      String toDate
+  ) {
     RevenueGranularity revenueGranularity = RevenueGranularity.from(granularity);
     OffsetDateTime generatedAt = OffsetDateTime.now(REPORT_ZONE_ID);
-    RevenueWindow window = RevenueWindow.create(revenueGranularity, generatedAt, period);
+    RevenueWindow window = RevenueWindow.create(
+        revenueGranularity,
+        generatedAt,
+        period,
+        fromDate,
+        toDate
+    );
     Map<String, MutableRevenueBucket> buckets = createEmptyBuckets(window);
 
     bookingRepository.findPaidRevenueBookings(
@@ -186,7 +204,13 @@ public class BackofficeRevenueService {
       String label
   ) {
 
-    static RevenueWindow create(RevenueGranularity granularity, OffsetDateTime currentTime, String period) {
+    static RevenueWindow create(
+        RevenueGranularity granularity,
+        OffsetDateTime currentTime,
+        String period,
+        String fromDate,
+        String toDate
+    ) {
       if (granularity == RevenueGranularity.MONTH) {
         Year selectedYear = resolveYearPeriod(period, currentTime);
         OffsetDateTime from = selectedYear.atMonth(Month.JANUARY).atDay(1)
@@ -198,16 +222,48 @@ public class BackofficeRevenueService {
         return new RevenueWindow(granularity, from, to, "Năm " + selectedYear.getValue());
       }
 
-      YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
-      OffsetDateTime from = currentMonth.atDay(1)
-          .atStartOfDay(REPORT_ZONE_ID)
-          .toOffsetDateTime();
-      OffsetDateTime to = currentMonth.plusMonths(1)
-          .atDay(1)
-          .atStartOfDay(REPORT_ZONE_ID)
-          .toOffsetDateTime();
-      String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
+      if (isBlank(fromDate) && isBlank(toDate)) {
+        YearMonth currentMonth = resolveMonthPeriod(period, currentTime);
+        OffsetDateTime from = currentMonth.atDay(1)
+            .atStartOfDay(REPORT_ZONE_ID)
+            .toOffsetDateTime();
+        OffsetDateTime to = currentMonth.plusMonths(1)
+            .atDay(1)
+            .atStartOfDay(REPORT_ZONE_ID)
+            .toOffsetDateTime();
+        String label = "Tháng %d/%d".formatted(currentMonth.getMonthValue(), currentMonth.getYear());
+        return new RevenueWindow(granularity, from, to, label);
+      }
+
+      if (isBlank(fromDate) || isBlank(toDate)) {
+        throw new BadRequestException("Vui lòng chọn đầy đủ từ ngày và đến ngày.");
+      }
+
+      LocalDate fromLocalDate = parseDateOrThrow(fromDate, "Từ ngày");
+      LocalDate toLocalDate = parseDateOrThrow(toDate, "Đến ngày");
+      if (fromLocalDate.isAfter(toLocalDate)) {
+        throw new BadRequestException("Từ ngày không được lớn hơn đến ngày.");
+      }
+
+      OffsetDateTime from = fromLocalDate.atStartOfDay(REPORT_ZONE_ID).toOffsetDateTime();
+      OffsetDateTime to = toLocalDate.plusDays(1).atStartOfDay(REPORT_ZONE_ID).toOffsetDateTime();
+      String label = "Từ %s đến %s".formatted(
+          fromLocalDate.format(DISPLAY_DATE_FORMATTER),
+          toLocalDate.format(DISPLAY_DATE_FORMATTER)
+      );
       return new RevenueWindow(granularity, from, to, label);
+    }
+
+    private static boolean isBlank(String value) {
+      return value == null || value.isBlank();
+    }
+
+    private static LocalDate parseDateOrThrow(String value, String fieldLabel) {
+      try {
+        return LocalDate.parse(value.trim(), DateTimeFormatter.ISO_LOCAL_DATE);
+      } catch (RuntimeException exception) {
+        throw new BadRequestException(fieldLabel + " phải đúng định dạng yyyy-MM-dd.");
+      }
     }
 
     private static YearMonth resolveMonthPeriod(String period, OffsetDateTime currentTime) {

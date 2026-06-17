@@ -1,4 +1,5 @@
 import { getOpenWeatherApiKey } from "@/lib/server-env";
+import { formatDateTime } from "@/lib/format";
 
 interface OpenWeatherResponse {
   dt?: number;
@@ -107,14 +108,7 @@ function formatObservedAt(unixTimeSeconds: number | undefined) {
     return "";
   }
 
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric"
-  }).format(new Date(unixTimeSeconds * 1000));
+  return formatDateTime(new Date(unixTimeSeconds * 1000));
 }
 
 function buildWeatherEndpoint(query: string, apiKey: string) {

@@ -6,6 +6,8 @@ import {
   isWeatherQuestion,
   type WeatherSnapshot
 } from "@/lib/chatbot-weather";
+import { formatDate } from "@/lib/format";
+import { getVietnamTodayIso } from "@/lib/public-flight-date";
 import { destinations } from "@/lib/public-content";
 import { getGeminiApiKey, getGeminiModel } from "@/lib/server-env";
 
@@ -79,12 +81,7 @@ function extractGeminiText(data: GeminiResponse) {
 }
 
 function formatCurrentDate() {
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric"
-  }).format(new Date());
+  return formatDate(getVietnamTodayIso());
 }
 
 function buildGroundingContext() {

@@ -17,6 +17,7 @@ import {
   type BackofficeCmsHomepagePayload,
   type BackofficeCmsSection
 } from "@/lib/backoffice-cms-api";
+import { formatDateTime as formatDateTimeText } from "@/lib/format";
 import { footerSections, mainNavigation } from "@/lib/public-content";
 import { pushToast } from "@/lib/toast";
 
@@ -35,15 +36,7 @@ const EMPTY_FORM: BackofficeCmsEntryUpsertInput = {
 };
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 function formatSectionLabel(section: BackofficeCmsSection) {

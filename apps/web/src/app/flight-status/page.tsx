@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { ApiFlightStatusResponse } from "@qlvmb/shared-types";
 
+import { FlightStatusLookupForm } from "@/components/flight-status-lookup-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { fetchFlightStatus, taoDuongDanTinhTrangChuyenBay } from "@/lib/flight-status-api";
+import { formatDateTime } from "@/lib/format";
 import { getVietnamTodayIso } from "@/lib/public-flight-date";
 
 export const dynamic = "force-dynamic";
@@ -28,15 +30,7 @@ function layGiaTriDauTien(value: string | string[] | undefined): string {
 }
 
 function dinhDangNgayGio(value: string): string {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTime(value);
 }
 
 export default async function FlightStatusPage({ searchParams }: FlightStatusPageProps) {
@@ -86,26 +80,7 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
         </div>
 
         <div className="section-gap" />
-        <form className="lookup-card" action="/flight-status">
-          <div className="field-grid compact-grid">
-            <label className="field">
-              <span>Mã chuyến bay</span>
-              <input name="code" defaultValue={code} placeholder="Ví dụ: VN5201" />
-            </label>
-            <label className="field">
-              <span>Ngày bay</span>
-              <input
-                name="date"
-                defaultValue={date || ngayHienTai}
-                min={ngayHienTai}
-                type="date"
-              />
-            </label>
-            <button className="button button-primary" type="submit">
-              Tra cứu chuyến bay
-            </button>
-          </div>
-        </form>
+        <FlightStatusLookupForm code={code} date={date} ngayHienTai={ngayHienTai} />
 
         <div className="section-gap" />
         <SectionHeading

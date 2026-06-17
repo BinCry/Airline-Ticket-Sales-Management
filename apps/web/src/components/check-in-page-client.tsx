@@ -11,6 +11,7 @@ import { loadActiveAuthSession } from "@/lib/auth-session";
 import { xuatBoardingPassPdf } from "@/lib/boarding-pass-pdf";
 import { completeCheckin } from "@/lib/booking-api";
 import { layVeCoTheCheckin, timPhanDoanChoVe } from "@/lib/booking-self-service";
+import { formatDateTime as formatDateTimeText } from "@/lib/format";
 import {
   fetchManageBooking,
   requestBookingLookupOtp,
@@ -28,15 +29,7 @@ interface NhomCheckin {
 }
 
 function formatDateTime(value: string) {
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(parsedDate);
+  return formatDateTimeText(value);
 }
 
 function taoMaVachGia(count: number) {
