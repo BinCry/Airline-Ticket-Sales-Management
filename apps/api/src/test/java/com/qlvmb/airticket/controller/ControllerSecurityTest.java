@@ -404,6 +404,23 @@ class ControllerSecurityTest {
   }
 
   @Test
+  void removeVoucher_shouldAllowMemberRole() throws Exception {
+    mockMvc.perform(delete("/api/bookings/A6C2P1/voucher")
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                bearerToken(List.of("member"), List.of("customer.self_service", "member.loyalty"))
+            ))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void removeVoucher_shouldRejectCustomerRole() throws Exception {
+    mockMvc.perform(delete("/api/bookings/A6C2P1/voucher")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
   void getSupportOverview_shouldRejectCustomerPermission() throws Exception {
     mockMvc.perform(get("/api/support/overview")
             .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))

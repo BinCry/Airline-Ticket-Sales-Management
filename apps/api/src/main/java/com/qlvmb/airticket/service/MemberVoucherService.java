@@ -102,6 +102,28 @@ public class MemberVoucherService {
     );
   }
 
+  public void removeVoucherFromBooking(
+      AuthenticatedUser authenticatedUser,
+      BookingEntity booking,
+      OffsetDateTime currentTime
+  ) {
+    if (!booking.isHold()) {
+      throw new BadRequestException(BOOKING_NOT_ELIGIBLE_MESSAGE);
+    }
+
+    BookingContactEntity contact = booking.getContact();
+    if (contact == null) {
+      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
+    }
+
+    UserAccountEntity memberAccount = loadMemberAccount(authenticatedUser);
+    if (!contact.getEmail().equalsIgnoreCase(memberAccount.getEmail())) {
+      throw new BadRequestException(BOOKING_OWNER_MISMATCH_MESSAGE);
+    }
+
+    releaseVoucherForBooking(booking, currentTime);
+  }
+
   public void releaseVoucherForBooking(BookingEntity booking, OffsetDateTime currentTime) {
     if (booking.getAppliedVoucherCode() == null || booking.getBookingCode() == null) {
       return;
