@@ -109,21 +109,44 @@ export function taoTenTepBoardingPass(payload: BoardingPassPdfPayload) {
 }
 
 export function taoSvgBoardingPass(payload: BoardingPassPdfPayload) {
-  const khungMaBoarding = {
-    height: 226,
-    width: 304,
+  const thongTinMaBoarding = {
     x: 808,
-    y: 236
+    yGiaTri: 378,
+    yNhan: 340
   } as const;
-  const khungMaVach = {
-    height: 76,
-    width: 248,
-    x: 28,
-    y: 124
+  const oGhe = {
+    height: 100,
+    width: 210,
+    x: 88,
+    y: 520
+  } as const;
+  const oCuaRaTau = {
+    height: 100,
+    width: 230,
+    x: 324,
+    y: 520
+  } as const;
+  const oGioBoarding = {
+    height: 100,
+    width: 240,
+    x: 580,
+    y: 520
+  } as const;
+  const oMaVach = {
+    height: 100,
+    width: 226,
+    x: 846,
+    y: 520
+  } as const;
+  const nenMaVach = {
+    height: 64,
+    width: 194,
+    x: 16,
+    y: 18
   } as const;
   const kichThuocMaVach = {
-    height: 52,
-    width: 204
+    height: 44,
+    width: 158
   } as const;
   const bookingCode = boKyTuKhongAnToan(payload.bookingCode.trim().toUpperCase());
   const passengerName = boKyTuKhongAnToan(payload.boardingPass.passengerName);
@@ -169,9 +192,14 @@ export function taoSvgBoardingPass(payload: BoardingPassPdfPayload) {
   <text x="88" y="430" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Chặng bay</text>
   <text x="88" y="468" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700">${segmentLabel}</text>
 
-  <rect x="88" y="520" width="220" height="100" rx="24" fill="#f5f8fc" />
-  <rect x="334" y="520" width="280" height="100" rx="24" fill="#f5f8fc" />
-  <rect x="640" y="520" width="432" height="100" rx="24" fill="#f5f8fc" />
+  <text x="${thongTinMaBoarding.x}" y="${thongTinMaBoarding.yNhan}" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="20">Mã boarding</text>
+  <text x="${thongTinMaBoarding.x}" y="${thongTinMaBoarding.yGiaTri}" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" textLength="264" lengthAdjust="spacingAndGlyphs">${barcode}</text>
+
+  <rect x="${oGhe.x}" y="${oGhe.y}" width="${oGhe.width}" height="${oGhe.height}" rx="24" fill="#f5f8fc" />
+  <rect x="${oCuaRaTau.x}" y="${oCuaRaTau.y}" width="${oCuaRaTau.width}" height="${oCuaRaTau.height}" rx="24" fill="#f5f8fc" />
+  <rect x="${oGioBoarding.x}" y="${oGioBoarding.y}" width="${oGioBoarding.width}" height="${oGioBoarding.height}" rx="24" fill="#f5f8fc" />
+  <rect x="${oMaVach.x}" y="${oMaVach.y}" width="${oMaVach.width}" height="${oMaVach.height}" rx="24" fill="#f5f8fc" />
+  <rect x="${oMaVach.x + nenMaVach.x}" y="${oMaVach.y + nenMaVach.y}" width="${nenMaVach.width}" height="${nenMaVach.height}" rx="18" fill="#edf3f8" />
 
   <text x="120" y="560" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Ghế</text>
   <text x="120" y="602" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800">${seatNumber}</text>
@@ -179,17 +207,11 @@ export function taoSvgBoardingPass(payload: BoardingPassPdfPayload) {
   <text x="366" y="560" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Cửa ra tàu</text>
   <text x="366" y="602" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800">${gate}</text>
 
-  <text x="672" y="560" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Giờ boarding</text>
-  <text x="672" y="602" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="800">${boardingTimeLabel}</text>
+  <text x="612" y="560" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Giờ boarding</text>
+  <text x="612" y="602" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="800">${boardingTimeLabel}</text>
 
-  <g transform="translate(${khungMaBoarding.x}, ${khungMaBoarding.y})">
-    <rect width="${khungMaBoarding.width}" height="${khungMaBoarding.height}" rx="28" fill="#f5f8fc" />
-    <text x="28" y="48" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="20">Mã boarding</text>
-    <text x="28" y="84" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" textLength="${khungMaVach.width}" lengthAdjust="spacingAndGlyphs">${barcode}</text>
-    <rect x="${khungMaVach.x}" y="${khungMaVach.y}" width="${khungMaVach.width}" height="${khungMaVach.height}" rx="18" fill="#edf3f8" />
-    <g transform="translate(50, 136)">
-      ${taoCotMaVach(kichThuocMaVach.width, kichThuocMaVach.height)}
-    </g>
+  <g transform="translate(${oMaVach.x + 34}, ${oMaVach.y + 28})">
+    ${taoCotMaVach(kichThuocMaVach.width, kichThuocMaVach.height)}
   </g>
 </svg>`.trim();
 }
