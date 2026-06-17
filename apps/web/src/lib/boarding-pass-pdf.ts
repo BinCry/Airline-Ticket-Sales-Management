@@ -48,16 +48,26 @@ function ghepMangBytes(parts: Uint8Array[]) {
   return ketQua;
 }
 
-function taoCotMaVach() {
+function taoCotMaVach(chieuRongToiDa: number, chieuCaoToiDa: number) {
+  const mauCot = Array.from({ length: 42 }, (_, index) => ({
+    chieuRong: index % 3 === 0 ? 8 : index % 2 === 0 ? 5 : 3,
+    chieuCao: 86 + (index % 5) * 10,
+    mau: index % 4 === 0 ? "#123d69" : "#234f85"
+  }));
+  const tongChieuRongGoc = mauCot.reduce((tong, cot) => tong + cot.chieuRong, 0) + (mauCot.length - 1) * 5;
+  const chieuCaoLonNhat = Math.max(...mauCot.map((cot) => cot.chieuCao));
+  const tiLeRong = chieuRongToiDa / tongChieuRongGoc;
+  const tiLeCao = chieuCaoToiDa / chieuCaoLonNhat;
   let viTriX = 0;
 
-  return Array.from({ length: 42 }, (_, index) => {
-    const chieuRong = index % 3 === 0 ? 8 : index % 2 === 0 ? 5 : 3;
-    const chieuCao = 86 + (index % 5) * 10;
-    const mau = index % 4 === 0 ? "#123d69" : "#234f85";
-    const cot = `<rect x="${viTriX}" y="${120 - chieuCao}" width="${chieuRong}" height="${chieuCao}" rx="1.5" fill="${mau}" />`;
-    viTriX += chieuRong + 5;
-    return cot;
+  return mauCot.map((cot) => {
+    const x = Number((viTriX * tiLeRong).toFixed(2));
+    const chieuRong = Number(Math.max(1.2, cot.chieuRong * tiLeRong).toFixed(2));
+    const chieuCao = Number((cot.chieuCao * tiLeCao).toFixed(2));
+    const y = Number((chieuCaoToiDa - chieuCao).toFixed(2));
+    const boTron = Number(Math.max(0.8, chieuRong / 3).toFixed(2));
+    viTriX += cot.chieuRong + 5;
+    return `<rect x="${x}" y="${y}" width="${chieuRong}" height="${chieuCao}" rx="${boTron}" fill="${cot.mau}" />`;
   }).join("");
 }
 
@@ -99,6 +109,22 @@ export function taoTenTepBoardingPass(payload: BoardingPassPdfPayload) {
 }
 
 export function taoSvgBoardingPass(payload: BoardingPassPdfPayload) {
+  const khungMaBoarding = {
+    height: 226,
+    width: 304,
+    x: 808,
+    y: 236
+  } as const;
+  const khungMaVach = {
+    height: 76,
+    width: 248,
+    x: 28,
+    y: 124
+  } as const;
+  const kichThuocMaVach = {
+    height: 52,
+    width: 204
+  } as const;
   const bookingCode = boKyTuKhongAnToan(payload.bookingCode.trim().toUpperCase());
   const passengerName = boKyTuKhongAnToan(payload.boardingPass.passengerName);
   const ticketNumber = boKyTuKhongAnToan(payload.boardingPass.ticketNumber);
@@ -156,12 +182,13 @@ export function taoSvgBoardingPass(payload: BoardingPassPdfPayload) {
   <text x="672" y="560" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="22">Giờ boarding</text>
   <text x="672" y="602" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="800">${boardingTimeLabel}</text>
 
-  <g transform="translate(846, 236)">
-    <rect width="226" height="226" rx="28" fill="#f5f8fc" />
+  <g transform="translate(${khungMaBoarding.x}, ${khungMaBoarding.y})">
+    <rect width="${khungMaBoarding.width}" height="${khungMaBoarding.height}" rx="28" fill="#f5f8fc" />
     <text x="28" y="48" fill="#52647c" font-family="Segoe UI, Arial, sans-serif" font-size="20">Mã boarding</text>
-    <text x="28" y="84" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="700">${barcode}</text>
-    <g transform="translate(28, 188)">
-      ${taoCotMaVach()}
+    <text x="28" y="84" fill="#123d69" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" textLength="${khungMaVach.width}" lengthAdjust="spacingAndGlyphs">${barcode}</text>
+    <rect x="${khungMaVach.x}" y="${khungMaVach.y}" width="${khungMaVach.width}" height="${khungMaVach.height}" rx="18" fill="#edf3f8" />
+    <g transform="translate(50, 136)">
+      ${taoCotMaVach(kichThuocMaVach.width, kichThuocMaVach.height)}
     </g>
   </g>
 </svg>`.trim();
