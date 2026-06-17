@@ -5941,6 +5941,16 @@ th {
   margin: 0;
 }
 
+.boarding-pass-actions {
+  display: grid;
+  justify-items: flex-end;
+  gap: 12px;
+}
+
+.boarding-pass-actions .button {
+  min-width: 132px;
+}
+
 .barcode-strip {
   display: flex;
   align-items: flex-end;
