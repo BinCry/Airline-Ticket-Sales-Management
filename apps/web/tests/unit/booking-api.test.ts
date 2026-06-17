@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  cancelAppliedVoucherForBooking,
   completeCheckin,
   createBookingHold,
   createPaymentSession,
@@ -112,60 +111,6 @@ describe("booking-api", () => {
       bookingCode: "A6C2P1",
       paymentStatus: "pending"
     });
-  });
-
-  it("goi api huy ap dung voucher", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          bookingCode: "A6C2P1",
-          status: "held",
-          paymentStatus: "pending",
-          holdExpiresAt: "2026-03-11T14:15:00+07:00",
-          ticketedAt: null,
-          tripType: "one_way",
-          steps: ["Giữ chỗ thành công"],
-          segments: [],
-          contact: null,
-          passengers: [],
-          ancillaries: [],
-          seatSelections: [],
-          tickets: [],
-          boardingPasses: [],
-          refundRequest: null,
-          paymentMethods: ["Chuyển khoản SePay"],
-          priceSummary: {
-            baseAmount: 1490000,
-            ancillaryAmount: 0,
-            discountAmount: 0,
-            totalAmount: 1490000,
-            currency: "VND",
-            appliedVoucherCode: null
-          }
-        }),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      )
-    );
-    global.fetch = fetchMock as typeof fetch;
-
-    await expect(cancelAppliedVoucherForBooking(" A6C2P1 ", "access-token")).resolves.toMatchObject({
-      bookingCode: "A6C2P1",
-      priceSummary: {
-        appliedVoucherCode: null,
-        discountAmount: 0
-      }
-    });
-    expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8080/api/bookings/A6C2P1/apply-voucher",
-      expect.objectContaining({
-        method: "DELETE"
-      })
-    );
   });
 
   it("goi xac nhan thanh toan cuc bo", async () => {

@@ -12,7 +12,6 @@ import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
   applyVoucherToBooking,
-  cancelAppliedVoucherForBooking,
   confirmLocalPayment,
   createPaymentSession
 } from "@/lib/booking-api";
@@ -128,7 +127,6 @@ export default function BookingCheckoutPage() {
   const [isLoadingVouchers, setIsLoadingVouchers] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
-  const [isCancellingVoucher, setIsCancellingVoucher] = useState(false);
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
   const [isMemberSession, setIsMemberSession] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -325,7 +323,6 @@ export default function BookingCheckoutPage() {
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
   const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
   const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
-  const isVoucherActionPending = isApplyingVoucher || isCancellingVoucher;
 
   async function handleLocalPaymentConfirmation() {
     if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local") {
@@ -412,53 +409,6 @@ export default function BookingCheckoutPage() {
       );
     } finally {
       setIsApplyingVoucher(false);
-    }
-  }
-
-  async function handleCancelAppliedVoucher() {
-    if (
-      !bookingCode ||
-      !accessToken ||
-      !isMemberSession ||
-      !session?.appliedVoucherCode ||
-      isCancellingVoucher ||
-      isPaymentClosed
-    ) {
-      return;
-    }
-
-    setIsCancellingVoucher(true);
-    setVoucherErrorMessage(null);
-    setVoucherNotice(null);
-
-    try {
-      await cancelAppliedVoucherForBooking(bookingCode, accessToken);
-
-      const [nextSession, nextVouchers] = await Promise.all([
-        createPaymentSession(bookingCode, accessToken),
-        fetchMyVouchers(accessToken)
-      ]);
-
-      setSession(nextSession);
-      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
-        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
-        return;
-      }
-      setMemberVouchers(nextVouchers);
-      setVoucherCode("");
-      setVoucherNotice("Đã xóa áp dụng voucher khỏi booking này.");
-
-      pushToast({
-        message: "Tổng thanh toán đã được cập nhật sau khi bỏ voucher.",
-        title: "Đã xóa voucher",
-        tone: "success"
-      });
-    } catch (error) {
-      setVoucherErrorMessage(
-        resolveApiClientErrorMessage(error, "Không thể xóa áp dụng voucher cho booking này.")
-      );
-    } finally {
-      setIsCancellingVoucher(false);
     }
   }
 
@@ -688,20 +638,10 @@ export default function BookingCheckoutPage() {
                     type="button"
                     className="button button-primary"
                     onClick={() => void handleApplyVoucher()}
-                    disabled={!voucherCode.trim() || isVoucherActionPending || isLoading || isPaymentClosed}
+                    disabled={!voucherCode.trim() || isApplyingVoucher || isLoading || isPaymentClosed}
                   >
                     {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
                   </button>
-                  {session?.appliedVoucherCode ? (
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => void handleCancelAppliedVoucher()}
-                      disabled={isVoucherActionPending || isLoading || isPaymentClosed}
-                    >
-                      {isCancellingVoucher ? "Đang xóa..." : "Xóa áp dụng"}
-                    </button>
-                  ) : null}
                 </div>
                 {voucherErrorMessage ? (
                   <div className="auth-note-card">
@@ -737,7 +677,7 @@ export default function BookingCheckoutPage() {
                             type="button"
                             className="button button-secondary"
                             onClick={() => void handleApplyVoucher(voucher.voucherCode)}
-                            disabled={isVoucherActionPending || isLoading || isPaymentClosed}
+                            disabled={isApplyingVoucher || isLoading || isPaymentClosed}
                           >
                             Dùng {voucher.voucherCode}
                           </button>
