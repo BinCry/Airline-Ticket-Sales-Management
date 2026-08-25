@@ -4,7 +4,7 @@
 - Chạy `web` và `api` trên một máy ảo Azure có cài `Coolify`.
 - Dùng `Azure Database for PostgreSQL Flexible Server` làm cơ sở dữ liệu production.
 - Quản lý toàn bộ biến môi trường ở `Coolify`.
-- Tự động redeploy khi `main` có thay đổi và pipeline thành công.
+- Tự động phát hành image Docker Hub và redeploy khi `main` có thay đổi, sau khi pipeline thành công.
 - Domain production đã chốt:
   - `https://airplane.id.vn`
   - `https://api.airplane.id.vn`
@@ -41,7 +41,10 @@
   - `APP_PAYMENT_SEPAY_WEBHOOK_API_KEY`
   - webhook public thật `https://api.airplane.id.vn/api/payments/webhooks/sepay`
   - domain production và DNS
-  - `COOLIFY_PRODUCTION_WEBHOOK_URL`
+  - `DOCKERHUB_USERNAME`
+  - `DOCKERHUB_TOKEN`
+  - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
+  - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
 
 ## Kiểm tra cấu hình production trước khi cutover
 - Chạy nhanh tại thư mục gốc repo:
@@ -83,21 +86,17 @@ pwsh -File .\infra\scripts\provision-azure-production.ps1 `
 - Truy cập `http://<ip>:8000` ngay sau khi cài xong để tạo tài khoản quản trị đầu tiên.
 - Sau khi đăng nhập, thêm domain production và bật HTTPS trên Coolify.
 
-## Bước 3. Tạo 2 ứng dụng trong Coolify
+## Bước 3. Tạo 2 ứng dụng từ Docker image trong Coolify
 ### 1. Ứng dụng `api`
-- Nguồn: repo GitHub hiện tại
-- Nhánh: `main`
-- Dockerfile: `apps/api/Dockerfile`
-- Build context: `apps/api`
+- Nguồn: Docker Image
+- Image: `kietphan24/airline-ticket-api:production`
 - Cổng nội bộ: `8080`
 - Health check: `/api/meta/health`
 - Domain công khai: `api.airplane.id.vn`
 
 ### 2. Ứng dụng `web`
-- Nguồn: repo GitHub hiện tại
-- Nhánh: `main`
-- Dockerfile: `apps/web/Dockerfile`
-- Build context: thư mục gốc repo
+- Nguồn: Docker Image
+- Image: `kietphan24/airline-ticket-web:production`
 - Cổng nội bộ: `3000`
 - Domain công khai: `airplane.id.vn`
 
@@ -157,14 +156,21 @@ jdbc:postgresql://<postgres-host>:5432/airticket?sslmode=require
 
 - Chỉ nhập chuỗi này vào app `api` trên Coolify, không lưu secret production trong repo.
 
-## Bước 6. Kết nối GitHub Actions với Coolify
-- Tạo Deploy Webhook trong Coolify cho môi trường production.
-- Lưu URL webhook đầy đủ vào GitHub Secret:
-  - `COOLIFY_PRODUCTION_WEBHOOK_URL`
+## Bước 6. Kết nối GitHub Actions với Docker Hub và Coolify
+- Tạo access token Docker Hub và lưu vào GitHub Secrets:
+  - `DOCKERHUB_USERNAME`
+  - `DOCKERHUB_TOKEN`
+- Tạo Deploy Webhook riêng cho ứng dụng web và API trong Coolify.
+- Lưu URL webhook đầy đủ vào GitHub Secrets:
+  - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
+  - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
 - Workflow `deploy.yml` sẽ:
   - chạy lại test và build
-  - build thử image `api` và `web`
-  - trigger webhook Coolify khi `main` cập nhật
+  - build và đẩy image `api`, `web` lên Docker Hub
+  - gọi webhook Coolify của từng ứng dụng khi publish thành công
+  - tiếp tục đồng bộ `main` sang `deploy` theo quy ước nhánh của dự án
+
+Xem hướng dẫn cutover và rollback tại `docs/setup/production-dockerhub-coolify.md`.
 
 ## Kiểm tra sau deploy
 - `web` mở được qua domain production.
@@ -178,8 +184,8 @@ jdbc:postgresql://<postgres-host>:5432/airticket?sslmode=require
 
 ## Rollback nhanh
 1. Mở Coolify.
-2. Chọn bản deploy gần nhất ổn định.
-3. Redeploy lại phiên bản đó.
+2. Đổi image của dịch vụ lỗi sang tag `production-<short-sha>` gần nhất ổn định.
+3. Redeploy lại dịch vụ đó.
 4. Nếu lỗi do biến môi trường, khôi phục env cũ trước rồi redeploy.
 
 ## Lưu ý vận hành
