@@ -41,7 +41,7 @@ Tạo năm repository secret trong GitHub:
 
 `DOCKERHUB_TOKEN` nên là access token chỉ có quyền đọc và ghi image cần thiết, không dùng mật khẩu tài khoản.
 
-Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API token trong `Keys & Tokens` với quyền `deploy`, rồi lưu token đó vào `COOLIFY_TOKEN`. Workflow gửi token bằng Bearer header và không ghi token vào mã nguồn.
+Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API token trong `Keys & Tokens` với quyền `deploy`, rồi lưu token đó vào `COOLIFY_TOKEN`. Workflow gửi token bằng Bearer header qua request `POST` và không ghi token vào mã nguồn.
 
 ## Chuẩn bị Docker Hub
 

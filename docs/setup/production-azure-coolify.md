@@ -170,7 +170,7 @@ jdbc:postgresql://<postgres-host>:5432/airticket?sslmode=require
 - Workflow `deploy.yml` sẽ:
   - chạy lại test và build
   - build và đẩy image `api`, `web` lên Docker Hub
-  - gọi webhook Coolify của từng ứng dụng khi publish thành công
+  - gọi webhook Coolify của từng ứng dụng bằng request `POST` kèm Bearer token khi publish thành công
   - tiếp tục đồng bộ `main` sang `deploy` theo quy ước nhánh của dự án
 
 Xem hướng dẫn cutover và rollback tại `docs/setup/production-dockerhub-coolify.md`.
