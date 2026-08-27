@@ -38,15 +38,7 @@ function createInitialMessages(mode: ChatMode) {
   return [createMessage("assistant", chatbotModeConfig[mode].welcome)];
 }
 
-function buildPendingLabel(mode: ChatMode) {
-  return mode === "travel" ? "AI đang gợi ý điểm đến..." : "Trợ lý đang trả lời...";
-}
-
-function resolveRequestMode(mode: ChatMode, content: string): ChatMode {
-  if (mode === "travel") {
-    return mode;
-  }
-
+function looksLikeWeatherRequest(content: string) {
   const lowered = content.toLocaleLowerCase("vi-VN");
   const weatherCues = [
     "thời tiết",
@@ -59,9 +51,23 @@ function resolveRequestMode(mode: ChatMode, content: string): ChatMode {
     "gio"
   ];
 
-  return weatherCues.some((weatherCue) => lowered.includes(weatherCue))
-    ? "travel"
-    : mode;
+  return weatherCues.some((weatherCue) => lowered.includes(weatherCue));
+}
+
+export function buildPendingLabel(mode: ChatMode, content: string) {
+  if (looksLikeWeatherRequest(content)) {
+    return "AI đang kiểm tra thời tiết...";
+  }
+
+  return mode === "travel" ? "AI đang gợi ý điểm đến..." : "Trợ lý đang trả lời...";
+}
+
+export function resolveRequestMode(mode: ChatMode, content: string): ChatMode {
+  if (mode === "travel") {
+    return mode;
+  }
+
+  return looksLikeWeatherRequest(content) ? "travel" : mode;
 }
 
 function buildFallbackErrorMessage(mode: ChatMode) {
@@ -212,7 +218,7 @@ export function ChatbotWidget() {
     const userMessage = createMessage("user", content);
     const pendingMessage = createMessage(
       "assistant",
-      buildPendingLabel(requestMode),
+      buildPendingLabel(requestMode, content),
       undefined,
       true
     );
