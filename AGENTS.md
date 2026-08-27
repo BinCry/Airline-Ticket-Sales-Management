@@ -63,7 +63,6 @@ Giữ thay đổi nhỏ, đúng phạm vi và an toàn cho dự án.
 
 ### Mô hình nhánh
 - `main`: Nhánh ổn định, cấm đẩy trực tiếp.
-- `deploy`: Nhánh triển khai dành riêng cho `Vercel`, được đồng bộ tự động từ `main`, không dùng để phát triển tính năng và không được xóa.
 - `feat/<pham-vi>-<mo-ta-ngan>`: Nhánh làm tính năng mới.
 - `fix/<pham-vi>-<mo-ta-ngan>`: Nhánh sửa lỗi.
 - `docs/<pham-vi>-<mo-ta-ngan>`, `test/<pham-vi>-<mo-ta-ngan>`, `refactor/<pham-vi>-<mo-ta-ngan>`, `chore/<pham-vi>-<mo-ta-ngan>`: Nhánh cho thay đổi kỹ thuật tương ứng.
@@ -75,7 +74,6 @@ Giữ thay đổi nhỏ, đúng phạm vi và an toàn cho dự án.
 3. Mọi commit trong nhánh phải theo mẫu `Type(scope):description` và phần `description` bằng tiếng Việt có dấu.
 4. Đẩy nhánh lên sớm và mở yêu cầu hợp nhất (`pull request`) ngay khi có bản chạy được.
 5. Trước khi xin duyệt, phải cập nhật thay đổi mới nhất từ `main` và xử lý xung đột.
-6. Không cập nhật thủ công vào `deploy` nếu không có yêu cầu bảo trì rõ ràng; nhánh này chỉ nhận đồng bộ tự động từ `main`.
 
 ### Quy tắc duyệt và hợp nhất mã
 1. Không hợp nhất trực tiếp vào `main`; chỉ hợp nhất qua `pull request`.
@@ -86,7 +84,6 @@ Giữ thay đổi nhỏ, đúng phạm vi và an toàn cho dự án.
 6. Tiêu đề `pull request` hoặc thông điệp hợp nhất phải theo mẫu `Type(scope):description`, phần `description` bằng tiếng Việt có dấu.
 7. Sau khi hợp nhất phải xóa nhánh để tránh tồn đọng nhánh cũ.
 8. Riêng bạn (người có quyền hạn cao nhất) có quyền quyết định cuối cùng và được phép tự duyệt, tự hợp nhất khi cần.
-9. Riêng nhánh `deploy` là ngoại lệ, không được xóa sau khi hợp nhất vì đây là nhánh triển khai cố định cho `Vercel`.
 
 ### Thiết lập bảo vệ nhánh `main` trên GitHub
 - Bật yêu cầu mở `pull request` trước khi hợp nhất.
