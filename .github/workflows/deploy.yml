@@ -104,7 +104,7 @@ jobs:
       - name: Biên dịch web
         working-directory: apps/web
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://api.airplane.id.vn
+          NEXT_PUBLIC_API_BASE_URL: https://airticket.api.bincrydev.id.vn
         run: npm run build
 
   validate-production-config:
@@ -174,7 +174,7 @@ jobs:
           push: true
           provenance: false
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=https://api.airplane.id.vn
+            NEXT_PUBLIC_API_BASE_URL=https://airticket.api.bincrydev.id.vn
           tags: |
             ${{ env.WEB_IMAGE_NAME }}:${{ env.PRODUCTION_TAG }}
             ${{ env.WEB_IMAGE_NAME }}:${{ steps.image-meta.outputs.sha_tag }}

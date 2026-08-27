@@ -173,8 +173,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
 - `docker-compose.prod.yml` dùng cho `web + api`
 - GitHub Actions trigger redeploy qua webhook Coolify
 - Domain production:
-  - `https://airplane.id.vn`
-  - `https://api.airplane.id.vn`
+  - `https://airticket.bincrydev.id.vn`
+  - `https://airticket.api.bincrydev.id.vn`
 
 ### Hạ tầng trong repo
 - `infra/azure/main.bicep`
