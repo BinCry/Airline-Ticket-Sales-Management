@@ -12,9 +12,9 @@
 | Mã | Rủi ro | Tác động | Trạng thái | Hành động cần làm |
 | --- | --- | --- | --- | --- |
 | `P0-01` | Thiếu `APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID` | Không bật được `SePay live`, session thanh toán thật chưa hoàn tất | Chưa đóng | Điền secret production trên Coolify |
-| `P0-02` | Thiếu `APP_PAYMENT_SEPAY_WEBHOOK_API_KEY` và webhook public thật | Không xác thực được callback production | Chưa đóng | Cấu hình `https://api.airplane.id.vn/api/payments/webhooks/sepay` |
+| `P0-02` | Thiếu `APP_PAYMENT_SEPAY_WEBHOOK_API_KEY` và webhook public thật | Không xác thực được callback production | Chưa đóng | Cấu hình `https://airticket.api.bincrydev.id.vn/api/payments/webhooks/sepay` |
 | `P0-03` | Thiếu SMTP production thật | OTP và email vé chưa thể kiểm chứng trên production | Chưa đóng | Điền `SPRING_MAIL_*` và `APP_MAIL_*` thật |
-| `P0-04` | DNS cho `airplane.id.vn` và `api.airplane.id.vn` chưa được trỏ thật | Không thể cutover public | Chưa đóng | Trỏ DNS, bật HTTPS trên Coolify |
+| `P0-04` | DNS cho `airticket.bincrydev.id.vn` và `airticket.api.bincrydev.id.vn` chưa được trỏ thật | Không thể cutover public | Chưa đóng | Trỏ DNS, bật HTTPS trên Coolify |
 | `P0-05` | Thiếu webhook Coolify production và thông tin Azure subscription thật | Chưa thể redeploy production thật từ GitHub Actions | Chưa đóng | Điền secret triển khai ngoài repo |
 
 ## P1 - rủi ro cần theo dõi sát khi lên production

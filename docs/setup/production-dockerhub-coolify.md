@@ -55,7 +55,7 @@ Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Workflow kh
 2. Dùng image `kietphan24/airline-ticket-api:production`.
 3. Giữ cổng nội bộ `8080`.
 4. Giữ health check `/api/meta/health`.
-5. Giữ domain `https://api.airplane.id.vn`.
+5. Giữ domain `https://airticket.api.bincrydev.id.vn`.
 6. Giữ toàn bộ biến môi trường API hiện tại.
 7. Tạo deploy webhook và lưu URL vào `COOLIFY_API_PRODUCTION_WEBHOOK_URL`.
 
@@ -64,11 +64,11 @@ Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Workflow kh
 1. Chuyển nguồn triển khai sang Docker Image.
 2. Dùng image `kietphan24/airline-ticket-web:production`.
 3. Giữ cổng nội bộ `3000`.
-4. Giữ domain `https://airplane.id.vn`.
+4. Giữ domain `https://airticket.bincrydev.id.vn`.
 5. Giữ toàn bộ biến môi trường web hiện tại.
 6. Tạo deploy webhook và lưu URL vào `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`.
 
-`NEXT_PUBLIC_API_BASE_URL` được đóng vào image web lúc build với giá trị `https://api.airplane.id.vn`.
+`NEXT_PUBLIC_API_BASE_URL` được đóng vào image web lúc build với giá trị `https://airticket.api.bincrydev.id.vn`.
 
 ## Cutover an toàn
 
@@ -83,8 +83,8 @@ Không xóa nhánh `deploy`. Pipeline vẫn đồng bộ `main` sang nhánh này
 
 ## Kiểm tra sau triển khai
 
-- `https://api.airplane.id.vn/api/meta/health` trả trạng thái thành công.
-- `https://airplane.id.vn` tải được và gọi đúng API production.
+- `https://airticket.api.bincrydev.id.vn/api/meta/health` trả trạng thái thành công.
+- `https://airticket.bincrydev.id.vn` tải được và gọi đúng API production.
 - Luồng đăng nhập, đặt vé, thanh toán và gửi email hoạt động.
 - Hai image có cả tag `production` và tag theo commit trên Docker Hub.
 

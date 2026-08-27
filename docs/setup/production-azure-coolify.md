@@ -6,8 +6,8 @@
 - Quản lý toàn bộ biến môi trường ở `Coolify`.
 - Tự động phát hành image Docker Hub và redeploy khi `main` có thay đổi, sau khi pipeline thành công.
 - Domain production đã chốt:
-  - `https://airplane.id.vn`
-  - `https://api.airplane.id.vn`
+  - `https://airticket.bincrydev.id.vn`
+  - `https://airticket.api.bincrydev.id.vn`
 
 ## Thành phần trong repo
 - `infra/azure/main.bicep`: tạo máy ảo, mạng, IP tĩnh và PostgreSQL Flexible Server.
@@ -27,8 +27,8 @@
 - Một khóa SSH công khai cho máy ảo.
 - Domain production trỏ về IP public của máy ảo.
 - Cấu hình DNS tối thiểu:
-  - `airplane.id.vn` trỏ về web trên Coolify
-  - `api.airplane.id.vn` trỏ về API trên Coolify
+  - `airticket.bincrydev.id.vn` trỏ về web trên Coolify
+  - `airticket.api.bincrydev.id.vn` trỏ về API trên Coolify
 - Các khóa production:
   - `APP_AUTH_JWT_SECRET`
   - `SPRING_MAIL_*`
@@ -39,7 +39,7 @@
 - Các giá trị ngoài repo còn phải điền thủ công trước cutover:
   - `APP_PAYMENT_SEPAY_BANK_ACCOUNT_ID`
   - `APP_PAYMENT_SEPAY_WEBHOOK_API_KEY`
-  - webhook public thật `https://api.airplane.id.vn/api/payments/webhooks/sepay`
+  - webhook public thật `https://airticket.api.bincrydev.id.vn/api/payments/webhooks/sepay`
   - domain production và DNS
   - `DOCKERHUB_USERNAME`
   - `DOCKERHUB_TOKEN`
@@ -92,13 +92,13 @@ pwsh -File .\infra\scripts\provision-azure-production.ps1 `
 - Image: `kietphan24/airline-ticket-api:production`
 - Cổng nội bộ: `8080`
 - Health check: `/api/meta/health`
-- Domain công khai: `api.airplane.id.vn`
+- Domain công khai: `airticket.api.bincrydev.id.vn`
 
 ### 2. Ứng dụng `web`
 - Nguồn: Docker Image
 - Image: `kietphan24/airline-ticket-web:production`
 - Cổng nội bộ: `3000`
-- Domain công khai: `airplane.id.vn`
+- Domain công khai: `airticket.bincrydev.id.vn`
 
 ## Bước 4. Nhập biến môi trường vào Coolify
 ### Nhóm `api`
@@ -175,7 +175,7 @@ Xem hướng dẫn cutover và rollback tại `docs/setup/production-dockerhub-c
 ## Kiểm tra sau deploy
 - `web` mở được qua domain production.
 - `GET /api/meta/health` trả `ok`.
-- `https://airplane.id.vn` và `https://api.airplane.id.vn` đều dùng HTTPS hợp lệ.
+- `https://airticket.bincrydev.id.vn` và `https://airticket.api.bincrydev.id.vn` đều dùng HTTPS hợp lệ.
 - Đăng nhập và quên mật khẩu hoạt động.
 - Luồng `QC5004` tạo được phiên thanh toán.
 - Gửi email OTP và email vé hoạt động.
