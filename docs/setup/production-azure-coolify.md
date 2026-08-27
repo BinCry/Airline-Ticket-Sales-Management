@@ -45,6 +45,7 @@
   - `DOCKERHUB_TOKEN`
   - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
   - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
+  - `COOLIFY_TOKEN`
 
 ## Kiểm tra cấu hình production trước khi cutover
 - Chạy nhanh tại thư mục gốc repo:
