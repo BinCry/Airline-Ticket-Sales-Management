@@ -31,16 +31,17 @@ Tag `production` luôn trỏ tới bản mới nhất. Tag có mã commit đư�
 
 ## GitHub Secrets bắt buộc
 
-Tạo bốn repository secret trong GitHub:
+Tạo năm repository secret trong GitHub:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
 - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
+- `COOLIFY_TOKEN`
 
 `DOCKERHUB_TOKEN` nên là access token chỉ có quyền đọc và ghi image cần thiết, không dùng mật khẩu tài khoản.
 
-Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Workflow không tự ghép hoặc ghi token webhook vào mã nguồn.
+Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API token trong `Keys & Tokens` với quyền `deploy`, rồi lưu token đó vào `COOLIFY_TOKEN`. Workflow gửi token bằng Bearer header và không ghi token vào mã nguồn.
 
 ## Chuẩn bị Docker Hub
 
@@ -72,7 +73,7 @@ Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Workflow kh
 
 ## Cutover an toàn
 
-1. Tạo hai repository và bốn GitHub Secrets trước.
+1. Tạo hai repository và năm GitHub Secrets trước.
 2. Chạy workflow thủ công từ nhánh `main` với lựa chọn `deploy` tắt để chỉ publish và xác nhận hai image.
 3. Chuyển API trên Coolify sang image và kiểm tra health check.
 4. Chuyển web trên Coolify sang image và kiểm tra trang chính.

@@ -45,6 +45,7 @@
   - `DOCKERHUB_TOKEN`
   - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
   - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
+  - `COOLIFY_TOKEN`
 
 ## Kiểm tra cấu hình production trước khi cutover
 - Chạy nhanh tại thư mục gốc repo:
@@ -164,6 +165,8 @@ jdbc:postgresql://<postgres-host>:5432/airticket?sslmode=require
 - Lưu URL webhook đầy đủ vào GitHub Secrets:
   - `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL`
   - `COOLIFY_API_PRODUCTION_WEBHOOK_URL`
+- Tạo API token Coolify có quyền `deploy` và lưu vào GitHub Secret:
+  - `COOLIFY_TOKEN`
 - Workflow `deploy.yml` sẽ:
   - chạy lại test và build
   - build và đẩy image `api`, `web` lên Docker Hub

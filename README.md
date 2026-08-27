@@ -194,7 +194,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
 - `APP_MAIL_*`
 - `APP_PAYMENT_SEPAY_*`
 - `NEXT_PUBLIC_API_BASE_URL`
-- `COOLIFY_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
+- `COOLIFY_WEB_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
+- `COOLIFY_API_PRODUCTION_WEBHOOK_URL` trên GitHub Actions
+- `COOLIFY_TOKEN` có quyền `deploy` trên GitHub Actions
 
 ### Kiểm tra nhanh cấu hình production
 - Lệnh:

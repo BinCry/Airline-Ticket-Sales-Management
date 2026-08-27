@@ -218,21 +218,33 @@ jobs:
         env:
           WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_PRODUCTION_WEBHOOK_URL }}
           API_WEBHOOK: ${{ secrets.COOLIFY_API_PRODUCTION_WEBHOOK_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
           test -n "$WEB_WEBHOOK" || (echo "Thiếu secret COOLIFY_WEB_PRODUCTION_WEBHOOK_URL" && exit 1)
           test -n "$API_WEBHOOK" || (echo "Thiếu secret COOLIFY_API_PRODUCTION_WEBHOOK_URL" && exit 1)
+          test -n "$COOLIFY_TOKEN" || (echo "Thiếu secret COOLIFY_TOKEN" && exit 1)
 
       - name: Triển khai image API qua Coolify
         shell: bash
         env:
           API_WEBHOOK: ${{ secrets.COOLIFY_API_PRODUCTION_WEBHOOK_URL }}
-        run: curl --fail --show-error --silent --request POST "$API_WEBHOOK"
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: >-
+          curl --fail --show-error --silent
+          --request GET
+          --header "Authorization: Bearer $COOLIFY_TOKEN"
+          "$API_WEBHOOK"
 
       - name: Triển khai image web qua Coolify
         shell: bash
         env:
           WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_PRODUCTION_WEBHOOK_URL }}
-        run: curl --fail --show-error --silent --request POST "$WEB_WEBHOOK"
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: >-
+          curl --fail --show-error --silent
+          --request GET
+          --header "Authorization: Bearer $COOLIFY_TOKEN"
+          "$WEB_WEBHOOK"
 
   sync-deploy-branch:
     name: sync-deploy-branch
