@@ -110,7 +110,7 @@ const featuredDestinations = [
   }
 ];
 
-export const revalidate = 604800;
+export const revalidate = 0;
 
 export default async function HomePage() {
   const latestArticleShowcase = await getLatestTravelArticles(4);

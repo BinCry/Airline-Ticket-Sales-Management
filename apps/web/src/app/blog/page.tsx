@@ -19,7 +19,7 @@ const promotionPhotos = [
   }
 ] as const;
 
-export const revalidate = 604800;
+export const revalidate = 0;
 
 export default async function BlogPage() {
   const travelArticles = await getTravelArticles(9, true);
