@@ -41,7 +41,7 @@ Tạo năm repository secret trong GitHub:
 
 `DOCKERHUB_TOKEN` nên là access token chỉ có quyền đọc và ghi image cần thiết, không dùng mật khẩu tài khoản.
 
-Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API token trong `Keys & Tokens` với quyền `deploy`, rồi lưu token đó vào `COOLIFY_TOKEN`. Workflow gửi token bằng Bearer header và không ghi token vào mã nguồn.
+Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API token trong `Keys & Tokens` với quyền `deploy`, rồi lưu token đó vào `COOLIFY_TOKEN`. Workflow gửi token bằng Bearer header qua request `POST` và không ghi token vào mã nguồn.
 
 ## Chuẩn bị Docker Hub
 
@@ -78,9 +78,9 @@ Webhook Coolify phải là URL deploy đầy đủ do Coolify tạo. Tạo API t
 3. Chuyển API trên Coolify sang image và kiểm tra health check.
 4. Chuyển web trên Coolify sang image và kiểm tra trang chính.
 5. Chạy lại workflow thủ công với lựa chọn `deploy` bật để kiểm tra hai webhook.
-6. Tắt cơ chế tự build source từ nhánh `deploy` sau khi cả hai dịch vụ ổn định.
+6. Tắt cơ chế tự build source cũ trên Coolify sau khi cả hai dịch vụ ổn định.
 
-Không xóa nhánh `deploy`. Pipeline vẫn đồng bộ `main` sang nhánh này theo quy ước dự án, nhưng Coolify không còn dùng nhánh đó để build source.
+Không cần giữ nhánh `deploy` nếu production đã chuyển hẳn sang mô hình Docker Image + webhook.
 
 ## Kiểm tra sau triển khai
 

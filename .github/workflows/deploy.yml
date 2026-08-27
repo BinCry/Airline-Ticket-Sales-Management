@@ -231,7 +231,7 @@ jobs:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: >-
           curl --fail --show-error --silent
-          --request GET
+          --request POST
           --header "Authorization: Bearer $COOLIFY_TOKEN"
           "$API_WEBHOOK"
 
@@ -242,38 +242,6 @@ jobs:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: >-
           curl --fail --show-error --silent
-          --request GET
+          --request POST
           --header "Authorization: Bearer $COOLIFY_TOKEN"
           "$WEB_WEBHOOK"
-
-  sync-deploy-branch:
-    name: sync-deploy-branch
-    runs-on: ubuntu-latest
-    needs:
-      - test-api
-      - test-web
-      - build-api
-      - build-web
-      - validate-production-config
-    permissions:
-      contents: write
-
-    steps:
-      - name: Lấy mã nguồn
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Đồng bộ main sang deploy
-        shell: bash
-        run: |
-          git config --global user.name "deploy-bot"
-          git config --global user.email "deploy@bot.com"
-          git fetch origin
-          if git show-ref --verify --quiet refs/remotes/origin/deploy; then
-            git checkout -B deploy origin/deploy
-          else
-            git checkout -b deploy origin/main
-          fi
-          git merge origin/main --no-edit
-          git push origin deploy
