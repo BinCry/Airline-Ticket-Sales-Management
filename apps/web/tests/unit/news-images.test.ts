@@ -26,9 +26,9 @@ describe("news-images", () => {
     expect(rewriteNewsImageUrl(sourceUrl)).toBe(buildNewsImageProxyUrl(sourceUrl));
   });
 
-  it("dua host ngoai allowlist ve anh du phong", () => {
+  it("giu nguyen anh https ngoai allowlist de trinh duyet tai truc tiep", () => {
     expect(rewriteNewsImageUrl("https://example.com/du-lich/anh.jpg")).toBe(
-      NEWS_IMAGE_FALLBACK_PATH
+      "https://example.com/du-lich/anh.jpg"
     );
   });
 });

@@ -4,6 +4,9 @@ import { getNewsDataApiKey } from "@/lib/server-env";
 
 const NEWSDATA_ENDPOINT = "https://newsdata.io/api/1/latest";
 const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
+const ARTICLE_METADATA_REVALIDATE_SECONDS = 60 * 60 * 12;
+const ARTICLE_METADATA_USER_AGENT =
+  "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
 
 const fallbackTravelArticles = [
   {
@@ -112,6 +115,13 @@ interface NewsDataResponse {
   status?: string;
 }
 
+interface ArticleMetadata {
+  description?: string;
+  image?: string;
+  siteName?: string;
+  title?: string;
+}
+
 export interface TravelArticlePreview {
   title: string;
   source: string;
@@ -176,6 +186,101 @@ function cleanArticleText(value: string | null | undefined) {
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractMetaContent(html: string, metaKeys: string[]) {
+  for (const metaKey of metaKeys) {
+    const escapedMetaKey = escapeRegExp(metaKey);
+    const patterns = [
+      new RegExp(
+        `<meta[^>]+(?:property|name)=["']${escapedMetaKey}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+        "i"
+      ),
+      new RegExp(
+        `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escapedMetaKey}["'][^>]*>`,
+        "i"
+      )
+    ];
+
+    for (const pattern of patterns) {
+      const matchedContent = html.match(pattern)?.[1];
+
+      if (matchedContent) {
+        return cleanArticleText(matchedContent);
+      }
+    }
+  }
+
+  return "";
+}
+
+function extractDocumentTitle(html: string) {
+  const matchedTitle = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  return cleanArticleText(matchedTitle);
+}
+
+function extractArticleMetadata(html: string): ArticleMetadata {
+  const title =
+    extractMetaContent(html, ["og:title", "twitter:title"]) ||
+    extractDocumentTitle(html);
+  const description =
+    extractMetaContent(html, ["og:description", "description", "twitter:description"]);
+  const image = extractMetaContent(html, ["og:image", "twitter:image"]);
+  const siteName =
+    extractMetaContent(html, ["og:site_name", "application-name"]) ||
+    extractMetaContent(html, ["twitter:site"]);
+
+  return {
+    description: description || undefined,
+    image: image || undefined,
+    siteName: siteName || undefined,
+    title: title || undefined
+  };
+}
+
+async function fetchArticleMetadata(articleUrl: string) {
+  const normalizedArticleUrl = articleUrl.trim();
+
+  if (!normalizedArticleUrl) {
+    return null;
+  }
+
+  try {
+    const parsedUrl = new URL(normalizedArticleUrl);
+
+    if (parsedUrl.protocol !== "https:") {
+      return null;
+    }
+
+    const response = await fetch(normalizedArticleUrl, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": ARTICLE_METADATA_USER_AGENT
+      },
+      next: {
+        revalidate: ARTICLE_METADATA_REVALIDATE_SECONDS
+      },
+      redirect: "follow"
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+
+    if (!contentType.includes("text/html")) {
+      return null;
+    }
+
+    return extractArticleMetadata(await response.text());
+  } catch {
+    return null;
+  }
 }
 
 function normalizeText(value: string | null | undefined) {
@@ -268,16 +373,22 @@ function scoreArticle(article: NewsDataArticle) {
   return score;
 }
 
-function mapArticleToPreview(article: NewsDataArticle): TravelArticlePreview | null {
-  if (!article.title || !article.link || !article.image_url) {
+async function mapArticleToPreview(
+  article: NewsDataArticle
+): Promise<TravelArticlePreview | null> {
+  if (!article.link) {
     return null;
   }
 
-  const title = cleanArticleText(article.title);
+  const resolvedMetadata = await fetchArticleMetadata(article.link);
+  const title = resolvedMetadata?.title || cleanArticleText(article.title);
   const source = cleanArticleText(article.source_name) || "Nguồn du lịch";
   const summary =
     cleanArticleText(article.description) ||
     "Xem nhanh bài viết mới để cập nhật thêm kinh nghiệm du lịch.";
+
+  const resolvedSource = resolvedMetadata?.siteName || source;
+  const resolvedSummary = resolvedMetadata?.description || summary;
 
   if (!title) {
     return null;
@@ -285,10 +396,10 @@ function mapArticleToPreview(article: NewsDataArticle): TravelArticlePreview | n
 
   return {
     title,
-    source,
+    source: resolvedSource,
     readTime: formatPublishedDate(article.pubDate),
-    image: rewriteNewsImageUrl(article.image_url),
-    summary,
+    image: rewriteNewsImageUrl(resolvedMetadata?.image || article.image_url),
+    summary: resolvedSummary,
     href: article.link,
     external: true
   };
@@ -325,11 +436,12 @@ function mergeWithFallback(
   return mergedArticles;
 }
 
-function filterLiveArticles(
+async function filterLiveArticles(
   results: NewsDataArticle[],
-  includeSecondarySources: boolean
+  includeSecondarySources: boolean,
+  limit: number
 ) {
-  return results
+  const prioritizedArticles = results
     .filter((article) => {
       const sourceId = article.source_id;
 
@@ -352,8 +464,15 @@ function filterLiveArticles(
 
       return rightTime - leftTime;
     })
-    .map(mapArticleToPreview)
-    .filter((article): article is TravelArticlePreview => article !== null);
+    .slice(0, Math.max(limit * 2, limit));
+
+  const previews = await Promise.all(
+    prioritizedArticles.map((article) => mapArticleToPreview(article))
+  );
+
+  return previews.filter(
+    (article): article is TravelArticlePreview => article !== null
+  );
 }
 
 export async function getTravelArticles(
@@ -386,9 +505,8 @@ export async function getTravelArticles(
 
     const data = (await response.json()) as NewsDataResponse;
     const results = Array.isArray(data.results) ? data.results : [];
-    const filteredArticles = filterLiveArticles(
-      results,
-      includeSecondarySources
+    const filteredArticles = (
+      await filterLiveArticles(results, includeSecondarySources, limit)
     ).slice(0, limit);
 
     if (filteredArticles.length > 0) {

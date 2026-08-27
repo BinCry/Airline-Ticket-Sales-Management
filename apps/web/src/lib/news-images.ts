@@ -42,6 +42,15 @@ export function isAllowedNewsImageUrl(value: string) {
   }
 }
 
+export function isSecureNewsImageUrl(value: string) {
+  try {
+    const imageUrl = new URL(value);
+    return imageUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function buildNewsImageProxyUrl(sourceUrl: string) {
   return `/api/news-image?src=${encodeURIComponent(sourceUrl)}`;
 }
@@ -57,9 +66,13 @@ export function rewriteNewsImageUrl(sourceUrl: string | null | undefined) {
     return normalizedSourceUrl;
   }
 
-  if (!isAllowedNewsImageUrl(normalizedSourceUrl)) {
+  if (!isSecureNewsImageUrl(normalizedSourceUrl)) {
     return NEWS_IMAGE_FALLBACK_PATH;
   }
 
-  return buildNewsImageProxyUrl(normalizedSourceUrl);
+  if (isAllowedNewsImageUrl(normalizedSourceUrl)) {
+    return buildNewsImageProxyUrl(normalizedSourceUrl);
+  }
+
+  return normalizedSourceUrl;
 }
