@@ -1,5 +1,5 @@
 param(
-  [string]$ApiBaseUrl = "https://api.airplane.id.vn",
+  [string]$ApiBaseUrl = "https://airticket.api.bincrydev.id.vn",
   [string]$JwtSecret = "dummy-secret-for-config-check"
 )
 
