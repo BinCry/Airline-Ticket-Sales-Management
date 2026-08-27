@@ -148,7 +148,7 @@ function buildGeminiEndpoint(model: string) {
 function buildGeminiModelQueue() {
   return Array.from(
     new Set(
-      [getGeminiModel(), "gemini-2.5-flash"].filter(
+      [getGeminiModel(), "gemini-3.6-flash"].filter(
         (model): model is string => Boolean(model)
       )
     )
@@ -257,10 +257,8 @@ export async function buildTravelReply(
     })),
     generationConfig: {
       maxOutputTokens: 360,
-      temperature: 0.7,
-      topP: 0.9,
       thinkingConfig: {
-        thinkingBudget: 0
+        thinkingLevel: "minimal"
       }
     },
     systemInstruction: {

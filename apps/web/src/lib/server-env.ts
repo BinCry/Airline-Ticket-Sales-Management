@@ -15,7 +15,7 @@ export function getGeminiApiKey() {
 }
 
 export function getGeminiModel() {
-  return readServerEnv(["GEMINI_MODEL"]) || "gemini-2.5-flash";
+  return readServerEnv(["GEMINI_MODEL"]) || "gemini-3.6-flash";
 }
 
 export function getNewsDataApiKey() {
