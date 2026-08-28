@@ -191,7 +191,7 @@ export default async function HomePage() {
             <article key={item.title} className={`ops-strip-card ops-strip-card-${index}`}>
               <div className="ops-strip-head">
                 <span className={`pill ops-pill ops-pill-${index}`}>
-                  {index === 0 ? "🛫 " : index === 1 ? "🛠️ " : "🔔 "}
+                  <span className="ops-dot" aria-hidden="true" />
                   {item.title}
                 </span>
               </div>
@@ -414,7 +414,7 @@ export default async function HomePage() {
               <div className="home-prep-topics-grid">
                 {travelerTopics.map((topic) => (
                   <Link key={topic} href="/support" className="home-prep-topic-chip">
-                    <span className="home-prep-topic-dot">✦</span>
+                    <span className="home-prep-topic-dot" aria-hidden="true">›</span>
                     <span>{topic}</span>
                   </Link>
                 ))}
@@ -1368,6 +1368,185 @@ export default async function HomePage() {
         .home-latest-articles-button span {
           font-size: 1.4rem;
           line-height: 1;
+        }
+
+        .ops-dot {
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          margin-right: 6px;
+          vertical-align: middle;
+        }
+
+        /* TIỆN ÍCH NHANH CARDS & TƯƠI SÁNG HOVER EFFECTS */
+        .tien-ich-card {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 24px;
+          border-radius: 24px;
+          border: 1px solid rgba(18, 61, 105, 0.1);
+          background: rgba(255, 255, 255, 0.96);
+          box-shadow: 0 16px 36px rgba(18, 61, 105, 0.05);
+          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          text-decoration: none;
+          min-height: 210px;
+        }
+
+        .tien-ich-card-0:hover {
+          transform: translateY(-4px);
+          background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%) !important;
+          border-color: #1e5f9e !important;
+          box-shadow: 0 24px 48px rgba(18, 61, 105, 0.14) !important;
+        }
+
+        .tien-ich-card-1:hover {
+          transform: translateY(-4px);
+          background: linear-gradient(180deg, #ffffff 0%, #fdf8ed 100%) !important;
+          border-color: #caa45f !important;
+          box-shadow: 0 24px 48px rgba(202, 164, 95, 0.2) !important;
+        }
+
+        .tien-ich-card-2:hover {
+          transform: translateY(-4px);
+          background: linear-gradient(180deg, #ffffff 0%, #edfbf4 100%) !important;
+          border-color: #16a374 !important;
+          box-shadow: 0 24px 48px rgba(15, 139, 96, 0.16) !important;
+        }
+
+        .tien-ich-card-3:hover {
+          transform: translateY(-4px);
+          background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%) !important;
+          border-color: #38bdf8 !important;
+          box-shadow: 0 24px 48px rgba(20, 100, 177, 0.16) !important;
+        }
+
+        .tien-ich-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .tien-ich-tag {
+          font-size: 0.72rem;
+          font-weight: 800;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          padding: 4px 10px;
+          border-radius: 999px;
+        }
+
+        .tien-ich-tag-0 {
+          background: rgba(18, 61, 105, 0.08);
+          color: #123d69;
+          border: 1px solid rgba(18, 61, 105, 0.18);
+        }
+
+        .tien-ich-tag-1 {
+          background: rgba(202, 164, 95, 0.12);
+          color: #916815;
+          border: 1px solid rgba(202, 164, 95, 0.28);
+        }
+
+        .tien-ich-tag-2 {
+          background: rgba(15, 139, 96, 0.1);
+          color: #0d7a54;
+          border: 1px solid rgba(15, 139, 96, 0.22);
+        }
+
+        .tien-ich-tag-3 {
+          background: rgba(20, 100, 177, 0.1);
+          color: #1464b1;
+          border: 1px solid rgba(20, 100, 177, 0.22);
+        }
+
+        .tien-ich-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          color: #ffffff;
+        }
+
+        .tien-ich-icon-svg {
+          width: 22px;
+          height: 22px;
+        }
+
+        .tien-ich-icon-0 {
+          background: linear-gradient(135deg, #123d69, #1e5f9e);
+          box-shadow: 0 8px 18px rgba(18, 61, 105, 0.24);
+        }
+
+        .tien-ich-icon-1 {
+          background: linear-gradient(135deg, #c79838, #e5b85a);
+          box-shadow: 0 8px 18px rgba(199, 152, 56, 0.3);
+        }
+
+        .tien-ich-icon-2 {
+          background: linear-gradient(135deg, #0f8b60, #16a374);
+          box-shadow: 0 8px 18px rgba(15, 139, 96, 0.26);
+        }
+
+        .tien-ich-icon-3 {
+          background: linear-gradient(135deg, #1464b1, #38bdf8);
+          box-shadow: 0 8px 18px rgba(20, 100, 177, 0.26);
+        }
+
+        .tien-ich-body {
+          margin-bottom: 12px;
+        }
+
+        .tien-ich-title {
+          margin: 0 0 6px;
+          color: var(--primary);
+          font-size: 1.15rem;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+        }
+
+        .tien-ich-subtitle {
+          margin: 0;
+          color: rgba(14, 40, 69, 0.72);
+          font-size: 0.84rem;
+          line-height: 1.5;
+        }
+
+        .tien-ich-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: var(--primary);
+          font-size: 0.84rem;
+          font-weight: 700;
+          transition: gap 0.18s ease, color 0.18s ease;
+        }
+
+        .tien-ich-card:hover .tien-ich-cta {
+          gap: 10px;
+        }
+
+        .tien-ich-card-0:hover .tien-ich-cta { color: #1e5f9e; }
+        .tien-ich-card-1:hover .tien-ich-cta { color: #916815; }
+        .tien-ich-card-2:hover .tien-ich-cta { color: #0d7a54; }
+        .tien-ich-card-3:hover .tien-ich-cta { color: #1464b1; }
+
+        .tien-ich-card:hover .tien-ich-subtitle {
+          color: rgba(14, 40, 69, 0.9);
+        }
+
+        .tien-ich-arrow {
+          font-size: 1rem;
+          transition: transform 0.18s ease;
+        }
+
+        .tien-ich-card:hover .tien-ich-arrow {
+          transform: translateX(3px);
         }
 
         .ops-strip-card,
