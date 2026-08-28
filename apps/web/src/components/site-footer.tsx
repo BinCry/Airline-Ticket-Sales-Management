@@ -38,13 +38,13 @@ const officialSocialChannels = [
   {
     name: "TikTok",
     label: "Vietnam Airlines trên TikTok",
-    href: "https://www.tiktok.com/@vietnam_airlines",
+    href: "https://www.tiktok.com/@vietnamairlines",
     icon: TiktokIcon
   },
   {
     name: "Zalo",
     label: "Vietnam Airlines trên Zalo",
-    href: "https://zalo.me/vietnamairlines",
+    href: "https://zalo.me/3149253679280388721",
     icon: ZaloIcon
   }
 ];
