@@ -4137,10 +4137,42 @@ thead th {
 .footer-social-link:hover,
 .footer-social-link:focus-visible {
   transform: translateY(-2px);
-  background: #ffffff;
-  border-color: rgba(18, 61, 105, 0.22);
-  color: var(--brand-primary-hover);
   box-shadow: 0 6px 16px rgba(18, 61, 105, 0.09);
+}
+
+.footer-social-facebook:hover,
+.footer-social-facebook:focus-visible {
+  border-color: #1877f2;
+  color: #1877f2;
+  background: rgba(24, 119, 242, 0.05);
+}
+
+.footer-social-instagram:hover,
+.footer-social-instagram:focus-visible {
+  border-color: #e1306c;
+  color: #e1306c;
+  background: rgba(225, 48, 108, 0.05);
+}
+
+.footer-social-youtube:hover,
+.footer-social-youtube:focus-visible {
+  border-color: #ff0000;
+  color: #ff0000;
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.footer-social-tiktok:hover,
+.footer-social-tiktok:focus-visible {
+  border-color: #010101;
+  color: #010101;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.footer-social-zalo:hover,
+.footer-social-zalo:focus-visible {
+  border-color: #0068ff;
+  color: #0068ff;
+  background: rgba(0, 104, 255, 0.05);
 }
 
 .footer-social-icon {

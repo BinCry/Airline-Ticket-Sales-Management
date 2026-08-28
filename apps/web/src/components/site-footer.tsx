@@ -106,7 +106,7 @@ export function SiteFooter() {
                   href={social.href}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="footer-social-link"
+                  className={`footer-social-link footer-social-${social.name.toLowerCase()}`}
                   aria-label={social.label}
                   title={social.label}
                 >
