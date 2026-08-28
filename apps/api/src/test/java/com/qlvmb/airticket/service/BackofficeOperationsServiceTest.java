@@ -172,6 +172,15 @@ class BackofficeOperationsServiceTest {
     assertThat(item.code()).isEqualTo("VN6201");
     assertThat(item.originCode()).isEqualTo("SGN");
     assertThat(item.destinationCode()).isEqualTo("HAN");
+    assertThat(item.baseFare()).isEqualTo(1_200_000L);
+    assertThat(item.fareSummaries())
+        .extracting(BackofficeFlightOperationsResponse.FareReadonlyItem::fareFamily,
+            BackofficeFlightOperationsResponse.FareReadonlyItem::price)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(ProductCatalogService.FARE_SAVER, 1_200_000L),
+            org.assertj.core.groups.Tuple.tuple(ProductCatalogService.FARE_FLEX, 1_205_000L),
+            org.assertj.core.groups.Tuple.tuple(ProductCatalogService.FARE_BUSINESS, 1_210_000L)
+        );
     verify(flightRepository).save(any(FlightEntity.class));
     verify(auditLogRepository).save(any(AuditLogEntity.class));
   }

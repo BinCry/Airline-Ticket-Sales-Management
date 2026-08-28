@@ -16,6 +16,8 @@ public class ProductCatalogService {
   public static final String FARE_SAVER = "pho_thong_tiet_kiem";
   public static final String FARE_FLEX = "pho_thong_linh_hoat";
   public static final String FARE_BUSINESS = "thuong_gia";
+  public static final long FLEX_PRICE_OFFSET = 5_000L;
+  public static final long BUSINESS_PRICE_OFFSET = 10_000L;
   public static final int FIXED_TOTAL_SEATS = 168;
   public static final List<String> FIXED_FARE_FAMILIES = List.of(
       FARE_SAVER,
@@ -35,13 +37,13 @@ public class ProductCatalogService {
           "1 kiện 23kg",
           "Đổi vé linh hoạt hơn",
           "Chọn ghế khu linh hoạt"
-      ), 500_000L, 36, 3, 8),
+      ), FLEX_PRICE_OFFSET, 36, 3, 8),
       FARE_BUSINESS,
       new FareMeta(FARE_BUSINESS, "Thương gia", List.of(
           "2 kiện 32kg",
           "Ưu tiên làm thủ tục",
           "Chọn ghế khu thương gia"
-      ), 1_000_000L, 12, 1, 2)
+      ), BUSINESS_PRICE_OFFSET, 12, 1, 2)
   );
 
   private static final Map<String, AncillaryMeta> ANCILLARY_CATALOG = Map.of(

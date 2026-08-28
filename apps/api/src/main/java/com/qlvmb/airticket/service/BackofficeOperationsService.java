@@ -392,7 +392,7 @@ public class BackofficeOperationsService {
         resolveNote(flight),
         flight.isSalesOpen(),
         baseFare,
-        buildFareSummaries(baseFare)
+        buildFareSummaries(flight, baseFare)
     );
   }
 
@@ -416,16 +416,24 @@ public class BackofficeOperationsService {
     return productCatalogService.resolveBaseFare(flight.getFareInventories());
   }
 
-  private List<BackofficeFlightOperationsResponse.FareReadonlyItem> buildFareSummaries(long baseFare) {
+  private List<BackofficeFlightOperationsResponse.FareReadonlyItem> buildFareSummaries(
+      FlightEntity flight,
+      long baseFare
+  ) {
     return productCatalogService.getFixedFareMetas().stream()
-        .map(fareMeta -> new BackofficeFlightOperationsResponse.FareReadonlyItem(
-            fareMeta.fareFamily(),
-            fareMeta.title(),
-            productCatalogService.resolveFarePrice(fareMeta.fareFamily(), baseFare),
-            fareMeta.totalSeats(),
-            fareMeta.rowStart(),
-            fareMeta.rowEnd()
-        ))
+        .map(fareMeta -> {
+          long price = flight.findFareInventory(fareMeta.fareFamily())
+              .map(FlightFareInventoryEntity::getPrice)
+              .orElseGet(() -> productCatalogService.resolveFarePrice(fareMeta.fareFamily(), baseFare));
+          return new BackofficeFlightOperationsResponse.FareReadonlyItem(
+              fareMeta.fareFamily(),
+              fareMeta.title(),
+              price,
+              fareMeta.totalSeats(),
+              fareMeta.rowStart(),
+              fareMeta.rowEnd()
+          );
+        })
         .toList();
   }
 

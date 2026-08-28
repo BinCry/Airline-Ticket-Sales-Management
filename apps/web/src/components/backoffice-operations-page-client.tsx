@@ -85,8 +85,8 @@ const VOUCHER_EDITABLE_STATUS_OPTIONS = [
 
 const HANG_VE_CO_DINH = [
   { fareFamily: "pho_thong_tiet_kiem", title: "Phổ thông tiết kiệm", totalSeats: 120, rowStart: 9, rowEnd: 28, priceOffset: 0 },
-  { fareFamily: "pho_thong_linh_hoat", title: "Phổ thông linh hoạt", totalSeats: 36, rowStart: 3, rowEnd: 8, priceOffset: 500000 },
-  { fareFamily: "thuong_gia", title: "Thương gia", totalSeats: 12, rowStart: 1, rowEnd: 2, priceOffset: 1000000 }
+  { fareFamily: "pho_thong_linh_hoat", title: "Phổ thông linh hoạt", totalSeats: 36, rowStart: 3, rowEnd: 8, priceOffset: 5000 },
+  { fareFamily: "thuong_gia", title: "Thương gia", totalSeats: 12, rowStart: 1, rowEnd: 2, priceOffset: 10000 }
 ] as const;
 
 function formatDateTime(value: string) {
@@ -892,7 +892,7 @@ export function BackofficeOperationsPageClient() {
               </div>
 
               <small className="finance-muted-action operations-fare-note">
-                Quota và vùng ghế của 3 hạng vé được cố định trong hệ thống để đồng bộ với giao diện đặt vé của hành khách.
+                Giá Phổ thông tiết kiệm là giá gốc bạn nhập; Phổ thông linh hoạt cộng 5.000đ và Thương gia cộng 10.000đ. Quota và vùng ghế của 3 hạng vé được cố định để đồng bộ với giao diện đặt vé.
               </small>
 
               <button
