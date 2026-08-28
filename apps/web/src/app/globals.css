@@ -697,8 +697,14 @@ img {
     gap: 6px;
   }
 
-  .utility-nav {
-    gap: 8px;
+  .topbar-row {
+    min-height: 36px;
+    justify-content: center;
+  }
+
+  .topbar-tagline,
+  .topbar-row > .utility-nav {
+    display: none;
   }
 
   .nav-row {
@@ -2023,6 +2029,12 @@ img {
   font-size: 0.74rem;
 }
 
+.field .field-error {
+  color: var(--danger, #b42318);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .date-input-shell {
   position: relative;
 }
@@ -2070,6 +2082,15 @@ img {
   border: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+/* `.field input` có độ ưu tiên cao hơn style chung của proxy; giữ proxy
+   thực sự 1px để không tạo overflow ngang trên mobile. */
+.date-input-shell .date-input-native-proxy {
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
 }
 
 .route-field input {
@@ -5583,6 +5604,91 @@ thead th {
   .backoffice-local-nav-links {
     order: 3;
     flex-basis: 100%;
+  }
+}
+
+/* Trang tìm kiếm chuyển sang một cột trên mobile để panel hành khách
+   không ép nhóm điểm đi/điểm đến ra ngoài viewport. */
+@media (max-width: 820px) {
+  .search-toolbar-card {
+    gap: 18px;
+    padding: 18px;
+  }
+
+  .search-toolbar-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .search-toolbar-trip-type {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .search-toolbar-trip-type .toggle {
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  .search-toolbar-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .search-toolbar-route-pair,
+  .search-toolbar-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .search-toolbar-swap {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .search-toolbar-main-fields,
+  .search-toolbar-passenger-panel,
+  .search-toolbar-support-card {
+    min-width: 0;
+  }
+
+  .search-toolbar-passenger-panel {
+    padding: 14px;
+  }
+
+  .search-toolbar-action-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .search-toolbar-submit {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .fare-comparison-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .card-grid-3.home-promo-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Quy tắc desktop nằm sau media query nên cần tái khẳng định trạng thái
+   hiển thị của menu trên màn hình nhỏ. */
+@media (max-width: 820px) {
+  .topbar-badges .topbar-tagline,
+  .topbar-row > .utility-nav {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

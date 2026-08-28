@@ -24,7 +24,7 @@ import {
 } from "@/lib/backoffice-sales-flow";
 import { loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
 import { createBookingHold, fetchFlightBookingOptions } from "@/lib/booking-api";
-import { parseBookingHandoffState } from "@/lib/booking-flow";
+import { parseBookingHandoffState, validatePassengerAge } from "@/lib/booking-flow";
 import { layLopMauGoiGia } from "@/lib/display";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
@@ -309,6 +309,17 @@ export function BookingPageClient() {
   const totalPassengerCount = passengers.length;
   const totalAmount = tinhTongTienTamTinh(segmentChoices);
   const canConfirmBackofficeSales = isBackofficeSalesFlow && hasBackofficeSalesAccess;
+  const firstDepartureAt = handoffState.segments.reduce(
+    (earliestDepartureAt, segment) =>
+      !earliestDepartureAt || segment.departureAt < earliestDepartureAt
+        ? segment.departureAt
+        : earliestDepartureAt,
+    ""
+  );
+  const passengerAgeErrors = passengers.map((passenger) =>
+    validatePassengerAge(passenger.passengerType, passenger.dateOfBirth, firstDepartureAt)
+  );
+  const hasPassengerAgeError = passengerAgeErrors.some(Boolean);
 
   function updatePassenger<FieldName extends keyof PassengerFormState>(
     passengerIndex: number,
@@ -398,6 +409,11 @@ export function BookingPageClient() {
 
     if (hasMissingChoice) {
       setSubmitError("Hãy chọn đầy đủ hạng vé và ghế cho tất cả hành khách ở từng chặng trước khi giữ chỗ.");
+      return;
+    }
+
+    if (hasPassengerAgeError) {
+      setSubmitError("Hãy kiểm tra lại ngày sinh và loại hành khách trước khi giữ chỗ.");
       return;
     }
 
@@ -631,6 +647,11 @@ export function BookingPageClient() {
                               value={passenger.dateOfBirth}
                               onChange={(value) => updatePassenger(index, "dateOfBirth", value)}
                             />
+                            {passengerAgeErrors[index] ? (
+                              <small className="field-error" role="alert">
+                                {passengerAgeErrors[index]}
+                              </small>
+                            ) : null}
                           </label>
                           <label className="field">
                             <span>Loại giấy tờ</span>

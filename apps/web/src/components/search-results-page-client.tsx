@@ -1084,7 +1084,7 @@ export function SearchResultsPageClient({
               title="So sánh ba hạng vé cố định trước khi chọn chỗ"
               description="Mỗi chuyến bay đều có đủ Phổ thông tiết kiệm, Phổ thông linh hoạt và Thương gia để bạn cân đối nhu cầu và ngân sách ngay từ bước tìm chuyến."
             />
-            <div className="card-grid card-grid-3">
+            <div className="card-grid card-grid-3 fare-comparison-grid">
               {searchData.fares.map((fare) => (
                 <article key={fare.title} className={`surface-card fare-card ${layLopMauGoiGia(fare.fareFamily)}`}>
                   <div className="fare-card-image">

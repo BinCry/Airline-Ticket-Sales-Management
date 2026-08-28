@@ -260,6 +260,11 @@ export default async function BlogPage() {
           }
 
           @media (max-width: 640px) {
+            .travel-news-grid,
+            .promo-card-grid {
+              grid-template-columns: minmax(0, 1fr);
+            }
+
             .blog-promo-card {
               min-height: auto;
               padding: 20px 20px 14px;

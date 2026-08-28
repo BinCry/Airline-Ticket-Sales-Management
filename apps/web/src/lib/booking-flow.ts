@@ -1,7 +1,8 @@
 import type {
   ApiCreateBookingHoldRequest,
   ApiFlightCard,
-  ApiFlightSearchCriteria
+  ApiFlightSearchCriteria,
+  PassengerType
 } from "@qlvmb/shared-types";
 
 export interface BookingHandoffSegment {
@@ -24,6 +25,69 @@ export interface BookingHandoffState {
   infantCount: number;
   segments: BookingHandoffSegment[];
   tripType: ApiCreateBookingHoldRequest["tripType"];
+}
+
+function parseIsoDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (
+    date.getUTCFullYear() !== Number(match[1]) ||
+    date.getUTCMonth() !== Number(match[2]) - 1 ||
+    date.getUTCDate() !== Number(match[3])
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+export function validatePassengerAge(
+  passengerType: PassengerType,
+  dateOfBirth: string,
+  departureAt: string
+): string | null {
+  if (!dateOfBirth || !departureAt) {
+    return null;
+  }
+
+  const birthDate = parseIsoDate(dateOfBirth);
+  const departureDate = parseIsoDate(departureAt.slice(0, 10));
+  if (!birthDate || !departureDate) {
+    return null;
+  }
+
+  const ageAtDeparture = departureDate.getUTCFullYear() - birthDate.getUTCFullYear() - (
+    departureDate.getUTCMonth() < birthDate.getUTCMonth() ||
+    (departureDate.getUTCMonth() === birthDate.getUTCMonth() &&
+      departureDate.getUTCDate() < birthDate.getUTCDate())
+      ? 1
+      : 0
+  );
+
+  const matchesPassengerType =
+    birthDate <= departureDate &&
+    ((passengerType === "adult" && ageAtDeparture >= 12) ||
+      (passengerType === "child" && ageAtDeparture >= 2 && ageAtDeparture < 12) ||
+      (passengerType === "infant" && ageAtDeparture < 2));
+
+  if (matchesPassengerType) {
+    return null;
+  }
+
+  switch (passengerType) {
+    case "adult":
+      return "Hành khách người lớn phải từ đủ 12 tuổi tại ngày khởi hành đầu tiên.";
+    case "child":
+      return "Hành khách trẻ em phải từ 2 đến dưới 12 tuổi tại ngày khởi hành đầu tiên.";
+    case "infant":
+      return "Hành khách em bé phải dưới 2 tuổi tại ngày khởi hành đầu tiên.";
+    default:
+      return "Loại hành khách không hợp lệ.";
+  }
 }
 
 function readPositiveInteger(value: string | null): number | null {

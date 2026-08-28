@@ -366,7 +366,7 @@ export default async function HomePage() {
             title="Những chương trình nên xem ngay trước khi chốt hành trình"
             description="Ưu đãi được gom theo từng nhóm nhu cầu để hành khách dễ đối chiếu quyền lợi, thời hạn áp dụng và quay lại bước đặt vé nhanh hơn."
           />
-          <div className="card-grid card-grid-3">
+          <div className="card-grid card-grid-3 home-promo-grid">
             {promotions.map((promotion, index) => {
               const photo = promotionPhotos[index % promotionPhotos.length];
 
@@ -2422,7 +2422,11 @@ export default async function HomePage() {
           }
 
           .home-latest-article-copy {
-            padding: 0 4px;
+            padding: 16px 18px 20px;
+          }
+
+          .home-latest-article-copy h3 {
+            overflow-wrap: anywhere;
           }
 
           .home-latest-articles-cta {
@@ -2442,6 +2446,28 @@ export default async function HomePage() {
 
           .journey-phone {
             width: min(100%, 210px);
+          }
+
+          /* Đưa ảnh xuống thành một vùng riêng để tiêu đề và mô tả không
+             bị ép vào khoảng trống bên phải trên màn hình hẹp. */
+          .home-promo-card {
+            min-height: 0;
+            padding: 0;
+            overflow: hidden;
+          }
+
+          .home-promo-card-copy {
+            max-width: none;
+            padding: 20px 20px 16px;
+          }
+
+          .home-promo-card-media {
+            position: relative;
+            right: auto;
+            bottom: auto;
+            width: 100%;
+            height: 148px;
+            border-radius: 0 0 22px 22px;
           }
         }
       `}</style>

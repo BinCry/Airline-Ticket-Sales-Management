@@ -270,7 +270,7 @@ export function SiteHeader() {
           <div className="topbar-badges">
             {primaryRoleLabel ? <span className="pill">{primaryRoleLabel}</span> : null}
             <span className="pill">Tiếng Việt</span>
-            <span className="pill">
+            <span className="pill topbar-tagline">
               Đặt vé nội địa, quản lý hành trình và làm thủ tục trực tuyến thuận tiện
             </span>
           </div>

@@ -5,7 +5,8 @@ import type { ApiFlightCard, ApiFlightSearchCriteria } from "@qlvmb/shared-types
 import {
   createBookingHandoffUrl,
   createHandoffSegmentFromFlight,
-  parseBookingHandoffState
+  parseBookingHandoffState,
+  validatePassengerAge
 } from "@/lib/booking-flow";
 
 const criteria: ApiFlightSearchCriteria = {
@@ -79,5 +80,12 @@ describe("booking-flow", () => {
     });
     expect(handoffState?.segments[0].flightId).toBe(201);
     expect(handoffState?.segments[0].baseFare).toBe(1490000);
+  });
+
+  it("kiem tra tuoi hanh khach theo ngay khoi hanh dau tien", () => {
+    expect(validatePassengerAge("adult", "2018-03-20", flight.departureAt)).toContain("từ đủ 12 tuổi");
+    expect(validatePassengerAge("child", "2018-03-20", flight.departureAt)).toBeNull();
+    expect(validatePassengerAge("infant", "2025-03-20", flight.departureAt)).toBeNull();
+    expect(validatePassengerAge("child", "2025-03-20", flight.departureAt)).toContain("từ 2 đến dưới 12 tuổi");
   });
 });
