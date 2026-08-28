@@ -187,39 +187,63 @@ export default async function HomePage() {
 
       <section className="ops-strip">
         <div className="container ops-strip-grid">
-          {liveOperations.map((item) => (
-            <article key={item.title} className="ops-strip-card">
-              <span className="pill">{item.title}</span>
+          {liveOperations.map((item, index) => (
+            <article key={item.title} className={`ops-strip-card ops-strip-card-${index}`}>
+              <div className="ops-strip-head">
+                <span className={`pill ops-pill ops-pill-${index}`}>
+                  {index === 0 ? "🛫 " : index === 1 ? "🛠️ " : "🔔 "}
+                  {item.title}
+                </span>
+              </div>
               <p>{item.note}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="section">
+      <section className="section home-quick-section">
         <div className="container">
           <div className="editorial-grid">
-            <div>
+            <div className="quick-services-column">
               <SectionHeading
                 eyebrow="Tiện ích nhanh"
                 title="Những tiện ích hành khách cần nhất được đưa lên ngay từ đầu hành trình"
               />
               <div className="quick-grid">
-                {quickServices.map((service) => (
-                  <Link key={service.title} href={service.href} className="feature-card feature-card-rich tien-ich-card">
-                    <span className="pill tien-ich-tag">Tiện ích</span>
-                    <div className="tien-ich-icon" aria-hidden="true">
-                      {getTienIchIcon(service.title)}
+                {quickServices.map((service, index) => (
+                  <Link
+                    key={service.title}
+                    href={service.href}
+                    className={`feature-card feature-card-rich tien-ich-card tien-ich-card-${index}`}
+                  >
+                    <div className="tien-ich-top">
+                      <span className={`pill tien-ich-tag tien-ich-tag-${index}`}>
+                        {index === 0 ? "Đặt vé" : index === 1 ? "Sau bán" : index === 2 ? "Check-in" : "24/7"}
+                      </span>
+                      <div className={`tien-ich-icon tien-ich-icon-${index}`} aria-hidden="true">
+                        {getTienIchIcon(service.title)}
+                      </div>
                     </div>
-                    <h3 className="tien-ich-title">{service.title}</h3>
+                    <div className="tien-ich-body">
+                      <h3 className="tien-ich-title">{service.title}</h3>
+                      <p className="tien-ich-subtitle">{service.subtitle}</p>
+                    </div>
+                    <div className="tien-ich-cta">
+                      <span>Mở tiện ích</span>
+                      <span className="tien-ich-arrow" aria-hidden="true">→</span>
+                    </div>
                   </Link>
                 ))}
               </div>
             </div>
             <div className="spotlight-column">
-              {journeyDeck.map((item) => (
-                <article key={item.title} className="spotlight-card">
-                  <span className="section-eyebrow">{item.eyebrow}</span>
+              {journeyDeck.map((item, index) => (
+                <article key={item.title} className={`spotlight-card spotlight-card-${index}`}>
+                  <div className="spotlight-badge-row">
+                    <span className={`section-eyebrow spotlight-eyebrow spotlight-eyebrow-${index}`}>
+                      {item.eyebrow}
+                    </span>
+                  </div>
                   <h3>{item.title}</h3>
                   <p>{item.summary}</p>
                 </article>
@@ -351,55 +375,271 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section section-dark">
+      <section id="thong-tin-chuyen-bay" className="section home-prep-section">
         <div className="container">
           <SectionHeading
             eyebrow="Chuẩn bị trước giờ bay"
             title="Những thông tin hành khách nên xem trước khi ra sân bay"
             description="Từ thời gian làm thủ tục, quy định hành lý đến kênh hỗ trợ và tình trạng chuyến bay, mọi thông tin quan trọng đều được gom lại để tra cứu nhanh."
           />
-          <div className="command-grid">
-            <div className="command-metrics">
-              {travelServiceMetrics.map((metric) => (
-                <article key={metric.label} className="glass-card metric-card-dark">
-                  <span>{metric.label}</span>
-                  <strong>{metric.value}</strong>
-                  <p>{metric.detail}</p>
-                </article>
-              ))}
-            </div>
-            <div className="command-side">
-              <article className="glass-card command-panel">
+          <div className="home-prep-grid">
+            {/* Cột 1: Mốc thời gian làm thủ tục */}
+            <article className="surface-card home-prep-card home-prep-timing-card">
+              <div className="home-prep-card-head">
+                <span className="pill home-prep-badge">Quy chuẩn giờ bay</span>
+                <h3>Thời gian làm thủ tục & giữ chỗ</h3>
+              </div>
+              <div className="home-prep-timing-list">
+                {travelServiceMetrics.map((metric) => (
+                  <div key={metric.label} className="home-prep-timing-item">
+                    <div className="home-prep-timing-badge">{metric.value}</div>
+                    <div className="home-prep-timing-copy">
+                      <strong>{metric.label}</strong>
+                      <p>{metric.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            {/* Cột 2: Cẩm nang hành khách thường quan tâm */}
+            <article className="surface-card home-prep-card home-prep-topics-card">
+              <div className="home-prep-card-head">
+                <span className="pill home-prep-badge">Cẩm nang tra cứu</span>
                 <h3>Hành khách thường quan tâm</h3>
-                <div className="role-chip-cloud">
-                  {travelerTopics.map((topic) => (
-                    <span key={topic} className="role-chip">
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-                <p>
-                  Những mục được tra cứu nhiều nhất trước ngày bay được đưa lên rõ ràng
-                  để hành khách không phải tìm qua nhiều lớp điều hướng.
-                </p>
-              </article>
-              <article className="glass-card command-panel">
-                <h3>Kênh hỗ trợ đa lớp</h3>
-                <div className="support-channel-grid">
-                  {supportChannels.map((channel) => (
-                    <div key={channel.title} className="support-compact-item">
+              </div>
+              <p className="home-prep-desc">
+                Các nội dung được tra cứu nhiều nhất trước ngày bay để hành khách chuẩn bị chu đáo.
+              </p>
+              <div className="home-prep-topics-grid">
+                {travelerTopics.map((topic) => (
+                  <Link key={topic} href="/support" className="home-prep-topic-chip">
+                    <span className="home-prep-topic-dot">✦</span>
+                    <span>{topic}</span>
+                  </Link>
+                ))}
+              </div>
+            </article>
+
+            {/* Cột 3: Kênh hỗ trợ đa lớp */}
+            <article className="surface-card home-prep-card home-prep-support-card">
+              <div className="home-prep-card-head">
+                <span className="pill home-prep-badge">Hỗ trợ 24/7</span>
+                <h3>Kênh trợ giúp hành khách</h3>
+              </div>
+              <div className="home-prep-support-list">
+                {supportChannels.map((channel) => (
+                  <div key={channel.title} className="home-prep-support-item">
+                    <div className="home-prep-support-info">
                       <strong>{channel.title}</strong>
                       <p>{channel.description}</p>
-                      <small className="support-compact-channel">{channel.channel}</small>
                     </div>
-                  ))}
-                </div>
-              </article>
-            </div>
+                    <span className="home-prep-support-pill">{channel.channel}</span>
+                  </div>
+                ))}
+              </div>
+              <Link href="/support" className="button button-primary home-prep-cta-button">
+                Đến trung tâm hỗ trợ
+              </Link>
+            </article>
           </div>
         </div>
       </section>
       <style>{`
+        
+        .home-prep-section {
+          background:
+            radial-gradient(circle at 10% 20%, rgba(202, 164, 95, 0.08), transparent 30%),
+            radial-gradient(circle at 90% 80%, rgba(18, 61, 105, 0.06), transparent 30%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(246, 244, 237, 0.95) 100%);
+          padding: 64px 0;
+        }
+
+        .home-prep-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 24px;
+          align-items: stretch;
+        }
+
+        .home-prep-card {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding: 28px 24px;
+          border-radius: 24px;
+          border: 1px solid rgba(18, 61, 105, 0.1);
+          background: rgba(255, 255, 255, 0.94);
+          box-shadow: 0 16px 36px rgba(18, 61, 105, 0.06);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .home-prep-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 22px 48px rgba(18, 61, 105, 0.1);
+        }
+
+        .home-prep-card-head {
+          display: grid;
+          gap: 8px;
+        }
+
+        .home-prep-card-head h3 {
+          margin: 0;
+          color: var(--primary);
+          font-size: 1.25rem;
+          line-height: 1.25;
+          letter-spacing: -0.02em;
+        }
+
+        .home-prep-badge {
+          width: fit-content;
+          background: rgba(18, 61, 105, 0.08);
+          color: var(--primary);
+          font-size: 0.76rem;
+          font-weight: 700;
+        }
+
+        .home-prep-desc {
+          margin: 0;
+          color: var(--muted);
+          font-size: 0.9rem;
+          line-height: 1.55;
+        }
+
+        .home-prep-timing-list {
+          display: grid;
+          gap: 14px;
+        }
+
+        .home-prep-timing-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          background: rgba(18, 61, 105, 0.035);
+          border: 1px solid rgba(18, 61, 105, 0.07);
+        }
+
+        .home-prep-timing-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 82px;
+          height: 44px;
+          padding: 0 12px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #123d69, #1b5b90);
+          color: #fff;
+          font-weight: 800;
+          font-size: 1.05rem;
+          white-space: nowrap;
+          box-shadow: 0 8px 18px rgba(18, 61, 105, 0.18);
+          flex-shrink: 0;
+        }
+
+        .home-prep-timing-copy {
+          display: grid;
+          gap: 3px;
+        }
+
+        .home-prep-timing-copy strong {
+          color: var(--primary);
+          font-size: 0.96rem;
+          line-height: 1.25;
+        }
+
+        .home-prep-timing-copy p {
+          margin: 0;
+          color: var(--muted);
+          font-size: 0.82rem;
+          line-height: 1.45;
+        }
+
+        .home-prep-topics-grid {
+          display: grid;
+          gap: 10px;
+        }
+
+        .home-prep-topic-chip {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 11px 14px;
+          border-radius: 14px;
+          background: rgba(202, 164, 95, 0.08);
+          border: 1px solid rgba(202, 164, 95, 0.2);
+          color: var(--text-primary);
+          font-size: 0.88rem;
+          font-weight: 600;
+          transition: all 0.18s ease;
+        }
+
+        .home-prep-topic-chip:hover {
+          background: rgba(202, 164, 95, 0.16);
+          border-color: rgba(202, 164, 95, 0.4);
+          color: var(--primary);
+          transform: translateX(3px);
+        }
+
+        .home-prep-topic-dot {
+          color: var(--brand-accent);
+          font-size: 0.75rem;
+        }
+
+        .home-prep-support-list {
+          display: grid;
+          gap: 12px;
+          flex-grow: 1;
+        }
+
+        .home-prep-support-item {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(18, 61, 105, 0.035);
+          border: 1px solid rgba(18, 61, 105, 0.07);
+        }
+
+        .home-prep-support-info strong {
+          color: var(--primary);
+          font-size: 0.94rem;
+          line-height: 1.3;
+        }
+
+        .home-prep-support-info p {
+          margin: 2px 0 0;
+          color: var(--muted);
+          font-size: 0.82rem;
+          line-height: 1.45;
+        }
+
+        .home-prep-support-pill {
+          width: fit-content;
+          color: #123d69;
+          font-size: 0.86rem;
+          font-weight: 800;
+          letter-spacing: 0.01em;
+          background: rgba(18, 61, 105, 0.08);
+          padding: 3px 10px;
+          border-radius: 8px;
+        }
+
+        .home-prep-cta-button {
+          width: 100%;
+          min-height: 48px;
+          margin-top: 4px;
+        }
+
+        @media (max-width: 1024px) {
+          .home-prep-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
         .ops-strip {
           margin-top: 18px;
           padding-bottom: 34px;

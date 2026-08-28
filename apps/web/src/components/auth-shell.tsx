@@ -115,25 +115,12 @@ export function AuthShell({
           <div className="auth-panel">
             {children}
 
-            <article className="auth-support-box">
-              <div className="auth-support-head">
-                <div>
-                  <span className="section-eyebrow">Hỗ trợ xác minh</span>
-                  <h2>Liên hệ hỗ trợ nếu bạn cần kiểm tra lại thông tin tài khoản</h2>
-                </div>
-                <StatusChip tone="neutral" label="Phục vụ 24/7" />
+            <div className="auth-support-compact-footer">
+              <div className="auth-support-head-compact">
+                <span className="section-eyebrow">Hỗ trợ 24/7</span>
+                <span className="auth-support-help-text">Tổng đài: 1900 6868 • Email: support@vietnam-airlines.vn</span>
               </div>
-
-              <div className="auth-support-list">
-                {supportItems.map((item) => (
-                  <div key={item.title} className="auth-support-item">
-                    <span>{item.title}</span>
-                    <strong>{item.value}</strong>
-                    <p>{item.note}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
+            </div>
           </div>
         </div>
       </div>

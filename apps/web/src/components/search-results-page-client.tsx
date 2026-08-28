@@ -319,17 +319,14 @@ function taoTheKetQua(
 
   return (
     <div className="stack-list">
-      <div className="surface-card result-card">
-        <div className="result-top">
-          <div>
-            <span className="section-eyebrow">{tieuDe}</span>
-            <h3>{flights.length} chuyến bay phù hợp</h3>
-            <p>
-              {selectedNotice ??
-                "Các lựa chọn đang còn chỗ và phù hợp với tiêu chí tìm kiếm hiện tại của bạn."}
-            </p>
-          </div>
+      <div className="result-section-header">
+        <div>
+          <span className="section-eyebrow">{tieuDe}</span>
+          <h3 className="result-section-title">{flights.length} chuyến bay phù hợp</h3>
         </div>
+        {selectedNotice ? (
+          <span className="pill result-selected-badge">{selectedNotice}</span>
+        ) : null}
       </div>
 
       {flights.map((flight) => (
@@ -361,29 +358,11 @@ function taoTheKetQua(
                 <span>Giá mở đầu</span>
                 <strong>{formatCurrency(flight.baseFare)}</strong>
               </div>
-              {/* Đổi hình sang invoice.jpg — minh họa giá/thanh toán, phù hợp với "Giá mở đầu" */}
-              <div className="result-metric-image">
-                <Image
-                  src="/images/ticket.jpg"
-                  alt="Minh họa giá vé và thanh toán"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 32vw"
-                />
-              </div>
             </div>
             <div className="result-metric-card">
               <div>
                 <span>Tổng ghế còn bán</span>
                 <strong>{flight.fares.reduce((tong, fare) => tong + fare.seatsLeft, 0)} ghế</strong>
-              </div>
-              {/* Đổi hình sang khoang ghế máy bay — phù hợp với "Tổng ghế còn bán" */}
-              <div className="result-metric-image">
-                <Image
-                  src="/images/pho-thong-tiet-kiem-vietnam-airline-3.jpg"
-                  alt="Khoang ghế máy bay minh họa cho số ghế còn bán"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 32vw"
-                />
               </div>
             </div>
             <div className="result-grid-fare-box">
@@ -420,10 +399,11 @@ function taoTheKetQua(
               <Link
                 href={taoDuongDanChonChieuDi(criteria, flight, isBackofficeSalesFlow)}
                 scroll={false}
-                className={`button ${selectedOutboundFlight?.flightId === flight.flightId
+                className={`button ${
+                  selectedOutboundFlight?.flightId === flight.flightId
                     ? "button-secondary"
                     : "button-primary"
-                  }`}
+                }`}
               >
                 {selectedOutboundFlight?.flightId === flight.flightId
                   ? "Đã chọn chiều đi"
@@ -782,23 +762,21 @@ export function SearchResultsPageClient({
         <form id="dat-ve" className="surface-card search-toolbar-card" onSubmit={xuLyTimChuyenBay}>
           <div className="search-toolbar-head">
             <div>
-              <span className="section-eyebrow">Cập nhật hành trình</span>
-              <h2>Tìm lại chuyến bay ngay trên trang kết quả</h2>
+              <span className="section-eyebrow">Hành trình bay</span>
+              <h2>Tìm lại chuyến bay</h2>
             </div>
-            <p>{passengerSummary}</p>
-          </div>
-
-          <div className="toggle-group search-toolbar-trip-type">
-            {TRIP_TYPES.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={tripType === item ? "toggle active" : "toggle"}
-                onClick={() => capNhatLoaiHanhTrinh(item)}
-              >
-                {tripLabels[item]}
-              </button>
-            ))}
+            <div className="toggle-group search-toolbar-trip-type">
+              {TRIP_TYPES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={tripType === item ? "toggle active" : "toggle"}
+                  onClick={() => capNhatLoaiHanhTrinh(item)}
+                >
+                  {tripLabels[item]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="search-toolbar-grid">
@@ -821,8 +799,8 @@ export function SearchResultsPageClient({
                   </datalist>
                   <small>
                     {dangTaiSanBayDi
-                      ? "Đang tải gợi ý sân bay..."
-                      : "Nhập mã hoặc tên thành phố để nhận gợi ý nhanh."}
+                      ? "Đang tải gợi ý..."
+                      : "Mã sân bay hoặc tên thành phố"}
                   </small>
                 </label>
 
@@ -852,8 +830,8 @@ export function SearchResultsPageClient({
                   </datalist>
                   <small>
                     {dangTaiSanBayDen
-                      ? "Đang tải gợi ý sân bay..."
-                      : "Có thể nhập mã sân bay hoặc tên thành phố."}
+                      ? "Đang tải gợi ý..."
+                      : "Mã sân bay hoặc tên thành phố"}
                   </small>
                 </label>
               </div>
@@ -879,85 +857,39 @@ export function SearchResultsPageClient({
                 </label>
               </div>
 
-              <div className="search-toolbar-support-grid">
-                <div className="search-toolbar-support-card">
-                  <span className="search-toolbar-support-title">Điểm đi phổ biến</span>
-                  <div className="filter-chip-list">
-                    {sanBayDiPhoBien.map((sanBay) => (
+              <div className="search-toolbar-presets-strip">
+                <div className="search-preset-group">
+                  <span className="search-preset-label">Tuyến gợi ý:</span>
+                  <div className="search-preset-chips">
+                    {routePresets.slice(0, 6).map((route) => (
                       <button
-                        key={`from-${sanBay.code}`}
+                        key={`${route.from}-${route.to}`}
                         type="button"
                         className={
-                          from === sanBay.code
+                          from === route.from && to === route.to
                             ? "assurance-chip filter-chip-button active"
                             : "assurance-chip filter-chip-button"
                         }
-                        onClick={() => chonSanBay("from", sanBay.code)}
-                        title={taoMoTaSanBay(sanBay)}
+                        onClick={() => xuLyChonTuyenNhanh(route)}
                       >
-                        {taoNhanSanBay(sanBay)}
+                        {route.from} → {route.to}
                       </button>
                     ))}
                   </div>
-                </div>
-
-                <div className="search-toolbar-support-card">
-                  <span className="search-toolbar-support-title">Điểm đến phổ biến</span>
-                  <div className="filter-chip-list">
-                    {sanBayDenPhoBien.map((sanBay) => (
-                      <button
-                        key={`to-${sanBay.code}`}
-                        type="button"
-                        className={
-                          to === sanBay.code
-                            ? "assurance-chip filter-chip-button active"
-                            : "assurance-chip filter-chip-button"
-                        }
-                        onClick={() => chonSanBay("to", sanBay.code)}
-                        title={taoMoTaSanBay(sanBay)}
-                      >
-                        {taoNhanSanBay(sanBay)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="search-toolbar-route-presets">
-                <span className="search-toolbar-support-title">Tuyến phổ biến</span>
-                <div className="route-preset-grid">
-                  {routePresets.map((route) => (
-                    <button
-                      key={`${route.from}-${route.to}`}
-                      type="button"
-                      className={
-                        from === route.from && to === route.to
-                          ? "route-preset-button route-preset-button-active"
-                          : "route-preset-button"
-                      }
-                      onClick={() => xuLyChonTuyenNhanh(route)}
-                    >
-                      <strong>{route.label}</strong>
-                      <span>{route.from} → {route.to}</span>
-                    </button>
-                  ))}
                 </div>
               </div>
             </div>
 
             <div className="search-toolbar-passenger-panel">
               <div className="search-toolbar-passenger-head">
-                <div>
-                  <span className="search-toolbar-support-title">Hành khách</span>
-                  <strong>{tongKhach} khách</strong>
-                </div>
-                <p>Tối đa 9 khách, số em bé không vượt quá số người lớn.</p>
+                <span className="search-toolbar-support-title">Hành khách: {tongKhach} khách</span>
+                <small className="search-toolbar-passenger-note">Tối đa 9 khách</small>
               </div>
 
               <div className="passenger-counter-grid">
                 <PassengerCounterCard
                   label="Người lớn"
-                  note="Từ 12 tuổi"
+                  note="≥ 12 tuổi"
                   value={adultCount}
                   disabledDecrease={!coTheGiamHanhKhach("adult")}
                   disabledIncrease={!coTheTangHanhKhach("adult")}
@@ -966,7 +898,7 @@ export function SearchResultsPageClient({
                 />
                 <PassengerCounterCard
                   label="Trẻ em"
-                  note="Từ 2 đến dưới 12 tuổi"
+                  note="2 - 11 tuổi"
                   value={childCount}
                   disabledDecrease={!coTheGiamHanhKhach("child")}
                   disabledIncrease={!coTheTangHanhKhach("child")}
@@ -975,7 +907,7 @@ export function SearchResultsPageClient({
                 />
                 <PassengerCounterCard
                   label="Em bé"
-                  note="Dưới 2 tuổi"
+                  note="< 2 tuổi"
                   value={infantCount}
                   disabledDecrease={!coTheGiamHanhKhach("infant")}
                   disabledIncrease={!coTheTangHanhKhach("infant")}
@@ -989,14 +921,13 @@ export function SearchResultsPageClient({
           <div className="search-toolbar-action-row">
             <div className="search-toolbar-action-copy">
               <strong>{passengerSummary}</strong>
-              <p>Bạn có thể đổi nhanh tuyến, ngày bay và nhóm hành khách để xem thêm lựa chọn phù hợp.</p>
             </div>
             <button
               className="button button-primary search-toolbar-submit"
               type="submit"
               disabled={dangTaiKetQua}
             >
-              {dangTaiKetQua ? "Đang cập nhật" : "Cập nhật kết quả"}
+              {dangTaiKetQua ? "Đang cập nhật..." : "Cập nhật kết quả"}
             </button>
           </div>
         </form>
