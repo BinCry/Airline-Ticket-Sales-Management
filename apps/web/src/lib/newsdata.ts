@@ -472,10 +472,9 @@ function toTextList(value: string[] | string | null | undefined) {
 
 // Kiểm tra bài viết có nội dung du lịch, hành trình và không dính các chủ đề tiêu cực/ngoài lề
 function hasTravelSignal(article: NewsDataArticle) {
-  /* Thay thế việc gộp tên nguồn vào nội dung tìm kiếm bằng việc kiểm tra sát tiêu đề, mô tả và từ khóa */
-  const searchableContent = normalizeText(
+  const titleContent = normalizeText(article.title);
+  const detailContent = normalizeText(
     [
-      article.title,
       article.description,
       ...toTextList(article.keywords)
     ]
@@ -485,7 +484,7 @@ function hasTravelSignal(article: NewsDataArticle) {
 
   // Loại trừ ngay nếu chứa từ khóa tiêu cực, án sự hoặc không liên quan
   const hasBlockedContent = normalizedBlockedKeywords.some((keyword) =>
-    searchableContent.includes(keyword)
+    `${titleContent} ${detailContent}`.includes(keyword)
   );
 
   if (hasBlockedContent) {
@@ -496,16 +495,21 @@ function hasTravelSignal(article: NewsDataArticle) {
   const hasTravelCategory = categoryList.some(
     (category) =>
       category.includes("tourism") ||
-      category.includes("travel") ||
-      category.includes("lifestyle")
+      category.includes("travel")
   );
 
-  // Bắt buộc chứa từ khóa thuộc lĩnh vực du lịch, hàng không, sân bay hoặc thuộc danh mục du lịch/lifestyle
-  const hasTravelKeyword = normalizedTravelKeywords.some((keyword) =>
-    searchableContent.includes(keyword)
+  const hasTravelKeywordInTitle = normalizedTravelKeywords.some((keyword) =>
+    titleContent.includes(keyword)
+  );
+  const hasTravelKeywordInDetails = normalizedTravelKeywords.some((keyword) =>
+    detailContent.includes(keyword)
   );
 
-  return hasTravelKeyword || (hasTravelCategory && searchableContent.length > 0);
+  // Category lifestyle quá rộng nên không được tự quyết định một bài là du lịch.
+  return (
+    hasTravelKeywordInTitle ||
+    (hasTravelCategory && hasTravelKeywordInDetails)
+  );
 }
 
 function formatPublishedDate(value: string | null | undefined) {
@@ -584,6 +588,18 @@ async function mapArticleToPreview(
   const resolvedSummary = resolvedMetadata?.description || summary;
 
   if (!title) {
+    return null;
+  }
+
+  // Metadata bài gốc có thể thay thế dữ liệu từ NewsData nên phải kiểm tra lại lần nữa.
+  if (
+    !hasTravelSignal({
+      ...article,
+      title,
+      description: resolvedSummary,
+      keywords: []
+    })
+  ) {
     return null;
   }
 

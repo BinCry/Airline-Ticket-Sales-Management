@@ -207,4 +207,95 @@ describe("newsdata", () => {
     expect(articles).toHaveLength(1);
     expect(articles[0].external).toBe(false);
   });
+
+  it("loai bai lifestyle khong lien quan den du lich", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              category: ["lifestyle"],
+              description:
+                "Các nhà sách, trường học và giáo viên đang triển khai giải pháp đáp ứng nhu cầu sách giáo khoa.",
+              image_url: "https://newsdata.invalid/sach-giao-khoa.jpg",
+              link: "https://nhandan.vn/giai-phap-sach-giao-khoa-post123456.html",
+              pubDate: "2026-08-28 10:42:00",
+              source_id: "nhandan",
+              source_name: "Báo Nhân Dân điện tử",
+              title: "Cần Thơ chủ động kết nối, linh hoạt các giải pháp sách giáo khoa"
+            }
+          ],
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getTravelArticles(1, true);
+
+    expect(articles).toHaveLength(1);
+    expect(articles[0].external).toBe(false);
+  });
+
+  it("loai lai bai khi metadata goc thay tieu de du lich bang noi dung ngoai le", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                category: ["lifestyle"],
+                description: "Tin du lịch và điểm đến mới nhất.",
+                image_url: "https://newsdata.invalid/du-lich.jpg",
+                link: "https://nhandan.vn/bai-viet-post123456.html",
+                pubDate: "2026-08-28 10:42:00",
+                source_id: "nhandan",
+                source_name: "Báo Nhân Dân điện tử",
+                title: "Xu hướng du lịch dịp nghỉ lễ Quốc khánh"
+              }
+            ],
+            status: "success"
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json"
+            },
+            status: 200
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          `
+            <html>
+              <head>
+                <meta property="og:title" content="Khắc phục triệt để tình trạng hồ sơ giải quyết chậm" />
+                <meta property="og:description" content="Cơ quan chức năng yêu cầu bổ sung hồ sơ nhiều lần." />
+              </head>
+            </html>
+          `,
+          {
+            headers: {
+              "Content-Type": "text/html; charset=utf-8"
+            },
+            status: 200
+          }
+        )
+      ) as typeof fetch;
+
+    const articles = await getTravelArticles(1, true);
+
+    expect(articles).toHaveLength(1);
+    expect(articles[0].external).toBe(false);
+  });
 });

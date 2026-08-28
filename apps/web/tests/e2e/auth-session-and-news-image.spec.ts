@@ -102,11 +102,13 @@ test("phien het access token van tu lam moi khi refresh token con song", async (
     });
   });
 
-  await page.goto("/");
-  await page.waitForResponse((response) =>
+  const refreshResponsePromise = page.waitForResponse((response) =>
     response.url().includes("/api/auth/refresh") &&
     response.request().method() === "POST"
   );
+
+  await page.goto("/");
+  await refreshResponsePromise;
 
   const backofficeLink = page.getByRole("link", { name: "Backoffice" }).first();
   await expect(backofficeLink).toBeVisible();
