@@ -39,7 +39,7 @@ export function JourneyPhoneVideo() {
   }
 
   return (
-    <div className="journey-phone-screen">
+    <div className={`journey-phone-screen${isPlaying ? " is-playing" : ""}`}>
       <video
         ref={videoRef}
         className="journey-phone-video"
@@ -57,7 +57,7 @@ export function JourneyPhoneVideo() {
       <span className="journey-phone-label">HÀNH TRÌNH MỖI NGÀY</span>
       <button
         type="button"
-        className="journey-phone-play"
+        className={`journey-phone-play${isPlaying ? " is-playing" : ""}`}
         onClick={() => void togglePlayback()}
         aria-label={isPlaying ? "Tạm dừng video" : "Phát video"}
         aria-pressed={isPlaying}
@@ -75,7 +75,7 @@ export function JourneyPhoneVideo() {
       </button>
       <button
         type="button"
-        className="journey-phone-mute"
+        className={`journey-phone-mute${isPlaying ? " is-playing" : ""}`}
         onClick={toggleMute}
         aria-label={isMuted ? "Bật tiếng video" : "Tắt tiếng video"}
         aria-pressed={!isMuted}

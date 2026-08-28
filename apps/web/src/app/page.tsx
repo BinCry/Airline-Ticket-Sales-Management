@@ -1990,7 +1990,12 @@ export default async function HomePage() {
           color: #123d69;
           cursor: pointer;
           transform: translate(-50%, -50%);
-          transition: transform 0.18s ease, background 0.18s ease;
+          transition: opacity 0.2s ease, transform 0.18s ease, background 0.18s ease;
+        }
+
+        .journey-phone-play.is-playing,
+        .journey-phone-mute.is-playing {
+          opacity: 0.22;
         }
 
         .journey-phone-play:hover,
@@ -2020,7 +2025,7 @@ export default async function HomePage() {
           background: rgba(7, 24, 41, 0.5);
           color: #ffffff;
           cursor: pointer;
-          transition: transform 0.18s ease, background 0.18s ease;
+          transition: opacity 0.2s ease, transform 0.18s ease, background 0.18s ease;
         }
 
         .journey-phone-mute:hover,

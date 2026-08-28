@@ -284,19 +284,25 @@ export function SiteHeader() {
         </div>
       </div>
       <div className="container nav-row">
-        <Link href="/" className="brand">
-          <span className="brand-logo">
-            <Image
-              src="/images/logo-vietnamairlines.jpg"
-              alt="Logo Vietnam Airlines"
-              width={1086}
-              height={159}
-              sizes="(max-width: 640px) 248px, 280px"
-              unoptimized
-              priority
-            />
-          </span>
-        </Link>
+        <div className="nav-row-primary">
+          <Link href="/" className="brand">
+            <span className="brand-logo">
+              <Image
+                src="/images/logo-vietnamairlines.jpg"
+                alt="Logo Vietnam Airlines"
+                width={1086}
+                height={159}
+                sizes="(max-width: 640px) 248px, 280px"
+                unoptimized
+                priority
+              />
+            </span>
+          </Link>
+          <div className="nav-meta nav-meta-brand">
+            <span>Trung tâm hỗ trợ</span>
+            <strong>1900 6868</strong>
+          </div>
+        </div>
         <div
           id="site-mobile-navigation"
           className={isMobileOpen ? "nav-cluster mobile-open" : "nav-cluster"}
@@ -353,10 +359,6 @@ export function SiteHeader() {
           </div>
         </div>
         <div className="nav-row-actions">
-          <div className="nav-meta">
-            <span>Trung tâm hỗ trợ</span>
-            <strong>1900 6868</strong>
-          </div>
           {accountButtonLabel ? (
             renderAccountPanel("desktop")
           ) : (
