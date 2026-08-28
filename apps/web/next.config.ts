@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig = {
   output: "standalone" as const,
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   transpilePackages: ["@qlvmb/shared-types"],
   images: {

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "test": "vitest",
+    "prepare:standalone": "node scripts/prepare-standalone.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

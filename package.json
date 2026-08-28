@@ -9,6 +9,7 @@
     "dev:web": "npm run dev --workspace @qlvmb/web",
     "build:web": "npm run build --workspace @qlvmb/web",
     "test:web": "npm run test --workspace @qlvmb/web -- --run",
+    "test:e2e": "npm run test:e2e --workspace @qlvmb/web",
     "test:e2e:web": "npm run test:e2e --workspace @qlvmb/web",
     "validate:production:config": "powershell -ExecutionPolicy Bypass -File infra/scripts/kiem-tra-san-sang-production.ps1"
   },

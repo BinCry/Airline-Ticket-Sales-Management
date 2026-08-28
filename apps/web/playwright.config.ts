@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const playwrightPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "3100", 10);
+const playwrightBaseURL = `http://127.0.0.1:${playwrightPort}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -9,14 +12,19 @@ export default defineConfig({
     timeout: 8_000
   },
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: playwrightBaseURL,
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "npm run build && node .next/standalone/apps/web/server.js",
+    command:
+      "npm run build && npm run prepare:standalone && node .next-e2e/standalone/apps/web/server.js",
     cwd: __dirname,
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    env: {
+      NEXT_DIST_DIR: ".next-e2e",
+      PORT: String(playwrightPort)
+    },
+    url: playwrightBaseURL,
+    reuseExistingServer: false,
     timeout: 120_000
   },
   projects: [
