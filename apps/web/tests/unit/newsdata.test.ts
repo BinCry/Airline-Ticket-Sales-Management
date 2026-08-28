@@ -168,9 +168,7 @@ describe("newsdata", () => {
 
     const articles = await getTravelArticles(2, true);
 
-    // Vì tất cả bài báo từ nguồn bị chặn nên sẽ rơi vào danh sách fallback mặc định
-    expect(articles).toHaveLength(2);
-    expect(articles[0].external).toBe(false);
+    expect(articles).toHaveLength(0);
   });
 
   it("loai bo bai viet chua tu khoa tieu cuc hoac khong phu hop", async () => {
@@ -204,8 +202,7 @@ describe("newsdata", () => {
 
     const articles = await getTravelArticles(1, false);
 
-    expect(articles).toHaveLength(1);
-    expect(articles[0].external).toBe(false);
+    expect(articles).toHaveLength(0);
   });
 
   it("loai bai lifestyle khong lien quan den du lich", async () => {
@@ -240,8 +237,7 @@ describe("newsdata", () => {
 
     const articles = await getTravelArticles(1, true);
 
-    expect(articles).toHaveLength(1);
-    expect(articles[0].external).toBe(false);
+    expect(articles).toHaveLength(0);
   });
 
   it("loai lai bai khi metadata goc thay tieu de du lich bang noi dung ngoai le", async () => {
@@ -295,30 +291,44 @@ describe("newsdata", () => {
 
     const articles = await getTravelArticles(1, true);
 
-    expect(articles).toHaveLength(1);
-    expect(articles[0].external).toBe(false);
+    expect(articles).toHaveLength(0);
   });
 
-  it("bo sung bai viet noi bo de luon du so luong hien thi", async () => {
+  it("phan trang de lay du bai live truoc khi dung fallback", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce(
+    const liveArticles = Array.from({ length: 9 }, (_, index) => ({
+      category: ["lifestyle"],
+      description: "Kinh nghiệm du lịch và lịch trình khám phá mới.",
+      image_url: `https://newsdata.invalid/du-lich-${index}.jpg`,
+      link: `https://tuoitre.vn/kinh-nghiem-du-lich-${index}.htm`,
+      pubDate: `2026-08-28 10:${String(42 - index).padStart(2, "0")}:00`,
+      source_id: "tuoitre",
+      source_name: "Tuổi Trẻ Online",
+      title: `Kinh nghiệm du lịch mới ${index + 1}`
+    }));
+
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("tuoitre.vn")) {
+        return Promise.resolve(
+          new Response("forbidden", {
+            headers: {
+              "Content-Type": "text/html; charset=utf-8"
+            },
+            status: 403
+          })
+        );
+      }
+
+      const isNextPage = url.includes("page=next-page");
+
+      return Promise.resolve(
         new Response(
           JSON.stringify({
-            results: [
-              {
-                category: ["lifestyle"],
-                description: "Kinh nghiệm du lịch và lịch trình khám phá mới.",
-                image_url: "https://newsdata.invalid/du-lich.jpg",
-                link: "https://tuoitre.vn/kinh-nghiem-du-lich-moi.htm",
-                pubDate: "2026-08-28 10:42:00",
-                source_id: "tuoitre",
-                source_name: "Tuổi Trẻ Online",
-                title: "Kinh nghiệm du lịch mới cho hành trình cuối tuần"
-              }
-            ],
+            nextPage: isNextPage ? null : "next-page",
+            results: isNextPage ? liveArticles.slice(5) : liveArticles.slice(0, 5),
             status: "success"
           }),
           {
@@ -328,20 +338,31 @@ describe("newsdata", () => {
             status: 200
           }
         )
-      )
-      .mockResolvedValueOnce(
-        new Response("forbidden", {
-          headers: {
-            "Content-Type": "text/html; charset=utf-8"
-          },
-          status: 403
-        })
-      ) as typeof fetch;
+      );
+    }) as typeof fetch;
 
-    const articles = await getTravelArticles(4, false);
+    const articles = await getTravelArticles(9, false);
 
-    expect(articles).toHaveLength(4);
-    expect(articles[0].external).toBe(true);
-    expect(articles.slice(1).every((article) => !article.external)).toBe(true);
+    expect(articles).toHaveLength(9);
+    expect(articles.every((article) => article.external)).toBe(true);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("page=next-page"),
+      expect.any(Object)
+    );
+  });
+
+  it("chi dung fallback khi API that bai", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response("service unavailable", {
+        status: 503
+      })
+    ) as typeof fetch;
+
+    const articles = await getTravelArticles(10, true);
+
+    expect(articles).toHaveLength(10);
+    expect(articles.every((article) => !article.external)).toBe(true);
   });
 });

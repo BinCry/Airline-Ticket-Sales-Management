@@ -4,6 +4,7 @@ import { getNewsDataApiKey } from "@/lib/server-env";
 
 const NEWSDATA_ENDPOINT = "https://newsdata.io/api/1/latest";
 const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
+const NEWSDATA_MAX_PAGES = 4;
 const ARTICLE_METADATA_REVALIDATE_SECONDS = 60 * 60 * 12;
 const ARTICLE_METADATA_USER_AGENT =
   "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
@@ -66,6 +67,56 @@ const fallbackTravelArticles = [
     image: "/images/danang-coast.jpg",
     summary:
       "Các gợi ý thực tế để đi nhanh, chơi gọn và tối ưu thời gian nghỉ ngơi khi bay cuối tuần.",
+    href: "/blog",
+    external: false
+  },
+  {
+    title: "Hà Nội 48 giờ: gợi ý lịch trình gọn cho chuyến đi đầu tuần",
+    source: "Cẩm nang Vietnam Airlines",
+    readTime: "Đọc trong khoảng 8 phút",
+    image: "/images/danang-sunset.jpg",
+    summary:
+      "Cách sắp xếp điểm đến, giờ bay và thời gian nghỉ để khám phá Hà Nội nhẹ nhàng hơn.",
+    href: "/blog",
+    external: false
+  },
+  {
+    title: "Hành lý xách tay: checklist nhanh trước khi ra sân bay",
+    source: "Cẩm nang Vietnam Airlines",
+    readTime: "Đọc trong khoảng 7 phút",
+    image: "/images/airport-terminal.jpg",
+    summary:
+      "Những giấy tờ và vật dụng nên kiểm tra trước chuyến bay để hạn chế phát sinh tại nhà ga.",
+    href: "/blog",
+    external: false
+  },
+  {
+    title: "Chọn giờ bay thuận tiện cho chuyến công tác ngắn ngày",
+    source: "Cẩm nang Vietnam Airlines",
+    readTime: "Đọc trong khoảng 6 phút",
+    image: "/images/vietnam-airport.jpg",
+    summary:
+      "Gợi ý cân đối giờ khởi hành, thời gian di chuyển và lịch làm việc khi bay nội địa.",
+    href: "/blog",
+    external: false
+  },
+  {
+    title: "Đà Lạt cuối tuần: chuẩn bị hành trình vừa đủ và dễ theo dõi",
+    source: "Cẩm nang Vietnam Airlines",
+    readTime: "Đọc trong khoảng 9 phút",
+    image: "/images/danang-coast.jpg",
+    summary:
+      "Một số mẹo chuẩn bị lịch trình, hành lý và phương án di chuyển cho kỳ nghỉ ngắn.",
+    href: "/blog",
+    external: false
+  },
+  {
+    title: "Phú Bài và trung tâm Huế: hướng dẫn nối chuyến thuận tiện",
+    source: "Cẩm nang Vietnam Airlines",
+    readTime: "Đọc trong khoảng 8 phút",
+    image: "/images/vietnam-airport.jpg",
+    summary:
+      "Thông tin cần biết để chủ động sắp xếp thời gian từ sân bay Phú Bài vào trung tâm Huế.",
     href: "/blog",
     external: false
   }
@@ -172,6 +223,7 @@ interface NewsDataArticle {
 }
 
 interface NewsDataResponse {
+  nextPage?: string | null;
   results?: NewsDataArticle[];
   status?: string;
 }
@@ -705,28 +757,65 @@ export async function getTravelArticles(
   });
 
   try {
-    const response = await fetch(`${NEWSDATA_ENDPOINT}?${searchParams.toString()}`, {
-      next: { revalidate: NEWSDATA_REVALIDATE_SECONDS }
-    });
+    const liveArticles: TravelArticlePreview[] = [];
+    const seenArticleKeys = new Set<string>();
+    let nextPage: string | null = null;
 
-    if (!response.ok) {
-      return mergeWithFallback([], limit);
+    for (let pageIndex = 0; pageIndex < NEWSDATA_MAX_PAGES; pageIndex += 1) {
+      if (nextPage) {
+        searchParams.set("page", nextPage);
+      } else {
+        searchParams.delete("page");
+      }
+
+      const response = await fetch(`${NEWSDATA_ENDPOINT}?${searchParams.toString()}`, {
+        next: { revalidate: NEWSDATA_REVALIDATE_SECONDS }
+      });
+
+      if (!response.ok) {
+        return mergeWithFallback([], limit);
+      }
+
+      const data = (await response.json()) as NewsDataResponse;
+
+      if (data.status === "error") {
+        return mergeWithFallback([], limit);
+      }
+
+      const results = Array.isArray(data.results) ? data.results : [];
+      const pageArticles = await filterLiveArticles(
+        results,
+        includeSecondarySources,
+        limit
+      );
+
+      for (const article of pageArticles) {
+        const articleKey = article.href || normalizeText(article.title);
+
+        if (seenArticleKeys.has(articleKey)) {
+          continue;
+        }
+
+        seenArticleKeys.add(articleKey);
+        liveArticles.push(article);
+
+        if (liveArticles.length >= limit) {
+          return liveArticles.slice(0, limit);
+        }
+      }
+
+      nextPage = data.nextPage || null;
+
+      if (!nextPage || results.length === 0) {
+        break;
+      }
     }
 
-    const data = (await response.json()) as NewsDataResponse;
-    const results = Array.isArray(data.results) ? data.results : [];
-    const filteredArticles = (
-      await filterLiveArticles(results, includeSecondarySources, limit)
-    ).slice(0, limit);
-
-    if (filteredArticles.length > 0) {
-      return mergeWithFallback(filteredArticles, limit);
-    }
+    // API thành công nhưng không đủ bài phù hợp: không trộn mock vào dữ liệu live.
+    return liveArticles.slice(0, limit);
   } catch {
     return mergeWithFallback([], limit);
   }
-
-  return mergeWithFallback([], limit);
 }
 
 export async function getLatestTravelArticles(limit = 4) {

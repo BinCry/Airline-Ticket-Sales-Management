@@ -4,6 +4,8 @@ import { getTravelArticles } from "@/lib/newsdata";
 import { SectionHeading } from "@/components/section-heading";
 import { promotions } from "@/lib/public-content";
 
+const BLOG_ARTICLE_LIMIT = 10;
+
 const promotionPhotos = [
   {
     src: "/images/summer-promo.jpg",
@@ -22,7 +24,7 @@ const promotionPhotos = [
 export const revalidate = 0;
 
 export default async function BlogPage() {
-  const travelArticles = await getTravelArticles(9, true);
+  const travelArticles = await getTravelArticles(BLOG_ARTICLE_LIMIT, true);
 
   return (
     <section className="section">
