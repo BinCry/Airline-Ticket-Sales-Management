@@ -1172,11 +1172,8 @@ export default async function HomePage() {
         }
 
         .home-destination-section {
-          padding-top: 82px;
-          background:
-            radial-gradient(circle at 8% 14%, rgba(202, 164, 95, 0.14), transparent 22%),
-            radial-gradient(circle at 92% 18%, rgba(24, 92, 150, 0.1), transparent 20%),
-            linear-gradient(180deg, rgba(252, 248, 241, 0.92), rgba(240, 246, 251, 0.9));
+          padding: 56px 0;
+          background: #ffffff;
         }
 
         .home-latest-articles-section {
@@ -1341,11 +1338,9 @@ export default async function HomePage() {
           gap: 12px;
           min-height: 58px;
           padding: 0 30px;
-          border-color: rgba(74, 132, 205, 0.12);
-          background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 245, 252, 0.94)),
-            radial-gradient(circle at top left, rgba(113, 191, 106, 0.08), transparent 20%);
-          color: rgba(74, 132, 205, 0.96);
+          border: 1px solid rgba(18, 61, 105, 0.12);
+          background: #ffffff;
+          color: var(--primary);
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.9),
             0 18px 36px rgba(18, 61, 105, 0.08);
