@@ -1641,7 +1641,7 @@ export default async function HomePage() {
         }
 
         .tien-ich-tag {
-          font-size: 0.7rem;
+          font-size: 0.75rem;
           font-weight: 800;
           letter-spacing: 0.03em;
           text-transform: uppercase;
@@ -1910,7 +1910,7 @@ export default async function HomePage() {
 
         .journey-stat-row span {
           color: rgba(14, 40, 69, 0.62);
-          font-size: 0.7rem;
+          font-size: 0.75rem;
           line-height: 1.3;
         }
 
@@ -1973,7 +1973,7 @@ export default async function HomePage() {
 
         .journey-phone-label {
           top: 24px;
-          font-size: 0.6rem;
+          font-size: 0.75rem;
           font-weight: 800;
           letter-spacing: 0.12em;
         }

@@ -81,7 +81,7 @@ export default function SupportPage() {
             {supportChannels.map((channel) => (
               <div key={channel.title} className="support-contact-item">
                 <div>
-                  <h2>{channel.title}</h2>
+                  <h3>{channel.title}</h3>
                   <p>{channel.description}</p>
                 </div>
                 <strong>{channel.channel}</strong>

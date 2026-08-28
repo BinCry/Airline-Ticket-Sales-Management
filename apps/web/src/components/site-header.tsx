@@ -45,6 +45,47 @@ export function SiteHeader() {
   }, [pathname]);
 
   useEffect(() => {
+    if (!isMobileOpen && !isAccountPanelOpen) {
+      return;
+    }
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+
+      if (isAccountPanelOpen && !event.target.closest(".account-menu-wrap")) {
+        setIsAccountPanelOpen(false);
+      }
+
+      if (
+        isMobileOpen &&
+        !event.target.closest(".nav-cluster") &&
+        !event.target.closest(".mobile-menu-button")
+      ) {
+        setIsMobileOpen(false);
+      }
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      setIsAccountPanelOpen(false);
+      setIsMobileOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [isAccountPanelOpen, isMobileOpen]);
+
+  useEffect(() => {
     function syncAuthSession() {
       setFailedAvatarUrl(null);
       setAuthSession(loadValidAuthSession());
@@ -127,6 +168,7 @@ export function SiteHeader() {
           onClick={() => setIsAccountPanelOpen((value) => !value)}
           aria-expanded={isAccountPanelOpen}
           aria-controls={panelId}
+          aria-haspopup="menu"
           title={accountButtonLabel}
         >
           <span className="account-menu-avatar" aria-hidden="true">
@@ -255,7 +297,10 @@ export function SiteHeader() {
             />
           </span>
         </Link>
-        <div className={isMobileOpen ? "nav-cluster mobile-open" : "nav-cluster"}>
+        <div
+          id="site-mobile-navigation"
+          className={isMobileOpen ? "nav-cluster mobile-open" : "nav-cluster"}
+        >
           <nav className="main-nav" aria-label="Điều hướng chính">
             {navigationLinks.map((link) => {
               const isActive = isMainNavigationLinkActive(pathname, link);
@@ -350,7 +395,8 @@ export function SiteHeader() {
             className="mobile-menu-button"
             onClick={() => setIsMobileOpen((value) => !value)}
             aria-expanded={isMobileOpen}
-            aria-label="Mở menu điều hướng"
+            aria-controls="site-mobile-navigation"
+            aria-label={isMobileOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
           >
             {isMobileOpen ? "Đóng" : "Menu"}
           </button>

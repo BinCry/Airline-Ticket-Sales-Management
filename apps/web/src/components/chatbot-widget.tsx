@@ -166,6 +166,9 @@ export function ChatbotWidget() {
     travel: createInitialMessages("travel")
   });
   const conversationRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const hasOpenedRef = useRef(false);
 
   const activeConfig = chatbotModeConfig[activeMode];
   const activeDraft = draftByMode[activeMode];
@@ -174,6 +177,33 @@ export function ChatbotWidget() {
   const isPending = isPendingByMode[activeMode];
   const showPromptGrid = !activeMessages.some((message) => message.role === "user");
   const starterPrompts = activeConfig.prompts.slice(0, starterPromptLimit);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (hasOpenedRef.current) {
+        requestAnimationFrame(() => triggerRef.current?.focus());
+      }
+      return;
+    }
+
+    hasOpenedRef.current = true;
+    requestAnimationFrame(() => closeButtonRef.current?.focus());
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !conversationRef.current) {
@@ -312,14 +342,20 @@ export function ChatbotWidget() {
   return (
     <div className="chatbot-root">
       {isOpen ? (
-        <div className="chatbot-panel surface-card">
+        <div
+          id="chatbot-panel"
+          className="chatbot-panel surface-card"
+          role="dialog"
+          aria-labelledby="chatbot-title"
+          aria-describedby="chatbot-description"
+        >
           <div className="chatbot-header">
             <div className="chatbot-header-copy">
               <div className="chatbot-title-row">
-                <strong>Trợ lý AI Vietnam Airlines</strong>
+                <strong id="chatbot-title">Trợ lý AI Vietnam Airlines</strong>
               </div>
-              <p>{activeConfig.description}</p>
-              <div className="chatbot-mode-switch" role="tablist" aria-label="Chế độ chatbot">
+              <p id="chatbot-description">{activeConfig.description}</p>
+              <div className="chatbot-mode-switch" role="group" aria-label="Chế độ chatbot">
                 {chatbotModeOrder.map((mode) => (
                   <button
                     key={mode}
@@ -328,7 +364,7 @@ export function ChatbotWidget() {
                       mode === activeMode ? " chatbot-mode-tab-active" : ""
                     }`}
                     onClick={() => setActiveMode(mode)}
-                    aria-selected={mode === activeMode}
+                    aria-pressed={mode === activeMode}
                     disabled={isPending}
                   >
                     {chatbotModeConfig[mode].label}
@@ -350,6 +386,7 @@ export function ChatbotWidget() {
                 type="button"
                 className="icon-button chatbot-header-icon chatbot-close-button"
                 onClick={() => setIsOpen(false)}
+                ref={closeButtonRef}
                 aria-label="Đóng trợ lý hỗ trợ"
               >
                 ×
@@ -359,7 +396,14 @@ export function ChatbotWidget() {
           <div
             className={`chatbot-body${showPromptGrid ? " chatbot-body-has-starter" : ""}`}
           >
-            <div ref={conversationRef} className="chatbot-conversation">
+            <div
+              ref={conversationRef}
+              className="chatbot-conversation"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions text"
+              aria-label="Nội dung cuộc trò chuyện"
+            >
               {activeMessages.map((message) => (
                 <div
                   key={message.id}
@@ -412,7 +456,11 @@ export function ChatbotWidget() {
                 </div>
               </div>
             ) : null}
-            {activeError ? <div className="chatbot-status">{activeError}</div> : null}
+            {activeError ? (
+              <div className="chatbot-status" role="alert">
+                {activeError}
+              </div>
+            ) : null}
             <form
               className="chatbot-composer"
               onSubmit={(event) => {
@@ -456,6 +504,10 @@ export function ChatbotWidget() {
         type="button"
         className="chatbot-button"
         onClick={() => setIsOpen((value) => !value)}
+        ref={triggerRef}
+        aria-expanded={isOpen}
+        aria-controls="chatbot-panel"
+        aria-label={isOpen ? "Đóng trợ lý AI" : "Mở trợ lý AI"}
       >
         Trợ lý AI
       </button>

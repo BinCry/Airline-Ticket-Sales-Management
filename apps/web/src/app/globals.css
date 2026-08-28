@@ -491,7 +491,7 @@ img {
 .account-menu-logout {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
   color: var(--ink);
@@ -890,7 +890,7 @@ img {
 
 .mobile-menu-button {
   display: none;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid rgba(18, 61, 105, 0.14);
@@ -1276,8 +1276,8 @@ img {
   top: 50%;
   right: 8px;
   display: inline-grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -3006,12 +3006,12 @@ img {
   border-top: 1px solid rgba(18, 61, 105, 0.1);
 }
 
-.support-contact-item h2,
+.support-contact-item h3,
 .support-contact-item p {
   margin: 0;
 }
 
-.support-contact-item h2 {
+.support-contact-item h3 {
   color: var(--ink);
   font-size: 0.88rem;
   line-height: 1.35;
@@ -4823,6 +4823,7 @@ thead th {
 .footer-social-link {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 6px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -5034,7 +5035,7 @@ thead th {
 }
 
 .chatbot-root .chatbot-mode-tab {
-  min-height: 38px;
+  min-height: 44px;
   min-width: 0;
   padding: 0 18px;
   border: 1px solid rgba(90, 135, 191, 0.14);
@@ -5089,8 +5090,8 @@ thead th {
 .chatbot-root .chatbot-header-icon {
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(90, 135, 191, 0.16);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
@@ -5247,7 +5248,7 @@ thead th {
 
 .chatbot-root .chatbot-section-kicker {
   color: var(--chat-cool-text-muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5522,7 +5523,7 @@ thead th {
 
 .backoffice-local-nav-context span {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   line-height: 1.2;
 }
 
@@ -6175,7 +6176,7 @@ thead th {
 
 .revenue-chart-tooltip small {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .revenue-chart-point:hover .revenue-chart-tooltip,
