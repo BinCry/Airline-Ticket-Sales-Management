@@ -807,11 +807,11 @@ test("backoffice admin cập nhật role, trạng thái và xóa nhật ký", as
   await expect(row).toBeVisible();
 
   await row.locator("select").nth(0).selectOption("customer_support");
-  await row.getByRole("button", { name: "Lưu role" }).click();
+  await row.getByRole("button", { name: "Lưu vai trò cho tài khoản Điều hành A" }).click();
   await expect(row).toContainText("Chăm sóc khách hàng");
 
   await row.locator("select").nth(1).selectOption("locked");
-  await row.getByRole("button", { name: "Lưu trạng thái" }).click();
+  await row.getByRole("button", { name: "Lưu trạng thái cho tài khoản Điều hành A" }).click();
   await expect(row).toContainText("Đã khóa");
 
   page.once("dialog", async (dialog) => {

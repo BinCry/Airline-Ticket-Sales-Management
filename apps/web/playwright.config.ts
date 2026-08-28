@@ -13,10 +13,10 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "npm run build && npx next start --hostname 127.0.0.1 --port 3000",
+    command: "npm run build && node .next/standalone/apps/web/server.js",
     cwd: __dirname,
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000
   },
   projects: [
