@@ -869,7 +869,7 @@ export function BackofficeOperationsPageClient() {
                     key={fareInventory.fareFamily}
                     className={`surface-card admin-nested-card ${layLopMauGoiGia(fareInventory.fareFamily)}`}
                   >
-                    <div className="field-grid compact-grid">
+                    <div className="field-grid compact-grid operations-fare-grid">
                       <label className="field">
                         <span>Hạng vé cố định</span>
                         <input value={fareInventory.title} disabled />
@@ -1087,7 +1087,7 @@ export function BackofficeOperationsPageClient() {
                             key={`${flight.flightId}-${fareSummary.fareFamily}`}
                             className={`surface-card admin-nested-card ${layLopMauGoiGia(fareSummary.fareFamily)}`}
                           >
-                            <div className="field-grid compact-grid">
+                            <div className="field-grid compact-grid operations-fare-grid">
                               <label className="field">
                                 <span>Hạng vé</span>
                                 <input value={fareSummary.title} disabled />
