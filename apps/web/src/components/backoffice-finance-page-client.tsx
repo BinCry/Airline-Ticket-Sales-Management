@@ -169,7 +169,7 @@ export function BackofficeFinancePageClient() {
           </div>
 
           {errorMessage ? (
-            <article className="booking-inline-error">
+            <article className="booking-inline-error" role="alert">
               <strong>Không thể tải dữ liệu</strong>
               <p>{errorMessage}</p>
             </article>
@@ -265,7 +265,12 @@ export function BackofficeFinancePageClient() {
           </div>
 
           {pendingActionId !== null ? (
-            <div className="finance-processing-overlay" aria-hidden="true">
+            <div
+              className="finance-processing-overlay"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
               <div className="surface-card finance-processing-card">
                 <span className="section-eyebrow">Đang xử lý</span>
                 <h3>Vui lòng chờ trong giây lát</h3>

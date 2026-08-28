@@ -248,14 +248,14 @@ export function BackofficeCmsPageClient() {
         />
 
         {errorMessage ? (
-          <article className="booking-inline-error">
+          <article className="booking-inline-error" role="alert">
             <strong>Không thể xử lý nội dung</strong>
             <p>{errorMessage}</p>
           </article>
         ) : null}
 
         {state === "loading" ? (
-          <article className="booking-inline-info">
+          <article className="booking-inline-info" role="status" aria-live="polite">
             <strong>Đang tải nội dung</strong>
             <p>Đang lấy danh sách mục nội dung và trạng thái phát hành hiện tại.</p>
           </article>

@@ -322,12 +322,12 @@ img {
 
 .nav-row {
   display: grid;
-  grid-template-columns: minmax(190px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr);
   grid-template-areas:
     "brand actions"
     "nav nav";
-  align-items: start;
-  gap: 14px 18px;
+  align-items: center;
+  gap: 10px 16px;
   padding: 10px 0;
 }
 
@@ -336,7 +336,7 @@ img {
 .nav-actions-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -348,12 +348,15 @@ img {
   grid-area: actions;
   justify-content: flex-end;
   flex-wrap: wrap;
-  row-gap: 10px;
+  row-gap: 8px;
 }
 
 .nav-action-button {
-  min-height: 42px;
+  min-height: 40px;
   padding: 0 16px;
+  font-size: 0.9rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .nav-account-button {
@@ -522,12 +525,13 @@ img {
   grid-area: brand;
   display: inline-flex;
   align-items: center;
-  max-width: min(100%, 280px);
+  max-width: min(100%, 250px);
+  flex-shrink: 0;
 }
 
 .brand-logo {
   display: block;
-  width: min(100%, 280px);
+  width: min(100%, 230px);
   aspect-ratio: 1086 / 159;
   overflow: hidden;
   line-height: 0;
@@ -545,8 +549,11 @@ img {
 
 .nav-cluster {
   grid-area: nav;
+  display: flex;
+  align-items: center;
   justify-content: center;
   width: 100%;
+  min-width: 0;
   gap: 0;
   flex-wrap: nowrap;
 }
@@ -577,10 +584,51 @@ img {
 }
 
 .main-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin: 0 auto;
   max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid rgba(19, 36, 59, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 2px 8px rgba(18, 61, 105, 0.03);
   overflow-x: auto;
   scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+
+.main-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-link {
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.nav-link:hover {
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+  transform: translateY(-1px);
+}
+
+.nav-link.active {
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(18, 61, 105, 0.12);
 }
 
 .site-header-staff .nav-row-actions .nav-meta {
@@ -593,8 +641,8 @@ img {
 }
 
 .site-header-staff .nav-row-actions {
-  column-gap: 12px;
-  row-gap: 10px;
+  column-gap: 10px;
+  row-gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
   overflow: visible;
@@ -609,70 +657,210 @@ img {
   white-space: nowrap;
 }
 
-@media (max-width: 820px) {
-  .site-header-staff .nav-row {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "brand"
-      "actions"
-      "nav";
-    row-gap: 12px;
-  }
-
-  .site-header-staff .brand {
-    justify-self: start;
-  }
-
-  .site-header-staff .nav-row-actions {
-    justify-content: flex-start;
-  }
-
-  .site-header-staff .nav-cluster {
-    justify-content: flex-start;
-  }
-}
-
 .site-header-staff .nav-row-actions::-webkit-scrollbar {
   display: none;
 }
 
-.main-nav::-webkit-scrollbar {
-  display: none;
+/* Màn hình lớn: Bố cục 3 vùng trên cùng 1 hàng gọn gàng (Logo - Điều hướng - Tác vụ) */
+@media (min-width: 1180px) {
+  .nav-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "brand nav actions";
+    column-gap: 18px;
+    row-gap: 0;
+    padding: 10px 0;
+    align-items: center;
+  }
+
+  .brand {
+    grid-area: brand;
+    max-width: 240px;
+  }
+
+  .nav-cluster {
+    grid-area: nav;
+    justify-content: center;
+  }
+
+  .nav-row-actions {
+    grid-area: actions;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
 }
 
-.main-nav {
-  padding: 6px;
-  border: 1px solid rgba(19, 36, 59, 0.06);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-  flex-wrap: nowrap;
-}
+/* Màn hình nhỏ và di động: Menu thu gọn dạng drawer */
+@media (max-width: 820px) {
+  .topbar-badges {
+    gap: 6px;
+  }
 
-.nav-link {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 0.86rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
-}
+  .utility-nav {
+    gap: 8px;
+  }
 
-.nav-link:hover,
-.nav-link.active {
-  background: var(--primary-soft);
-  color: var(--primary);
-  transform: translateY(-1px);
+  .nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 0;
+  }
+
+  .brand {
+    max-width: min(100%, 200px);
+    order: 1;
+  }
+
+  .brand-logo {
+    width: min(100%, 200px);
+  }
+
+  .nav-row-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    order: 2;
+  }
+
+  /* Ẩn các nút desktop và hiển thị nút mở menu trên di động */
+  .nav-row-actions .nav-meta,
+  .nav-row-actions .nav-action-button,
+  .nav-row-actions .account-menu-wrap {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Menu di động thu gọn / mở rộng */
+  .nav-cluster {
+    display: none;
+    width: 100%;
+    order: 3;
+  }
+
+  .nav-cluster.mobile-open {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    padding: 16px;
+    margin-top: 6px;
+    border: 1px solid rgba(19, 36, 59, 0.1);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 16px 36px rgba(18, 36, 59, 0.12);
+  }
+
+  .nav-cluster.mobile-open .main-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 2px;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    background: rgba(18, 61, 105, 0.04);
+    border: 1px solid rgba(19, 36, 59, 0.06);
+    box-shadow: none;
+  }
+
+  .nav-cluster.mobile-open .main-nav .nav-link {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .nav-cluster.mobile-open .nav-actions-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .mobile-utility-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mobile-utility-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(18, 61, 105, 0.06);
+    color: var(--brand-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .mobile-utility-link:hover,
+  .mobile-utility-link:focus-visible {
+    background: rgba(18, 61, 105, 0.12);
+  }
+
+  .nav-meta-mobile {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 4px 2px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .nav-meta-mobile strong {
+    color: var(--brand-primary);
+    font-size: 0.95rem;
+  }
+
+  .nav-cluster.mobile-open .nav-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-cluster.mobile-open .nav-actions .button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .nav-cluster.mobile-open .account-menu-wrap {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .nav-cluster.mobile-open .account-menu-trigger {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nav-cluster.mobile-open .account-menu-panel {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+  }
 }
 
 .nav-meta {
   display: grid;
-  gap: 2px;
-  margin-right: 0;
+  gap: 1px;
+  margin-right: 2px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .nav-meta span {
@@ -680,11 +868,13 @@ img {
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1.2;
 }
 
 .nav-meta strong {
   color: var(--primary);
   font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .nav-meta-mobile,
@@ -698,14 +888,24 @@ img {
 
 .mobile-menu-button {
   display: none;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid rgba(18, 61, 105, 0.12);
-  background: rgba(18, 61, 105, 0.08);
-  color: var(--primary);
-  font-size: 0.92rem;
+  border: 1px solid rgba(18, 61, 105, 0.14);
+  background: rgba(18, 61, 105, 0.06);
+  color: var(--brand-primary);
+  font-size: 0.88rem;
   font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.mobile-menu-button:hover,
+.mobile-menu-button:focus-visible {
+  background: rgba(18, 61, 105, 0.12);
+  border-color: rgba(18, 61, 105, 0.26);
 }
 
 .button,
@@ -1280,37 +1480,6 @@ img {
   }
 }
 
-@media (min-width: 1461px) and (max-width: 1540px) {
-  .site-header-staff .nav-row {
-    grid-template-columns: minmax(190px, 280px) minmax(0, 1fr);
-    grid-template-areas:
-      "brand actions"
-      "nav nav";
-    row-gap: 12px;
-  }
-
-  .site-header-staff .brand {
-    grid-area: brand;
-  }
-
-  .site-header-staff .nav-row-actions {
-    grid-area: actions;
-    justify-content: flex-end;
-  }
-
-  .site-header-staff .nav-cluster {
-    grid-area: nav;
-    justify-content: center;
-  }
-
-  .site-header-staff .main-nav {
-    margin: 0 auto;
-  }
-
-  .site-header-staff .nav-row-actions .nav-meta {
-    display: none;
-  }
-}
 
 .toast-region {
   position: fixed;
@@ -5272,6 +5441,136 @@ thead th {
 /* ==========================================================================
    Giao diện Backoffice: Tiêu đề, Bảng dữ liệu, Biểu mẫu và Biểu đồ
    ========================================================================== */
+
+/* Điều hướng cục bộ cho phân khu nhiều tác vụ */
+.backoffice-local-nav {
+  position: sticky;
+  top: 116px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 24px 0 20px;
+  padding: 8px;
+  border: 1px solid rgba(18, 61, 105, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 28px rgba(18, 61, 105, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.backoffice-local-nav-back,
+.backoffice-local-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  color: var(--brand-primary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.backoffice-local-nav-back {
+  flex: 0 0 auto;
+  border: 1px solid rgba(18, 61, 105, 0.12);
+  background: rgba(18, 61, 105, 0.04);
+}
+
+.backoffice-local-nav-back:hover,
+.backoffice-local-nav-back:focus-visible,
+.backoffice-local-nav-link:hover,
+.backoffice-local-nav-link:focus-visible {
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+  outline: none;
+}
+
+.backoffice-local-nav-back:focus-visible,
+.backoffice-local-nav-link:focus-visible {
+  box-shadow: 0 0 0 3px rgba(18, 61, 105, 0.18);
+}
+
+.backoffice-local-nav-context {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 112px;
+  padding: 0 10px;
+  border-left: 1px solid rgba(18, 61, 105, 0.12);
+}
+
+.backoffice-local-nav-context span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.backoffice-local-nav-context strong {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.backoffice-local-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.backoffice-local-nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.backoffice-local-nav-link {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.backoffice-local-nav-link.active {
+  background: var(--brand-primary);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(18, 61, 105, 0.18);
+}
+
+.backoffice-local-nav-link.active:hover,
+.backoffice-local-nav-link.active:focus-visible {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+.backoffice-operations-intro,
+.backoffice-operations-anchor {
+  scroll-margin-top: 132px;
+}
+
+@media (max-width: 820px) {
+  .backoffice-local-nav {
+    top: 92px;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .backoffice-local-nav-context {
+    order: 2;
+    flex: 1 1 120px;
+  }
+
+  .backoffice-local-nav-links {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
 
 /* Tiêu đề và thanh công cụ đầu bảng backoffice */
 .finance-table-head {

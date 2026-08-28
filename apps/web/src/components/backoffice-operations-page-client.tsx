@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import Link from "next/link";
+
 import type { AirportOption } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
@@ -35,6 +37,14 @@ import { formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 
 type OperationsState = "idle" | "loading" | "success" | "error";
+
+const OPERATIONS_NAV_ITEMS = [
+  { id: "operations-overview", label: "Tổng quan" },
+  { id: "operations-flights", label: "Chuyến bay" },
+  { id: "operations-vouchers", label: "Voucher hội viên" }
+] as const;
+
+type OperationsNavId = (typeof OPERATIONS_NAV_ITEMS)[number]["id"];
 
 const STATUS_OPTIONS = [
   { value: "scheduled", label: "Theo lịch" },
@@ -254,6 +264,9 @@ export function BackofficeOperationsPageClient() {
   const [voucherForm, setVoucherForm] = useState<BackofficeVoucherCreateInput>(createEmptyVoucherForm);
   const [voucherDrafts, setVoucherDrafts] = useState<Record<number, BackofficeVoucherUpdateInput>>({});
   const [pendingVoucherAction, setPendingVoucherAction] = useState<string | null>(null);
+  const [activeOperationsSection, setActiveOperationsSection] = useState<OperationsNavId>(
+    "operations-overview"
+  );
 
   useEffect(() => {
     setAccessToken(loadActiveAuthSession()?.accessToken ?? null);
@@ -266,6 +279,45 @@ export function BackofficeOperationsPageClient() {
     void loadFlightStatus("", "", accessToken);
     void loadVouchers("", "", "ALL", accessToken);
   }, [accessToken]);
+
+  useEffect(() => {
+    const sections = OPERATIONS_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
+      (section): section is HTMLElement => section !== null
+    );
+
+    if (sections.length === 0 || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const initialHash = window.location.hash.slice(1) as OperationsNavId;
+    if (OPERATIONS_NAV_ITEMS.some((item) => item.id === initialHash)) {
+      setActiveOperationsSection(initialHash);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSection = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
+
+        if (visibleSection?.target.id && OPERATIONS_NAV_ITEMS.some((item) => item.id === visibleSection.target.id)) {
+          setActiveOperationsSection(visibleSection.target.id as OperationsNavId);
+        }
+      },
+      { rootMargin: "-124px 0px -58% 0px", threshold: [0.1, 0.35, 0.65] }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
+
+  function handleOperationsSectionNavigation(event: React.MouseEvent<HTMLAnchorElement>, sectionId: OperationsNavId) {
+    event.preventDefault();
+    setActiveOperationsSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${sectionId}`);
+  }
 
   useEffect(() => {
     const tuKhoa = flightForm.originCode.trim();
@@ -657,20 +709,45 @@ export function BackofficeOperationsPageClient() {
   return (
     <section className="section">
       <div className="container">
-        <SectionHeading
-          eyebrow="Backoffice điều hành"
-          title="Vận hành chuyến bay, trạng thái bán và voucher hội viên"
-          description="Nhóm operations có thể tạo chuyến, hủy chuyến, ẩn chuyến đã hủy, đồng thời cấp và quản lý voucher đúng theo quy trình vận hành."
-        />
+        <div id="operations-overview" className="backoffice-operations-intro">
+          <SectionHeading
+            eyebrow="Backoffice điều hành"
+            title="Vận hành chuyến bay, trạng thái bán và voucher hội viên"
+            description="Nhóm operations có thể tạo chuyến, hủy chuyến, ẩn chuyến đã hủy, đồng thời cấp và quản lý voucher đúng theo quy trình vận hành."
+          />
+        </div>
+
+        <nav className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
+          <Link href="/backoffice" className="backoffice-local-nav-back" prefetch={false}>
+            ← Phân khu
+          </Link>
+          <div className="backoffice-local-nav-context">
+            <span>Đang làm việc tại</span>
+            <strong>Điều hành</strong>
+          </div>
+          <div className="backoffice-local-nav-links">
+            {OPERATIONS_NAV_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className={activeOperationsSection === item.id ? "backoffice-local-nav-link active" : "backoffice-local-nav-link"}
+                aria-current={activeOperationsSection === item.id ? "location" : undefined}
+                onClick={(event) => handleOperationsSectionNavigation(event, item.id)}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </nav>
 
         {errorMessage ? (
-          <article className="booking-inline-error">
+          <article className="booking-inline-error" role="alert">
             <strong>Không thể xử lý chuyến bay</strong>
             <p>{errorMessage}</p>
           </article>
         ) : null}
 
-        <div className="section-split">
+        <div id="operations-flights" className="section-split backoffice-operations-anchor">
           <article className="surface-card">
             <SectionHeading
               eyebrow="Tạo chuyến mới"
@@ -1112,13 +1189,13 @@ export function BackofficeOperationsPageClient() {
         />
 
         {voucherErrorMessage ? (
-          <article className="booking-inline-error">
+          <article className="booking-inline-error" role="alert">
             <strong>Không thể xử lý voucher</strong>
             <p>{voucherErrorMessage}</p>
           </article>
         ) : null}
 
-        <div className="section-split">
+        <div id="operations-vouchers" className="section-split backoffice-operations-anchor">
           <article className="surface-card">
             <SectionHeading
               eyebrow="Tạo voucher mới"

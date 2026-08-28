@@ -212,7 +212,7 @@ export function BackofficeAdminPageClient() {
         />
 
         {errorMessage ? (
-          <article className="booking-inline-error">
+          <article className="booking-inline-error" role="alert">
             <strong>Không thể tải dữ liệu</strong>
             <p>{errorMessage}</p>
           </article>
@@ -348,6 +348,7 @@ export function BackofficeAdminPageClient() {
                                 }))
                               }
                               disabled={isWorking}
+                              aria-label={`Vai trò của tài khoản ${user.displayName || user.email}`}
                             >
                               {ROLE_OPTIONS.map((role) => (
                                 <option key={role} value={role}>
@@ -360,6 +361,7 @@ export function BackofficeAdminPageClient() {
                               className="button button-secondary"
                               onClick={() => void handleRoleSave(user.id)}
                               disabled={isWorking}
+                              aria-label={`Lưu vai trò cho tài khoản ${user.displayName || user.email}`}
                             >
                               Lưu role
                             </button>
@@ -376,6 +378,7 @@ export function BackofficeAdminPageClient() {
                                 }))
                               }
                               disabled={isWorking}
+                              aria-label={`Trạng thái của tài khoản ${user.displayName || user.email}`}
                             >
                               {STATUS_OPTIONS.map((status) => (
                                 <option key={status} value={status}>
@@ -388,6 +391,7 @@ export function BackofficeAdminPageClient() {
                               className="button button-secondary"
                               onClick={() => void handleStatusSave(user.id)}
                               disabled={isWorking}
+                              aria-label={`Lưu trạng thái cho tài khoản ${user.displayName || user.email}`}
                             >
                               Lưu trạng thái
                             </button>
