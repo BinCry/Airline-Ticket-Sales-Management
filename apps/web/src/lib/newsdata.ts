@@ -618,10 +618,6 @@ function mergeWithFallback(
   liveArticles: TravelArticlePreview[],
   limit: number
 ) {
-  if (liveArticles.length > 0) {
-    return liveArticles.slice(0, limit);
-  }
-
   const mergedArticles = [...liveArticles];
   const seenTitles = new Set(
     liveArticles.map((article) => normalizeText(article.title))

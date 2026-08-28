@@ -298,4 +298,50 @@ describe("newsdata", () => {
     expect(articles).toHaveLength(1);
     expect(articles[0].external).toBe(false);
   });
+
+  it("bo sung bai viet noi bo de luon du so luong hien thi", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                category: ["lifestyle"],
+                description: "Kinh nghiệm du lịch và lịch trình khám phá mới.",
+                image_url: "https://newsdata.invalid/du-lich.jpg",
+                link: "https://tuoitre.vn/kinh-nghiem-du-lich-moi.htm",
+                pubDate: "2026-08-28 10:42:00",
+                source_id: "tuoitre",
+                source_name: "Tuổi Trẻ Online",
+                title: "Kinh nghiệm du lịch mới cho hành trình cuối tuần"
+              }
+            ],
+            status: "success"
+          }),
+          {
+            headers: {
+              "Content-Type": "application/json"
+            },
+            status: 200
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response("forbidden", {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8"
+          },
+          status: 403
+        })
+      ) as typeof fetch;
+
+    const articles = await getTravelArticles(4, false);
+
+    expect(articles).toHaveLength(4);
+    expect(articles[0].external).toBe(true);
+    expect(articles.slice(1).every((article) => !article.external)).toBe(true);
+  });
 });
