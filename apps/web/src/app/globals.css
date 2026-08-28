@@ -663,34 +663,6 @@ img {
   display: none;
 }
 
-/* Màn hình lớn: Bố cục 3 vùng trên cùng 1 hàng gọn gàng (Logo - Điều hướng - Tác vụ) */
-@media (min-width: 1180px) {
-  .nav-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "brand nav actions";
-    column-gap: 18px;
-    row-gap: 0;
-    padding: 10px 0;
-    align-items: center;
-  }
-
-  .brand {
-    grid-area: brand;
-    max-width: 240px;
-  }
-
-  .nav-cluster {
-    grid-area: nav;
-    justify-content: center;
-  }
-
-  .nav-row-actions {
-    grid-area: actions;
-    flex-wrap: nowrap;
-    gap: 10px;
-  }
-}
-
 /* Màn hình nhỏ và di động: Menu thu gọn dạng drawer */
 @media (max-width: 820px) {
   .topbar-badges {

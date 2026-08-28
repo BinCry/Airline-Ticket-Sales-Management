@@ -299,7 +299,7 @@ describe("newsdata", () => {
 
     const liveArticles = Array.from({ length: 9 }, (_, index) => ({
       category: ["lifestyle"],
-      description: "Kinh nghiệm du lịch và lịch trình khám phá mới.",
+      description: "Tin du lịch mới nhất.",
       image_url: `https://newsdata.invalid/du-lich-${index}.jpg`,
       link: `https://tuoitre.vn/kinh-nghiem-du-lich-${index}.htm`,
       pubDate: `2026-08-28 10:${String(42 - index).padStart(2, "0")}:00`,
@@ -349,6 +349,55 @@ describe("newsdata", () => {
       expect.stringContaining("page=next-page"),
       expect.any(Object)
     );
+  });
+
+  it("gioi han moi nhom chu de mot bai de tranh lap noi dung", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    const results = [
+      "MICE 1",
+      "MICE 2",
+      "MICE 3",
+      "MICE 4",
+      "Du lịch Phú Quốc mùa nắng",
+      "Hành lý du lịch cần biết"
+    ].map((title, index) => ({
+      category: ["lifestyle"],
+      description: "Tin du lịch mới nhất.",
+      image_url: `https://newsdata.invalid/article-${index}.jpg`,
+      link: `https://tuoitre.vn/article-${index}.htm`,
+      pubDate: `2026-08-28 10:${String(42 - index).padStart(2, "0")}:00`,
+      source_id: "tuoitre",
+      source_name: "Tuổi Trẻ Online",
+      title: title.includes("MICE") ? `Du lịch MICE ${index + 1}` : title
+    }));
+
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("tuoitre.vn")) {
+        return Promise.resolve(new Response("forbidden", { status: 403 }));
+      }
+
+      return Promise.resolve(
+        new Response(JSON.stringify({ results, status: "success" }), {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        })
+      );
+    }) as typeof fetch;
+
+    const articles = await getTravelArticles(4, false);
+    const miceArticles = articles.filter((article) =>
+      article.title.toLowerCase().includes("mice")
+    );
+
+    expect(articles).toHaveLength(3);
+    expect(miceArticles).toHaveLength(1);
+    expect(articles.some((article) => article.title.includes("Phú Quốc"))).toBe(true);
+    expect(articles.some((article) => article.title.includes("Hành lý"))).toBe(true);
   });
 
   it("chi dung fallback khi API that bai", async () => {

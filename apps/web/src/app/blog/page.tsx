@@ -4,7 +4,7 @@ import { getTravelArticles } from "@/lib/newsdata";
 import { SectionHeading } from "@/components/section-heading";
 import { promotions } from "@/lib/public-content";
 
-const BLOG_ARTICLE_LIMIT = 10;
+const BLOG_ARTICLE_LIMIT = 9;
 
 const promotionPhotos = [
   {

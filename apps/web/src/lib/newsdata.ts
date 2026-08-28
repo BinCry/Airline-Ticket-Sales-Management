@@ -510,6 +510,41 @@ const normalizedBlockedKeywords = blockedKeywords.map((keyword) =>
   normalizeText(keyword)
 );
 
+const articleTopicRules = [
+  {
+    key: "mice",
+    keywords: ["mice", "hoi nghi", "trien lam", "doan khach doanh nghiep", "du lich cong vu"]
+  },
+  {
+    key: "airport",
+    keywords: ["san bay", "nha ga", "noi bai", "tan son nhat", "phu bai", "lam thu tuc"]
+  },
+  {
+    key: "destination",
+    keywords: ["diem den", "kham pha", "phu quoc", "da nang", "nha trang", "ha noi", "hue"]
+  },
+  {
+    key: "holiday",
+    keywords: ["quoc khanh", "2/9", "nghi le", "cuoi tuan"]
+  },
+  {
+    key: "luggage",
+    keywords: ["hanh ly", "xach tay", "ky gui"]
+  },
+  {
+    key: "flight",
+    keywords: ["chuyen bay", "ve may bay", "hang khong", "duong bay"]
+  },
+  {
+    key: "accommodation",
+    keywords: ["khach san", "resort", "homestay", "nghi duong"]
+  },
+  {
+    key: "food",
+    keywords: ["am thuc", "mon ngon", "quan an"]
+  }
+] as const;
+
 function toTextList(value: string[] | string | null | undefined) {
   if (!value) {
     return [];
@@ -520,6 +555,16 @@ function toTextList(value: string[] | string | null | undefined) {
   }
 
   return [value];
+}
+
+function getArticleTopicKey(article: TravelArticlePreview) {
+  const content = normalizeText(`${article.title} ${article.summary}`);
+
+  return (
+    articleTopicRules.find(({ keywords }) =>
+      keywords.some((keyword) => content.includes(keyword))
+    )?.key ?? null
+  );
 }
 
 // Kiểm tra bài viết có nội dung du lịch, hành trình và không dính các chủ đề tiêu cực/ngoài lề
@@ -759,6 +804,7 @@ export async function getTravelArticles(
   try {
     const liveArticles: TravelArticlePreview[] = [];
     const seenArticleKeys = new Set<string>();
+    const seenTopicKeys = new Set<string>();
     let nextPage: string | null = null;
 
     for (let pageIndex = 0; pageIndex < NEWSDATA_MAX_PAGES; pageIndex += 1) {
@@ -797,6 +843,17 @@ export async function getTravelArticles(
         }
 
         seenArticleKeys.add(articleKey);
+
+        const topicKey = getArticleTopicKey(article);
+
+        if (topicKey && seenTopicKeys.has(topicKey)) {
+          continue;
+        }
+
+        if (topicKey) {
+          seenTopicKeys.add(topicKey);
+        }
+
         liveArticles.push(article);
 
         if (liveArticles.length >= limit) {

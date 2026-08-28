@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { FlightSearchPanel } from "@/components/flight-search-panel";
+import { JourneyPhoneVideo } from "@/components/journey-phone-video";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import {
@@ -252,23 +253,7 @@ export default async function HomePage() {
 
               <div className="journey-phone">
                 <div className="journey-phone-speaker" aria-hidden="true" />
-                <div className="journey-phone-screen">
-                  <Image
-                    src="/images/airport-terminal.jpg"
-                    alt="Hành khách chuẩn bị lên máy bay tại sân bay"
-                    fill
-                    sizes="(max-width: 900px) 42vw, 190px"
-                    className="journey-phone-image"
-                  />
-                  <div className="journey-phone-overlay" aria-hidden="true" />
-                  <span className="journey-phone-label">HÀNH TRÌNH MỖI NGÀY</span>
-                  <span className="journey-phone-play" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <path d="m9 6 8 6-8 6V6Z" fill="currentColor" />
-                    </svg>
-                  </span>
-                  <span className="journey-phone-caption">Sẵn sàng cho chuyến bay tiếp theo</span>
-                </div>
+                <JourneyPhoneVideo />
                 <span className="journey-phone-home" aria-hidden="true" />
               </div>
             </div>
@@ -1951,7 +1936,11 @@ export default async function HomePage() {
           background: #143550;
         }
 
-        .journey-phone-image {
+        .journey-phone-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
           object-fit: cover;
           object-position: 50% 58%;
         }
@@ -1987,7 +1976,7 @@ export default async function HomePage() {
 
         .journey-phone-play {
           position: absolute;
-          z-index: 1;
+          z-index: 2;
           top: 50%;
           left: 50%;
           display: inline-flex;
@@ -1999,7 +1988,56 @@ export default async function HomePage() {
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.84);
           color: #123d69;
+          cursor: pointer;
           transform: translate(-50%, -50%);
+          transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        .journey-phone-play:hover,
+        .journey-phone-play:focus-visible {
+          background: #ffffff;
+          transform: translate(-50%, -50%) scale(1.06);
+        }
+
+        .journey-phone-play:focus-visible,
+        .journey-phone-mute:focus-visible {
+          outline: 3px solid rgba(255, 255, 255, 0.9);
+          outline-offset: 3px;
+        }
+
+        .journey-phone-mute {
+          position: absolute;
+          z-index: 2;
+          right: 14px;
+          bottom: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 34px;
+          height: 34px;
+          border: 1px solid rgba(255, 255, 255, 0.62);
+          border-radius: 50%;
+          background: rgba(7, 24, 41, 0.5);
+          color: #ffffff;
+          cursor: pointer;
+          transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        .journey-phone-mute:hover,
+        .journey-phone-mute:focus-visible {
+          background: rgba(7, 24, 41, 0.76);
+          transform: scale(1.06);
+        }
+
+        .journey-phone-play svg,
+        .journey-phone-mute svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        .journey-phone-mute svg {
+          width: 18px;
+          height: 18px;
         }
 
         .journey-phone-play svg {
