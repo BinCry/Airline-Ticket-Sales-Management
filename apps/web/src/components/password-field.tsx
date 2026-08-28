@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type InputHTMLAttributes } from "react";
+import { useId, useState, type InputHTMLAttributes } from "react";
 
 interface PasswordFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type"> {
   label: string;
@@ -44,26 +44,39 @@ function PasswordVisibilityIcon({ isVisible }: { isVisible: boolean }) {
   );
 }
 
-export function PasswordField({ label, ...inputProps }: PasswordFieldProps) {
+export function PasswordField({ label, id, ...inputProps }: PasswordFieldProps) {
+  const defaultId = useId();
+  const inputId = id || defaultId;
   const [isVisible, setIsVisible] = useState(false);
   const actionLabel = isVisible ? `Ẩn ${label.toLowerCase()}` : `Hiện ${label.toLowerCase()}`;
 
   return (
-    <label className="field auth-field auth-password-field">
-      <span>{label}</span>
+    /* Thay thế thẻ bọc ngoài label bằng div để nút bấm toggle không kích hoạt trùng sự kiện focus/click lên input */
+    <div className="field auth-field auth-password-field">
+      <label htmlFor={inputId}>
+        <span>{label}</span>
+      </label>
       <div className="auth-password-input-wrap">
-        <input {...inputProps} type={isVisible ? "text" : "password"} />
+        <input
+          {...inputProps}
+          id={inputId}
+          type={isVisible ? "text" : "password"}
+        />
         <button
           type="button"
           className="auth-password-toggle"
           aria-label={actionLabel}
           aria-pressed={isVisible}
           title={actionLabel}
-          onClick={() => setIsVisible((currentValue) => !currentValue)}
+          onClick={(event) => {
+            /* Ngăn chặn hành vi mặc định và giữ focus ổn định trên nút */
+            event.preventDefault();
+            setIsVisible((currentValue) => !currentValue);
+          }}
         >
           <PasswordVisibilityIcon isVisible={isVisible} />
         </button>
       </div>
-    </label>
+    </div>
   );
 }

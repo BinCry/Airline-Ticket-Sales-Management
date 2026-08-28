@@ -472,13 +472,12 @@ function toTextList(value: string[] | string | null | undefined) {
 
 // Kiểm tra bài viết có nội dung du lịch, hành trình và không dính các chủ đề tiêu cực/ngoài lề
 function hasTravelSignal(article: NewsDataArticle) {
-  const searchableText = normalizeText(
+  /* Thay thế việc gộp tên nguồn vào nội dung tìm kiếm bằng việc kiểm tra sát tiêu đề, mô tả và từ khóa */
+  const searchableContent = normalizeText(
     [
       article.title,
       article.description,
-      ...toTextList(article.keywords),
-      article.source_name,
-      ...toTextList(article.category)
+      ...toTextList(article.keywords)
     ]
       .join(" ")
       .trim()
@@ -486,17 +485,27 @@ function hasTravelSignal(article: NewsDataArticle) {
 
   // Loại trừ ngay nếu chứa từ khóa tiêu cực, án sự hoặc không liên quan
   const hasBlockedContent = normalizedBlockedKeywords.some((keyword) =>
-    searchableText.includes(keyword)
+    searchableContent.includes(keyword)
   );
 
   if (hasBlockedContent) {
     return false;
   }
 
-  // Bắt buộc chứa từ khóa thuộc lĩnh vực du lịch, hàng không, sân bay
-  return normalizedTravelKeywords.some((keyword) =>
-    searchableText.includes(keyword)
+  const categoryList = toTextList(article.category).map((category) => normalizeText(category));
+  const hasTravelCategory = categoryList.some(
+    (category) =>
+      category.includes("tourism") ||
+      category.includes("travel") ||
+      category.includes("lifestyle")
   );
+
+  // Bắt buộc chứa từ khóa thuộc lĩnh vực du lịch, hàng không, sân bay hoặc thuộc danh mục du lịch/lifestyle
+  const hasTravelKeyword = normalizedTravelKeywords.some((keyword) =>
+    searchableContent.includes(keyword)
+  );
+
+  return hasTravelKeyword || (hasTravelCategory && searchableContent.length > 0);
 }
 
 function formatPublishedDate(value: string | null | undefined) {
@@ -627,13 +636,18 @@ async function filterLiveArticles(
 ) {
   const prioritizedArticles = results
     .filter((article) => {
-      const sourceId = article.source_id;
+      const sourceId = article.source_id?.trim().toLowerCase();
 
-      if (!sourceId) {
+      /* Nguồn tin trong danh sách chặn bắt buộc bị loại bỏ kể cả khi bật nguồn phụ */
+      if (!sourceId || blockedSourceIds.has(sourceId)) {
         return false;
       }
 
-      return includeSecondarySources || !blockedSourceIds.has(sourceId);
+      if (!article.link || !article.title) {
+        return false;
+      }
+
+      return includeSecondarySources ? true : preferredSourceIds.has(sourceId);
     })
     .filter(hasTravelSignal)
     .sort((left, right) => {

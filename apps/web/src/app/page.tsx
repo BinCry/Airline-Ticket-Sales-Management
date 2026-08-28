@@ -1148,8 +1148,9 @@ export default async function HomePage() {
         }
 
         .home-hero-search-shell .search-footer > .button-primary {
-          flex: 0 0 146px;
-          min-width: 146px;
+          /* Cố định bề rộng tối thiểu 180px để cả "Tìm chuyến bay" và "Đang mở kết quả" không bị nhảy kích thước hay tràn viền */
+          flex: 0 0 180px;
+          min-width: 180px;
           white-space: nowrap;
         }
 

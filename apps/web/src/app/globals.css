@@ -1953,6 +1953,12 @@ img {
   margin-top: 22px;
 }
 
+.search-footer > .button-primary {
+  /* Giữ nút tìm kiếm không bị co rút và không vỡ dòng chữ */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .search-footer p {
   margin: 4px 0 0;
   color: var(--muted);

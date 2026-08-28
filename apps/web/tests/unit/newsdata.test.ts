@@ -126,4 +126,85 @@ describe("newsdata", () => {
       external: true
     });
   });
+
+  it("luon loai bo nguon tin bi chan ke ca khi bat includeSecondarySources", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              category: ["lifestyle"],
+              description: "Tin du lịch khám phá điểm đến.",
+              image_url: "https://newsdata.invalid/du-lich.jpg",
+              link: "https://kenh14.vn/du-lich-phu-quoc.chn",
+              pubDate: "2026-08-27 10:42:00",
+              source_id: "kenh14",
+              source_name: "Kênh 14",
+              title: "Khám phá Phú Quốc mùa hè"
+            },
+            {
+              category: ["lifestyle"],
+              description: "Tin du lịch và nghỉ dưỡng.",
+              image_url: "https://newsdata.invalid/soha.jpg",
+              link: "https://soha.vn/du-lich-nha-trang.chn",
+              pubDate: "2026-08-27 10:40:00",
+              source_id: "soha",
+              source_name: "Soha",
+              title: "Cẩm nang du lịch Nha Trang"
+            }
+          ],
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getTravelArticles(2, true);
+
+    // Vì tất cả bài báo từ nguồn bị chặn nên sẽ rơi vào danh sách fallback mặc định
+    expect(articles).toHaveLength(2);
+    expect(articles[0].external).toBe(false);
+  });
+
+  it("loai bo bai viet chua tu khoa tieu cuc hoac khong phu hop", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              category: ["lifestyle"],
+              description: "Tai nạn giao thông nghiêm trọng trên đường đi du lịch.",
+              image_url: "https://newsdata.invalid/tai-nan.jpg",
+              link: "https://tuoitre.vn/tai-nan-tren-duong-di-du-lich.htm",
+              pubDate: "2026-08-27 10:42:00",
+              source_id: "tuoitre",
+              source_name: "Tuổi Trẻ Online",
+              title: "Vụ án hình sự liên quan xe khách du lịch"
+            }
+          ],
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getTravelArticles(1, false);
+
+    expect(articles).toHaveLength(1);
+    expect(articles[0].external).toBe(false);
+  });
 });
