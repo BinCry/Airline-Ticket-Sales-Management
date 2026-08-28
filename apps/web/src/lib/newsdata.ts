@@ -242,6 +242,103 @@ function extractArticleMetadata(html: string): ArticleMetadata {
   };
 }
 
+function getArticleHostLabel(articleUrl: string) {
+  try {
+    const hostname = new URL(articleUrl).hostname.replace(/^www\./i, "");
+    const parts = hostname.split(".");
+    const rootName = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+
+    return rootName
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ");
+  } catch {
+    return "";
+  }
+}
+
+function normalizeLooseText(value: string | null | undefined) {
+  return cleanArticleText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
+}
+
+function hasAlignedSourceName(sourceName: string | null | undefined, articleUrl: string) {
+  const normalizedSource = normalizeLooseText(sourceName);
+  const normalizedHost = normalizeLooseText(getArticleHostLabel(articleUrl));
+
+  if (!normalizedSource || !normalizedHost) {
+    return false;
+  }
+
+  return (
+    normalizedSource.includes(normalizedHost) ||
+    normalizedHost.includes(normalizedSource)
+  );
+}
+
+function buildTitleFromArticleUrl(articleUrl: string) {
+  try {
+    const pathname = new URL(articleUrl).pathname;
+    const slug = pathname
+      .split("/")
+      .filter(Boolean)
+      .at(-1)
+      ?.replace(/\.[a-z0-9]+$/i, "")
+      ?.replace(/-\d{8,}$/i, "")
+      ?.trim();
+
+    if (!slug) {
+      return "";
+    }
+
+    const replacements: Record<string, string> = {
+      ai: "AI",
+      hcmc: "HCMC",
+      ite: "ITE",
+      tphcm: "TP.HCM",
+      tp: "TP"
+    };
+
+    return slug
+      .split("-")
+      .filter(Boolean)
+      .map((segment) => {
+        const normalizedSegment = segment.toLowerCase();
+
+        if (replacements[normalizedSegment]) {
+          return replacements[normalizedSegment];
+        }
+
+        if (/^\d+$/.test(segment)) {
+          return segment;
+        }
+
+        return segment.charAt(0).toUpperCase() + segment.slice(1);
+      })
+      .join(" ");
+  } catch {
+    return "";
+  }
+}
+
+function startsWithLowercaseLetter(value: string) {
+  const firstCharacter = value.trim().charAt(0);
+
+  if (!firstCharacter) {
+    return false;
+  }
+
+  return (
+    firstCharacter === firstCharacter.toLocaleLowerCase("vi-VN") &&
+    firstCharacter !== firstCharacter.toLocaleUpperCase("vi-VN")
+  );
+}
+
 async function fetchArticleMetadata(articleUrl: string) {
   const normalizedArticleUrl = articleUrl.trim();
 
@@ -381,13 +478,24 @@ async function mapArticleToPreview(
   }
 
   const resolvedMetadata = await fetchArticleMetadata(article.link);
-  const title = resolvedMetadata?.title || cleanArticleText(article.title);
+  const sourceLabelFromUrl = getArticleHostLabel(article.link);
+  const titleFromNewsData = cleanArticleText(article.title);
+  const titleFromUrl = buildTitleFromArticleUrl(article.link);
+  const shouldUseTitleFromUrl =
+    !resolvedMetadata?.title &&
+    Boolean(titleFromUrl) &&
+    (!titleFromNewsData || startsWithLowercaseLetter(titleFromNewsData));
+  const title =
+    resolvedMetadata?.title ||
+    (shouldUseTitleFromUrl ? titleFromUrl : titleFromNewsData);
   const source = cleanArticleText(article.source_name) || "Nguồn du lịch";
   const summary =
     cleanArticleText(article.description) ||
     "Xem nhanh bài viết mới để cập nhật thêm kinh nghiệm du lịch.";
 
-  const resolvedSource = resolvedMetadata?.siteName || source;
+  const resolvedSource =
+    resolvedMetadata?.siteName ||
+    (hasAlignedSourceName(source, article.link) ? source : sourceLabelFromUrl || source);
   const resolvedSummary = resolvedMetadata?.description || summary;
 
   if (!title) {
