@@ -56,21 +56,6 @@ const liveOperations = [
   }
 ];
 
-const journeyDeck = [
-  {
-    eyebrow: "Trải nghiệm hành khách",
-    title: "Đặt vé, chuẩn bị hành trình và nhận hỗ trợ trong cùng một trải nghiệm xuyên suốt",
-    summary:
-      "Khuyến mãi, cẩm nang, thông tin sân bay và gợi ý điểm đến được sắp xếp theo đúng nhu cầu thực tế trước ngày bay."
-  },
-  {
-    eyebrow: "Thông tin trước giờ bay",
-    title: "Chuẩn bị hành trình chủ động hơn với những thông tin cần xem ngay trước ngày khởi hành",
-    summary:
-      "Làm thủ tục trực tuyến, tình trạng chuyến bay, lưu ý hành lý và kênh hỗ trợ được đặt gần nhau để hành khách tra cứu nhanh."
-  }
-];
-
 const travelServiceMetrics = [
   { label: "Mở làm thủ tục", value: "24 giờ", detail: "Trước giờ khởi hành với chặng nội địa" },
   { label: "Đóng làm thủ tục", value: "60 phút", detail: "Áp dụng cho hành khách khởi hành từ sân bay nội địa" },
@@ -203,12 +188,14 @@ export default async function HomePage() {
 
       <section className="section home-quick-section">
         <div className="container">
-          <div className="editorial-grid">
+          <div className="home-quick-heading">
+            <SectionHeading
+              eyebrow="Tiện ích nhanh"
+              title="Những tiện ích hành khách cần nhất được đưa lên ngay từ đầu hành trình"
+            />
+          </div>
+          <div className="editorial-grid home-quick-content-grid">
             <div className="quick-services-column">
-              <SectionHeading
-                eyebrow="Tiện ích nhanh"
-                title="Những tiện ích hành khách cần nhất được đưa lên ngay từ đầu hành trình"
-              />
               <div className="quick-grid">
                 {quickServices.map((service, index) => (
                   <Link
@@ -236,18 +223,54 @@ export default async function HomePage() {
                 ))}
               </div>
             </div>
-            <div className="spotlight-column">
-              {journeyDeck.map((item, index) => (
-                <article key={item.title} className={`spotlight-card spotlight-card-${index}`}>
-                  <div className="spotlight-badge-row">
-                    <span className={`section-eyebrow spotlight-eyebrow spotlight-eyebrow-${index}`}>
-                      {item.eyebrow}
-                    </span>
+            <div className="journey-showcase">
+              <div className="journey-showcase-copy">
+                <span className="section-eyebrow">Trải nghiệm hành khách</span>
+                <h3>Mọi bước chuẩn bị cho chuyến bay ở ngay trong tầm tay</h3>
+                <p className="journey-showcase-intro">
+                  Đặt vé, làm thủ tục và theo dõi hành trình trong một trải nghiệm liền mạch.
+                </p>
+                <div className="journey-actions">
+                  <Link href="/booking" className="journey-action journey-action-primary">
+                    Đặt vé ngay
+                  </Link>
+                  <Link href="/check-in" className="journey-action">
+                    Làm thủ tục
+                  </Link>
+                </div>
+                <div className="journey-stat-row" aria-label="Thông tin dịch vụ">
+                  <div>
+                    <strong>24/7</strong>
+                    <span>Hỗ trợ trực tuyến</span>
                   </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.summary}</p>
-                </article>
-              ))}
+                  <div>
+                    <strong>60′</strong>
+                    <span>Tra cứu trước giờ bay</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="journey-phone">
+                <div className="journey-phone-speaker" aria-hidden="true" />
+                <div className="journey-phone-screen">
+                  <Image
+                    src="/images/airport-terminal.jpg"
+                    alt="Hành khách chuẩn bị lên máy bay tại sân bay"
+                    fill
+                    sizes="(max-width: 900px) 42vw, 190px"
+                    className="journey-phone-image"
+                  />
+                  <div className="journey-phone-overlay" aria-hidden="true" />
+                  <span className="journey-phone-label">HÀNH TRÌNH MỖI NGÀY</span>
+                  <span className="journey-phone-play" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="m9 6 8 6-8 6V6Z" fill="currentColor" />
+                    </svg>
+                  </span>
+                  <span className="journey-phone-caption">Sẵn sàng cho chuyến bay tiếp theo</span>
+                </div>
+                <span className="journey-phone-home" aria-hidden="true" />
+              </div>
             </div>
           </div>
         </div>
@@ -1747,6 +1770,256 @@ export default async function HomePage() {
           box-shadow: 0 16px 36px rgba(18, 61, 105, 0.06);
         }
 
+        .home-quick-heading {
+          max-width: 820px;
+          margin-bottom: 32px;
+        }
+
+        .home-quick-heading .section-heading {
+          margin-bottom: 0;
+        }
+
+        .home-quick-content-grid {
+          align-items: stretch;
+        }
+
+        .spotlight-card {
+          padding: 22px 24px;
+        }
+
+        .journey-showcase {
+          position: relative;
+          isolation: isolate;
+          display: grid;
+          grid-template-columns: minmax(0, 0.95fr) minmax(208px, 1fr);
+          align-items: center;
+          gap: 24px;
+          align-self: stretch;
+          min-width: 0;
+          overflow: hidden;
+          padding: 28px;
+          border: 1px solid rgba(18, 61, 105, 0.12);
+          border-radius: 30px;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(202, 164, 95, 0.22), transparent 34%),
+            linear-gradient(145deg, #f6f9fc 0%, #ffffff 56%, #f6efe2 100%);
+          box-shadow: 0 22px 48px rgba(18, 61, 105, 0.09);
+        }
+
+        .journey-showcase::before {
+          content: "";
+          position: absolute;
+          z-index: -1;
+          width: 220px;
+          height: 220px;
+          right: -86px;
+          bottom: -98px;
+          border-radius: 50%;
+          background: rgba(18, 61, 105, 0.08);
+        }
+
+        .journey-showcase-copy {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .journey-showcase-copy h3 {
+          margin: 0;
+          color: var(--primary);
+          font-size: clamp(1.34rem, 2vw, 1.82rem);
+          line-height: 1.12;
+          letter-spacing: -0.035em;
+        }
+
+        .journey-showcase-intro {
+          margin: 0;
+          color: rgba(14, 40, 69, 0.72);
+          font-size: 0.94rem;
+          line-height: 1.55;
+        }
+
+        .journey-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .journey-action {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 44px;
+          padding: 0 15px;
+          border: 1px solid rgba(18, 61, 105, 0.16);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          color: var(--primary);
+          font-size: 0.8rem;
+          font-weight: 750;
+          text-decoration: none;
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease,
+            border-color 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .journey-action:hover,
+        .journey-action:focus-visible {
+          transform: translateY(-2px);
+          border-color: rgba(18, 61, 105, 0.28);
+          background: #ffffff;
+          box-shadow: 0 8px 18px rgba(18, 61, 105, 0.1);
+        }
+
+        .journey-action-primary {
+          border-color: #123d69;
+          background: #123d69;
+          color: #ffffff;
+          box-shadow: 0 8px 18px rgba(18, 61, 105, 0.16);
+        }
+
+        .journey-action-primary:hover,
+        .journey-action-primary:focus-visible {
+          border-color: #0d2f52;
+          background: #0d2f52;
+          color: #ffffff;
+        }
+
+        .journey-stat-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+          padding-top: 2px;
+        }
+
+        .journey-stat-row div {
+          display: grid;
+          gap: 3px;
+        }
+
+        .journey-stat-row strong {
+          color: #0b6f8e;
+          font-size: 1.35rem;
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+
+        .journey-stat-row span {
+          color: rgba(14, 40, 69, 0.62);
+          font-size: 0.7rem;
+          line-height: 1.3;
+        }
+
+        .journey-phone {
+          position: relative;
+          z-index: 1;
+          justify-self: center;
+          width: min(100%, 208px);
+          aspect-ratio: 9 / 16;
+          padding: 8px;
+          border: 3px solid #a46a19;
+          border-radius: 30px;
+          background: #0d243a;
+          box-shadow:
+            0 20px 34px rgba(18, 61, 105, 0.22),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+          transform: rotate(1.5deg);
+        }
+
+        .journey-phone-speaker {
+          position: absolute;
+          z-index: 3;
+          top: 8px;
+          left: 50%;
+          width: 48px;
+          height: 5px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.38);
+          transform: translateX(-50%);
+        }
+
+        .journey-phone-screen {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          border-radius: 22px;
+          background: #143550;
+        }
+
+        .journey-phone-image {
+          object-fit: cover;
+          object-position: 50% 58%;
+        }
+
+        .journey-phone-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(9, 34, 56, 0.16), rgba(7, 24, 41, 0.74));
+        }
+
+        .journey-phone-label,
+        .journey-phone-caption {
+          position: absolute;
+          z-index: 1;
+          left: 16px;
+          right: 16px;
+          color: rgba(255, 251, 244, 0.96);
+        }
+
+        .journey-phone-label {
+          top: 24px;
+          font-size: 0.6rem;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+        }
+
+        .journey-phone-caption {
+          bottom: 20px;
+          font-size: 0.88rem;
+          font-weight: 700;
+          line-height: 1.25;
+        }
+
+        .journey-phone-play {
+          position: absolute;
+          z-index: 1;
+          top: 50%;
+          left: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 46px;
+          height: 46px;
+          border: 1px solid rgba(255, 255, 255, 0.72);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.84);
+          color: #123d69;
+          transform: translate(-50%, -50%);
+        }
+
+        .journey-phone-play svg {
+          width: 20px;
+          height: 20px;
+          margin-left: 2px;
+        }
+
+        .journey-phone-home {
+          position: absolute;
+          z-index: 3;
+          bottom: 9px;
+          left: 50%;
+          width: 42px;
+          height: 4px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.42);
+          transform: translateX(-50%);
+        }
+
         .home-destination-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 22px;
@@ -1966,6 +2239,10 @@ export default async function HomePage() {
             grid-template-columns: 1fr;
           }
 
+          .editorial-grid {
+            grid-template-columns: 1fr;
+          }
+
           .ops-strip-grid {
             grid-template-columns: 1fr;
           }
@@ -2052,6 +2329,12 @@ export default async function HomePage() {
 
           .home-hero-search-shell .toggle:last-child {
             grid-column: 1 / -1;
+          }
+
+          .journey-showcase {
+            grid-template-columns: minmax(0, 1fr) minmax(150px, 0.58fr);
+            gap: 18px;
+            padding: 24px;
           }
 
           .home-destination-overlay {
@@ -2149,6 +2432,16 @@ export default async function HomePage() {
           .home-latest-articles-button {
             width: 100%;
             padding: 0 22px;
+          }
+
+          .journey-showcase {
+            grid-template-columns: 1fr;
+            gap: 22px;
+            padding: 22px;
+          }
+
+          .journey-phone {
+            width: min(100%, 210px);
           }
         }
       `}</style>
