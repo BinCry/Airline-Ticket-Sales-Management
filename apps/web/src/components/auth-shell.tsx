@@ -63,21 +63,26 @@ export function AuthShell({
   return (
     <section className="section auth-page">
       <div className="container auth-layout">
+        {/* Cột giới thiệu và quyền lợi tài khoản */}
         <div className="auth-intro">
-          <span className="section-eyebrow">{eyebrow}</span>
-          <h1 className="page-title">{title}</h1>
-          <p className="page-hero-copy auth-page-copy">{description}</p>
+          <div className="auth-intro-header">
+            <span className="section-eyebrow">{eyebrow}</span>
+            <h1 className="page-title auth-page-title">{title}</h1>
+            <p className="page-hero-copy auth-page-copy">{description}</p>
+          </div>
 
+          {/* Lưới thông số tiện ích */}
           <div className="auth-stat-grid">
             {stats.map((item) => (
               <article key={item.label} className="hero-stat-card auth-stat-card">
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <p>{item.detail}</p>
+                <span className="auth-stat-label">{item.label}</span>
+                <strong className="auth-stat-value">{item.value}</strong>
+                <p className="auth-stat-detail">{item.detail}</p>
               </article>
             ))}
           </div>
 
+          {/* Thẻ quyền lợi và bảo mật nhiều lớp */}
           <article className="auth-security-card">
             <div className="auth-security-head">
               <div>
@@ -89,12 +94,16 @@ export function AuthShell({
             <p>{sideDescription}</p>
             <ul className="list-clean auth-check-list">
               {trustPoints.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>
+                  <span className="auth-check-icon" aria-hidden="true">✓</span>
+                  <span>{item}</span>
+                </li>
               ))}
             </ul>
           </article>
         </div>
 
+        {/* Khung biểu mẫu và điều hướng tab */}
         <div className="auth-panel-wrap">
           <nav className="auth-tab-nav" aria-label="Điều hướng xác thực">
             {authTabs.map((tab) => (
@@ -115,10 +124,13 @@ export function AuthShell({
           <div className="auth-panel">
             {children}
 
+            {/* Chân thẻ hỗ trợ nhanh */}
             <div className="auth-support-compact-footer">
               <div className="auth-support-head-compact">
-                <span className="section-eyebrow">Hỗ trợ 24/7</span>
-                <span className="auth-support-help-text">Tổng đài: 1900 6868 • Email: support@vietnam-airlines.vn</span>
+                <span className="auth-support-tag">Hỗ trợ 24/7</span>
+                <span className="auth-support-help-text">
+                  Tổng đài: <strong>1900 6868</strong> • Email: <strong>support@vietnam-airlines.vn</strong>
+                </span>
               </div>
             </div>
           </div>

@@ -16,12 +16,5 @@ const nextConfig = {
     cpus: 1,
     workerThreads: false
   },
-  typescript: {
-    ignoreBuildErrors: true 
-  },
-  
-  eslint: {
-    ignoreDuringBuilds: true 
-  }
 } satisfies Record<string, any>; 
 export default nextConfig as NextConfig;

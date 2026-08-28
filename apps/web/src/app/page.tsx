@@ -993,29 +993,56 @@ export default async function HomePage() {
         }
 
         .home-hero-stat-grid {
-          gap: 16px;
-          margin-top: 4px;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 8px;
         }
 
         .home-hero-stat-grid .hero-stat-card {
-          padding: 20px 22px;
-          border-color: rgba(18, 61, 105, 0.12);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 16px 18px;
+          border-radius: 18px;
+          border: 1px solid rgba(18, 61, 105, 0.11);
           background: linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.96),
-            rgba(250, 245, 236, 0.9) 44%,
-            rgba(241, 247, 253, 0.9) 100%
+            #ffffff 0%,
+            #fafcff 100%
           );
-          box-shadow: 0 22px 42px rgba(18, 61, 105, 0.1);
+          box-shadow: 0 10px 24px rgba(18, 61, 105, 0.06);
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .home-hero-stat-grid .hero-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 30px rgba(18, 61, 105, 0.1);
+          border-color: rgba(18, 61, 105, 0.22);
+        }
+
+        .home-hero-stat-grid .hero-stat-card span {
+          color: var(--primary);
+          font-size: 0.76rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
         }
 
         .home-hero-stat-grid .hero-stat-card strong {
-          color: rgba(12, 49, 84, 0.98);
+          color: #0d3258;
+          font-size: 1.42rem;
+          font-weight: 800;
+          line-height: 1.15;
+          margin: 4px 0 6px;
+          letter-spacing: -0.02em;
         }
 
-        .home-hero-stat-grid .hero-stat-card span,
         .home-hero-stat-grid .hero-stat-card p {
-          color: rgba(16, 45, 78, 0.78);
+          color: var(--muted);
+          font-size: 0.8rem;
+          line-height: 1.45;
+          margin: 0;
         }
 
         .home-hero-photo-ribbon {
@@ -1111,7 +1138,19 @@ export default async function HomePage() {
         }
 
         .home-hero-search-shell .search-footer {
+          align-items: center;
           margin-top: 24px;
+        }
+
+        .home-hero-search-shell .search-footer > div:first-child {
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+
+        .home-hero-search-shell .search-footer > .button-primary {
+          flex: 0 0 146px;
+          min-width: 146px;
+          white-space: nowrap;
         }
 
         .home-hero-search-shell .search-footer .button-primary {
@@ -1126,49 +1165,147 @@ export default async function HomePage() {
             inset 0 1px 0 rgba(255, 255, 255, 0.34);
         }
 
+        /* Bảng Vận hành trực tuyến đồng bộ với nền sáng của trang chủ */
         .home-hero-board {
-          padding: 24px 24px 22px;
-          border-color: rgba(18, 61, 105, 0.18);
-          background: linear-gradient(
-            160deg,
-            rgba(8, 29, 49, 0.98),
-            rgba(15, 50, 82, 0.96) 56%,
-            rgba(28, 84, 130, 0.92) 100%
-          );
-          box-shadow: 0 22px 46px rgba(8, 29, 49, 0.24);
+          padding: 20px 22px;
+          border-radius: 24px;
+          border: 1px solid rgba(18, 61, 105, 0.12);
+          background: linear-gradient(145deg, #f7fbff 0%, #eef5fb 58%, #fbf7ee 100%);
+          box-shadow: 0 22px 46px rgba(18, 61, 105, 0.12);
         }
 
         .home-hero-board .hero-glass-head {
-          margin-bottom: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 14px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(18, 61, 105, 0.1);
         }
 
         .home-hero-board .pill {
-          border: 1px solid rgba(225, 195, 129, 0.24);
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.08),
-            rgba(225, 195, 129, 0.18)
-          );
-          color: rgba(248, 226, 183, 0.98);
+          border: 1px solid rgba(185, 139, 48, 0.34);
+          background: rgba(202, 164, 95, 0.14);
+          color: #805d18;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+
+        .home-hero-board .status-chip {
+          display: inline-flex;
+          align-items: center;
+          min-height: 30px;
+          padding: 5px 10px;
+          border: 1px solid rgba(16, 137, 92, 0.2);
+          border-radius: 999px;
+          background: rgba(16, 137, 92, 0.08);
+          color: #08724d;
+          font-size: 0.78rem;
+          font-weight: 700;
         }
 
         .home-hero-board .hero-highlight-row {
-          padding: 10px 0;
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 8px 0;
         }
 
         .home-hero-board .hero-highlight-row + .hero-highlight-row {
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          border-top: 1px solid rgba(18, 61, 105, 0.1);
         }
 
         .home-hero-board .hero-highlight-row p {
-          color: rgba(247, 243, 234, 0.92);
+          margin: 0;
+          color: rgba(14, 40, 69, 0.84);
+          font-size: 0.88rem;
+          font-weight: 600;
+          line-height: 1.5;
         }
 
         .home-hero-board .dot {
-          width: 10px;
-          height: 10px;
-          background: linear-gradient(135deg, #d8b36b, #f0d89e);
-          box-shadow: 0 0 0 4px rgba(216, 179, 107, 0.18);
+          width: 8px;
+          height: 8px;
+          margin-top: 6px;
+          flex-shrink: 0;
+          border-radius: 50%;
+          background: #10a870;
+          box-shadow: 0 0 0 3px rgba(16, 168, 112, 0.16);
+        }
+
+        /* Các ô vận hành dùng cùng một baseline và màu nền phân nhóm nhẹ. */
+        .ops-strip {
+          margin-top: 10px;
+          padding-bottom: 16px;
+        }
+
+        .home-quick-section {
+          padding-top: 48px;
+        }
+
+        .ops-strip-grid {
+          align-items: stretch;
+        }
+
+        .ops-strip-card {
+          display: grid;
+          grid-template-rows: auto minmax(0, 1fr);
+          align-content: stretch;
+          min-height: 132px;
+          height: 100%;
+          box-sizing: border-box;
+          padding: 18px 20px;
+        }
+
+        .ops-strip-card.ops-strip-card-0 {
+          background: linear-gradient(145deg, #f4f9fe, #eaf3fb);
+        }
+
+        .ops-strip-card.ops-strip-card-1 {
+          background: linear-gradient(145deg, #fffaf0, #f8f4eb);
+        }
+
+        .ops-strip-card.ops-strip-card-2 {
+          background: linear-gradient(145deg, #f3fbf7, #eaf7f1);
+        }
+
+        .ops-strip-head {
+          display: flex;
+          align-items: flex-start;
+          min-height: 32px;
+        }
+
+        .ops-strip-head .pill {
+          display: inline-flex;
+          align-items: center;
+          min-height: 32px;
+          box-sizing: border-box;
+        }
+
+        .ops-strip-card p {
+          align-self: start;
+          margin: 0;
+          line-height: 1.55;
+        }
+
+        .ops-strip-card-0 .ops-pill {
+          border-color: rgba(33, 111, 175, 0.2);
+          background: rgba(76, 147, 207, 0.1);
+          color: #174f80;
+        }
+
+        .ops-strip-card-1 .ops-pill {
+          border-color: rgba(184, 140, 57, 0.22);
+          background: rgba(210, 172, 95, 0.12);
+          color: #805d18;
+        }
+
+        .ops-strip-card-2 .ops-pill {
+          border-color: rgba(17, 141, 96, 0.2);
+          background: rgba(32, 166, 119, 0.1);
+          color: #08724d;
         }
 
         .home-destination-section {
@@ -1264,29 +1401,46 @@ export default async function HomePage() {
           gap: 24px;
         }
 
+        /* Thẻ bài viết với hiệu ứng hover/focus tương tác tinh tế */
         .home-latest-article-card {
-          display: grid;
-          align-content: start;
-          gap: 16px;
+          display: flex;
+          flex-direction: column;
+          border-radius: 22px;
+          border: 1px solid rgba(18, 61, 105, 0.09);
+          background: #ffffff;
+          overflow: hidden;
+          box-shadow: 0 10px 24px rgba(18, 61, 105, 0.05);
           color: inherit;
           text-decoration: none;
+          transition:
+            transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.22s ease;
+        }
+
+        .home-latest-article-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 20px 40px rgba(18, 61, 105, 0.12);
+          border-color: rgba(18, 61, 105, 0.22);
+        }
+
+        .home-latest-article-card:focus-visible {
+          outline: 2px solid var(--brand-accent);
+          outline-offset: 3px;
         }
 
         .home-latest-article-media {
           position: relative;
           overflow: hidden;
           aspect-ratio: 1.44;
-          border-radius: 24px;
-          border: 1px solid rgba(18, 61, 105, 0.08);
           background: linear-gradient(180deg, rgba(230, 239, 248, 0.62), rgba(244, 248, 252, 0.98));
-          box-shadow: 0 20px 36px rgba(18, 61, 105, 0.1);
         }
 
         .home-latest-article-media::after {
           content: "";
           position: absolute;
           inset: 0;
-          background: linear-gradient(180deg, rgba(7, 24, 41, 0) 36%, rgba(7, 24, 41, 0.12) 100%);
+          background: linear-gradient(180deg, rgba(7, 24, 41, 0) 40%, rgba(7, 24, 41, 0.15) 100%);
           pointer-events: none;
         }
 
@@ -1295,60 +1449,96 @@ export default async function HomePage() {
           height: 100%;
           display: block;
           object-fit: cover;
-          transition: transform 220ms ease;
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .home-latest-article-card:hover .home-latest-article-media img {
-          transform: scale(1.03);
+          transform: scale(1.05);
         }
 
         .home-latest-article-copy {
-          display: grid;
-          gap: 6px;
-          padding: 0 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 16px 18px 20px;
+          flex-grow: 1;
         }
 
         .home-latest-article-copy h3 {
           margin: 0;
           color: rgba(7, 29, 50, 0.97);
-          font-size: clamp(1.12rem, 1.46vw, 1.28rem);
-          line-height: 1.22;
-          letter-spacing: -0.024em;
-          text-wrap: balance;
+          font-size: clamp(1.06rem, 1.35vw, 1.22rem);
+          line-height: 1.26;
+          letter-spacing: -0.02em;
+          transition: color 0.2s ease;
+        }
+
+        .home-latest-article-card:hover .home-latest-article-copy h3 {
+          color: var(--primary);
         }
 
         .home-latest-article-copy span,
         .home-latest-article-copy small {
-          color: rgba(14, 40, 69, 0.58);
-          font-size: 0.94rem;
+          color: rgba(14, 40, 69, 0.6);
+          font-size: 0.86rem;
           font-weight: 600;
-          line-height: 1.6;
+          line-height: 1.5;
         }
 
         .home-latest-articles-cta {
           display: flex;
           justify-content: center;
-          margin-top: 34px;
+          margin-top: 32px;
         }
 
+        /* Nút CTA đọc thêm với hiệu ứng tương tác sang trọng */
         .home-latest-articles-button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 12px;
-          min-height: 58px;
-          padding: 0 30px;
-          border: 1px solid rgba(18, 61, 105, 0.12);
+          gap: 10px;
+          min-height: 52px;
+          padding: 0 28px;
+          border-radius: 999px;
+          border: 1.5px solid rgba(18, 61, 105, 0.18);
           background: #ffffff;
           color: var(--primary);
+          font-weight: 700;
+          font-size: 0.94rem;
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.9),
-            0 18px 36px rgba(18, 61, 105, 0.08);
+            0 10px 24px rgba(18, 61, 105, 0.06);
+          transition:
+            transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+            background 0.2s ease,
+            border-color 0.2s ease,
+            box-shadow 0.2s ease,
+            color 0.2s ease;
+        }
+
+        .button-secondary.home-latest-articles-button:hover {
+          background: linear-gradient(135deg, #123d69 0%, #287fbd 100%);
+          border-color: #123d69;
+          transform: translateY(-2px);
+          box-shadow: 0 14px 32px rgba(18, 61, 105, 0.24);
+          color: #ffffff;
+        }
+
+        .home-latest-articles-button:focus-visible {
+          outline: 2px solid var(--brand-accent);
+          outline-offset: 3px;
         }
 
         .home-latest-articles-button span {
-          font-size: 1.4rem;
+          display: inline-block;
+          font-size: 1.25rem;
           line-height: 1;
+          transition: transform 0.2s ease;
+        }
+
+        .home-latest-articles-button:hover span,
+        .home-latest-articles-button:focus-visible span {
+          transform: translateX(4px);
         }
 
         .ops-dot {
@@ -1361,141 +1551,157 @@ export default async function HomePage() {
           vertical-align: middle;
         }
 
-        /* TIỆN ÍCH NHANH CARDS & TƯƠI SÁNG HOVER EFFECTS */
+        /* BỐ CỤC 4 THẺ TIỆN ÍCH NHANH CÂN ĐỐI, GỌN GÀNG VÀ ĐỒNG BỘ */
+        .quick-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
         .tien-ich-card {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: 24px;
-          border-radius: 24px;
+          padding: 20px;
+          border-radius: 20px;
           border: 1px solid rgba(18, 61, 105, 0.1);
-          background: rgba(255, 255, 255, 0.96);
-          box-shadow: 0 16px 36px rgba(18, 61, 105, 0.05);
-          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          background: #ffffff;
+          box-shadow: 0 10px 24px rgba(18, 61, 105, 0.04);
+          transition:
+            transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color 0.22s ease,
+            background 0.22s ease;
           text-decoration: none;
-          min-height: 210px;
+          min-height: 184px;
+        }
+
+        .tien-ich-card:focus-visible {
+          outline: 2px solid var(--brand-accent);
+          outline-offset: 3px;
         }
 
         .tien-ich-card-0:hover {
-          transform: translateY(-4px);
-          background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%) !important;
+          transform: translateY(-3px);
+          background: linear-gradient(180deg, #ffffff 0%, #f2f7fd 100%) !important;
           border-color: #1e5f9e !important;
-          box-shadow: 0 24px 48px rgba(18, 61, 105, 0.14) !important;
+          box-shadow: 0 18px 36px rgba(18, 61, 105, 0.12) !important;
         }
 
         .tien-ich-card-1:hover {
-          transform: translateY(-4px);
-          background: linear-gradient(180deg, #ffffff 0%, #fdf8ed 100%) !important;
+          transform: translateY(-3px);
+          background: linear-gradient(180deg, #ffffff 0%, #fdf9f0 100%) !important;
           border-color: #caa45f !important;
-          box-shadow: 0 24px 48px rgba(202, 164, 95, 0.2) !important;
+          box-shadow: 0 18px 36px rgba(202, 164, 95, 0.16) !important;
         }
 
         .tien-ich-card-2:hover {
-          transform: translateY(-4px);
-          background: linear-gradient(180deg, #ffffff 0%, #edfbf4 100%) !important;
+          transform: translateY(-3px);
+          background: linear-gradient(180deg, #ffffff 0%, #f0fbf5 100%) !important;
           border-color: #16a374 !important;
-          box-shadow: 0 24px 48px rgba(15, 139, 96, 0.16) !important;
+          box-shadow: 0 18px 36px rgba(15, 139, 96, 0.14) !important;
         }
 
         .tien-ich-card-3:hover {
-          transform: translateY(-4px);
-          background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%) !important;
+          transform: translateY(-3px);
+          background: linear-gradient(180deg, #ffffff 0%, #f2f9ff 100%) !important;
           border-color: #38bdf8 !important;
-          box-shadow: 0 24px 48px rgba(20, 100, 177, 0.16) !important;
+          box-shadow: 0 18px 36px rgba(20, 100, 177, 0.14) !important;
         }
 
         .tien-ich-top {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 12px;
         }
 
         .tien-ich-tag {
-          font-size: 0.72rem;
+          font-size: 0.7rem;
           font-weight: 800;
           letter-spacing: 0.03em;
           text-transform: uppercase;
-          padding: 4px 10px;
+          padding: 3px 9px;
           border-radius: 999px;
         }
 
         .tien-ich-tag-0 {
           background: rgba(18, 61, 105, 0.08);
           color: #123d69;
-          border: 1px solid rgba(18, 61, 105, 0.18);
+          border: 1px solid rgba(18, 61, 105, 0.16);
         }
 
         .tien-ich-tag-1 {
           background: rgba(202, 164, 95, 0.12);
-          color: #916815;
-          border: 1px solid rgba(202, 164, 95, 0.28);
+          color: #8c6414;
+          border: 1px solid rgba(202, 164, 95, 0.26);
         }
 
         .tien-ich-tag-2 {
           background: rgba(15, 139, 96, 0.1);
-          color: #0d7a54;
-          border: 1px solid rgba(15, 139, 96, 0.22);
+          color: #0b734f;
+          border: 1px solid rgba(15, 139, 96, 0.2);
         }
 
         .tien-ich-tag-3 {
           background: rgba(20, 100, 177, 0.1);
-          color: #1464b1;
-          border: 1px solid rgba(20, 100, 177, 0.22);
+          color: #125ea8;
+          border: 1px solid rgba(20, 100, 177, 0.2);
         }
 
         .tien-ich-icon {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 44px;
-          height: 44px;
-          border-radius: 14px;
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
           color: #ffffff;
         }
 
         .tien-ich-icon-svg {
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
         }
 
         .tien-ich-icon-0 {
           background: linear-gradient(135deg, #123d69, #1e5f9e);
-          box-shadow: 0 8px 18px rgba(18, 61, 105, 0.24);
+          box-shadow: 0 6px 14px rgba(18, 61, 105, 0.2);
         }
 
         .tien-ich-icon-1 {
           background: linear-gradient(135deg, #c79838, #e5b85a);
-          box-shadow: 0 8px 18px rgba(199, 152, 56, 0.3);
+          box-shadow: 0 6px 14px rgba(199, 152, 56, 0.25);
         }
 
         .tien-ich-icon-2 {
           background: linear-gradient(135deg, #0f8b60, #16a374);
-          box-shadow: 0 8px 18px rgba(15, 139, 96, 0.26);
+          box-shadow: 0 6px 14px rgba(15, 139, 96, 0.22);
         }
 
         .tien-ich-icon-3 {
           background: linear-gradient(135deg, #1464b1, #38bdf8);
-          box-shadow: 0 8px 18px rgba(20, 100, 177, 0.26);
+          box-shadow: 0 6px 14px rgba(20, 100, 177, 0.22);
         }
 
         .tien-ich-body {
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
 
         .tien-ich-title {
-          margin: 0 0 6px;
+          margin: 0 0 4px;
           color: var(--primary);
-          font-size: 1.15rem;
+          font-size: 1.05rem;
           font-weight: 700;
           letter-spacing: -0.01em;
+          line-height: 1.25;
         }
 
         .tien-ich-subtitle {
           margin: 0;
-          color: rgba(14, 40, 69, 0.72);
-          font-size: 0.84rem;
-          line-height: 1.5;
+          color: rgba(14, 40, 69, 0.68);
+          font-size: 0.82rem;
+          line-height: 1.45;
         }
 
         .tien-ich-cta {
@@ -1503,26 +1709,26 @@ export default async function HomePage() {
           align-items: center;
           gap: 6px;
           color: var(--primary);
-          font-size: 0.84rem;
+          font-size: 0.82rem;
           font-weight: 700;
           transition: gap 0.18s ease, color 0.18s ease;
         }
 
         .tien-ich-card:hover .tien-ich-cta {
-          gap: 10px;
+          gap: 8px;
         }
 
         .tien-ich-card-0:hover .tien-ich-cta { color: #1e5f9e; }
-        .tien-ich-card-1:hover .tien-ich-cta { color: #916815; }
-        .tien-ich-card-2:hover .tien-ich-cta { color: #0d7a54; }
-        .tien-ich-card-3:hover .tien-ich-cta { color: #1464b1; }
+        .tien-ich-card-1:hover .tien-ich-cta { color: #8c6414; }
+        .tien-ich-card-2:hover .tien-ich-cta { color: #0b734f; }
+        .tien-ich-card-3:hover .tien-ich-cta { color: #125ea8; }
 
         .tien-ich-card:hover .tien-ich-subtitle {
-          color: rgba(14, 40, 69, 0.9);
+          color: rgba(14, 40, 69, 0.88);
         }
 
         .tien-ich-arrow {
-          font-size: 1rem;
+          font-size: 0.95rem;
           transition: transform 0.18s ease;
         }
 
@@ -1759,6 +1965,14 @@ export default async function HomePage() {
             grid-template-columns: 1fr;
           }
 
+          .ops-strip-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .home-quick-section {
+            padding-top: 40px;
+          }
+
           .support-channel-grid {
             grid-template-columns: 1fr;
           }
@@ -1805,6 +2019,16 @@ export default async function HomePage() {
           .home-hero-search-shell .search-panel {
             padding: 24px;
             border-radius: 24px;
+          }
+
+          .home-hero-search-shell .search-footer {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .home-hero-search-shell .search-footer > .button-primary {
+            flex: 0 0 auto;
+            width: 100%;
           }
 
           .home-hero-search-shell .toggle-group {

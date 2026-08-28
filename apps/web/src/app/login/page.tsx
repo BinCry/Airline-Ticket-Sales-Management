@@ -216,6 +216,7 @@ function LoginPageContent() {
                   />
                 </svg>
               </span>
+              <span>Đăng nhập với Google</span>
             </button>
           </div>
 

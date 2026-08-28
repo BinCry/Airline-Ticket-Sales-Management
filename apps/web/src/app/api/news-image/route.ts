@@ -41,7 +41,7 @@ async function readFallbackImageBuffer() {
 async function buildFallbackResponse() {
   const fallbackImageBuffer = await readFallbackImageBuffer();
 
-  return new NextResponse(fallbackImageBuffer, {
+  return new NextResponse(new Uint8Array(fallbackImageBuffer), {
     status: 200,
     headers: {
       "Cache-Control": DEFAULT_CACHE_CONTROL,

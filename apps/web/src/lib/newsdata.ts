@@ -85,6 +85,7 @@ const preferredSourceIds = new Set([
 
 const blockedSourceIds = new Set(["kenh14", "soha"]);
 
+// Danh sách từ khoá liên quan chặt chẽ đến du lịch, hàng không, sân bay và chuẩn bị hành trình
 const travelKeywords = [
   "du lịch",
   "điểm đến",
@@ -94,8 +95,68 @@ const travelKeywords = [
   "resort",
   "sân bay",
   "check-in",
+  "check in",
+  "làm thủ tục",
+  "hành lý",
+  "vé máy bay",
+  "chuyến bay",
+  "hàng không",
+  "hãng bay",
+  "hành khách",
+  "nhà ga",
+  "phi trường",
+  "khách sạn",
+  "homestay",
+  "bãi biển",
+  "di sản",
+  "tham quan",
+  "tour",
   "hành trình",
-  "tour"
+  "ẩm thực",
+  "lịch trình",
+  "đường bay",
+  "chặng bay"
+];
+
+// Danh sách từ khoá tiêu cực hoặc không liên quan cần lọc bỏ triệt để
+const blockedKeywords = [
+  "tai nạn giao thông",
+  "tai nạn chết người",
+  "án mạng",
+  "bắt giữ",
+  "ma túy",
+  "lừa đảo",
+  "chứng khoán",
+  "bất động sản",
+  "cổ phiếu",
+  "hình sự",
+  "khởi tố",
+  "vi phạm pháp luật",
+  "xử phạt",
+  "nghi phạm",
+  "tử vong",
+  "tai nạn liên hoàn",
+  "đánh nhau",
+  "cướp giật",
+  "trộm cắp",
+  "buôn lậu",
+  "tham nhũng",
+  "chiến tranh",
+  "xung đột vũ trang",
+  "quân sự",
+  "vụ án",
+  "bắt tạm giam",
+  "lừa đảo chiếm đoạt",
+  "bạo lực",
+  "cháy nhà",
+  "hỏa hoạn",
+  "chết người",
+  "tử hình",
+  "truy nã",
+  "cờ bạc",
+  "mại dâm",
+  "đánh bạc",
+  "ngộ độc"
 ];
 
 interface NewsDataArticle {
@@ -393,6 +454,10 @@ const normalizedTravelKeywords = travelKeywords.map((keyword) =>
   normalizeText(keyword)
 );
 
+const normalizedBlockedKeywords = blockedKeywords.map((keyword) =>
+  normalizeText(keyword)
+);
+
 function toTextList(value: string[] | string | null | undefined) {
   if (!value) {
     return [];
@@ -405,6 +470,7 @@ function toTextList(value: string[] | string | null | undefined) {
   return [value];
 }
 
+// Kiểm tra bài viết có nội dung du lịch, hành trình và không dính các chủ đề tiêu cực/ngoài lề
 function hasTravelSignal(article: NewsDataArticle) {
   const searchableText = normalizeText(
     [
@@ -418,6 +484,16 @@ function hasTravelSignal(article: NewsDataArticle) {
       .trim()
   );
 
+  // Loại trừ ngay nếu chứa từ khóa tiêu cực, án sự hoặc không liên quan
+  const hasBlockedContent = normalizedBlockedKeywords.some((keyword) =>
+    searchableText.includes(keyword)
+  );
+
+  if (hasBlockedContent) {
+    return false;
+  }
+
+  // Bắt buộc chứa từ khóa thuộc lĩnh vực du lịch, hàng không, sân bay
   return normalizedTravelKeywords.some((keyword) =>
     searchableText.includes(keyword)
   );

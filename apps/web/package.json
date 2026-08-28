@@ -10,16 +10,18 @@
   },
   "dependencies": {
     "@qlvmb/shared-types": "file:../../packages/shared-types",
-    "next": "16.2.6",
+    "next": "16.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",
+    "@vitejs/plugin-react": "4.7.0",
     "@types/node": "25.4.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "typescript": "5.9.3",
-    "vitest": "4.0.18"
+    "vite": "7.3.6",
+    "vitest": "4.1.10"
   }
 }

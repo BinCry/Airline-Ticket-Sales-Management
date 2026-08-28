@@ -10,7 +10,9 @@ import {
 } from "@/lib/flight-search-filters";
 
 function taoChuyenBay(
-  overrides: Partial<ApiFlightCard> & Pick<ApiFlightCard, "flightId" | "baseFare">
+  overrides: Partial<ApiFlightCard> & Pick<ApiFlightCard, "flightId" | "baseFare"> & {
+    seatsLeft?: number;
+  }
 ): ApiFlightCard {
   return {
     flightId: overrides.flightId,

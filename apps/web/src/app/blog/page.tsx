@@ -160,6 +160,25 @@ export default async function BlogPage() {
             overflow: hidden;
             text-decoration: none;
             color: inherit;
+            border-radius: 22px;
+            border: 1px solid rgba(18, 61, 105, 0.09);
+            background: #ffffff;
+            box-shadow: 0 10px 24px rgba(18, 61, 105, 0.05);
+            transition:
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease;
+          }
+
+          .travel-news-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(18, 61, 105, 0.12);
+            border-color: rgba(18, 61, 105, 0.22);
+          }
+
+          .travel-news-card:focus-visible {
+            outline: 2px solid var(--brand-accent);
+            outline-offset: 3px;
           }
 
           .travel-news-card-media {
@@ -173,22 +192,27 @@ export default async function BlogPage() {
             height: 100%;
             display: block;
             object-fit: cover;
-            transition: transform 220ms ease;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           }
 
           .travel-news-card:hover .travel-news-card-media img {
-            transform: scale(1.03);
+            transform: scale(1.05);
           }
 
           .travel-news-card-copy {
             display: grid;
-            gap: 12px;
-            padding: 20px 20px 22px;
+            gap: 10px;
+            padding: 20px;
           }
 
           .travel-news-card-copy h3 {
             margin: 0;
             line-height: 1.24;
+            transition: color 0.2s ease;
+          }
+
+          .travel-news-card:hover .travel-news-card-copy h3 {
+            color: var(--primary);
           }
 
           .travel-news-card-copy p {
@@ -199,6 +223,7 @@ export default async function BlogPage() {
 
           .travel-news-card-copy small {
             color: var(--muted);
+            font-size: 0.84rem;
           }
 
           @media (max-width: 1200px) {
