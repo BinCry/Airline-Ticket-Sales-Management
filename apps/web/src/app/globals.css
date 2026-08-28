@@ -4000,9 +4000,23 @@ thead th {
 
 .site-footer {
   margin-top: 64px;
-  border-top: 1px solid rgba(18, 61, 105, 0.08);
+  border-top: 1px solid rgba(18, 61, 105, 0.09);
+  background: linear-gradient(180deg, #f4f7fb 0%, #eaf0f8 100%);
+  padding: 56px 0 36px;
+}
+
+.assurance-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(18, 61, 105, 0.1);
   background: #ffffff;
-  padding: 48px 0 32px;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(18, 61, 105, 0.04);
 }
 
 .footer-intro {
@@ -4118,14 +4132,14 @@ thead th {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--brand-primary);
-  font-size: 0.82rem;
+  border: 1px solid rgba(18, 61, 105, 0.1);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-size: 0.84rem;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(18, 61, 105, 0.04);
+  box-shadow: 0 2px 8px rgba(18, 61, 105, 0.04);
   transition:
     transform 0.18s ease,
     background-color 0.18s ease,
