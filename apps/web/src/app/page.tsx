@@ -253,7 +253,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="diem-den" className="section section-soft home-destination-section">
+      <section id="diem-den" className="section home-destination-section">
         <div className="container">
           <SectionHeading
             eyebrow="Điểm đến & chiến dịch"
@@ -448,11 +448,8 @@ export default async function HomePage() {
       <style>{`
         
         .home-prep-section {
-          background:
-            radial-gradient(circle at 10% 20%, rgba(202, 164, 95, 0.08), transparent 30%),
-            radial-gradient(circle at 90% 80%, rgba(18, 61, 105, 0.06), transparent 30%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(246, 244, 237, 0.95) 100%);
-          padding: 64px 0;
+          background: #ffffff;
+          padding: 56px 0;
         }
 
         .home-prep-grid {
@@ -793,24 +790,13 @@ export default async function HomePage() {
         }
 
         .home-hero-section {
-          padding: 72px 0 46px;
-          background:
-            radial-gradient(circle at 10% 0%, rgba(202, 164, 95, 0.18), transparent 26%),
-            radial-gradient(circle at 92% 4%, rgba(24, 92, 150, 0.16), transparent 24%),
-            linear-gradient(
-              180deg,
-              rgba(255, 249, 239, 0.98),
-              rgba(243, 247, 251, 0.98) 54%,
-              rgba(236, 243, 249, 0.94) 100%
-            );
-          box-shadow: inset 0 -1px 0 rgba(18, 61, 105, 0.08);
+          padding: 48px 0 32px;
+          background: #ffffff;
+          box-shadow: none;
         }
 
         .home-hero-section::before {
-          background:
-            radial-gradient(circle at 12% 22%, rgba(210, 176, 105, 0.22), transparent 22%),
-            radial-gradient(circle at 84% 12%, rgba(48, 117, 186, 0.22), transparent 18%),
-            linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 60%);
+          display: none;
         }
 
         .metric-card-dark,
@@ -1555,15 +1541,8 @@ export default async function HomePage() {
         .promo-card,
         .article-card {
           border-color: rgba(18, 61, 105, 0.1);
-          background:
-            linear-gradient(
-              180deg,
-              rgba(255, 255, 255, 0.96),
-              rgba(251, 245, 236, 0.9) 42%,
-              rgba(242, 247, 252, 0.92) 100%
-            ),
-            radial-gradient(circle at top right, rgba(202, 164, 95, 0.12), transparent 28%);
-          box-shadow: 0 20px 40px rgba(18, 61, 105, 0.08);
+          background: #ffffff;
+          box-shadow: 0 16px 36px rgba(18, 61, 105, 0.06);
         }
 
         .home-destination-grid {
