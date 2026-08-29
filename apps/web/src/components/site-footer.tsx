@@ -76,25 +76,37 @@ export function SiteFooter() {
           ))}
         </div>
       </div>
-      <div className="container footer-grid">
+      <nav className="container footer-grid" aria-label="Điều hướng cuối trang">
         {footerSections.map((column) => (
-          <details key={column.title} className="footer-section">
-            <summary>
-              <span>{column.title}</span>
-              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-                <path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </summary>
-            <ul className="footer-links">
-              {column.links.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href}>{link.label}</Link>
-                </li>
-              ))}
-            </ul>
-          </details>
+          <div key={column.title} className="footer-section">
+            <div className="footer-section-desktop">
+              <h3>{column.title}</h3>
+              <ul className="footer-links">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href}>{link.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <details className="footer-section-mobile">
+              <summary>
+                <span>{column.title}</span>
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                  <path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </summary>
+              <ul className="footer-links">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href}>{link.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </div>
         ))}
-      </div>
+      </nav>
 
       <div className="container footer-social-wrap">
         <div className="footer-social-panel">

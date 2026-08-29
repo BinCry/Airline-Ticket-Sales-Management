@@ -11,7 +11,6 @@ import {
 } from "@/lib/auth-session";
 import {
   getAllowedBackofficeModulesByPermissions,
-  ROLE_LABELS,
   type BackofficeModuleKey
 } from "@/lib/access-control";
 import { backofficeModules } from "@/lib/backoffice-content";
@@ -19,9 +18,9 @@ import { backofficeModules } from "@/lib/backoffice-content";
 const hiddenModuleKeys = new Set<BackofficeModuleKey>(["cms"]);
 
 const releaseNotes = [
-  "Mỗi phân hệ chỉ mở khi phiên đăng nhập có đúng quyền tương ứng.",
-  "Mọi thao tác nội bộ đều được kiểm tra quyền trước khi xử lý.",
-  "Danh sách dưới đây chỉ hiển thị công cụ bạn có thể dùng ngay trong phiên hiện tại."
+  { title: "Đúng quyền", description: "Chỉ mở công cụ bạn được cấp." },
+  { title: "An toàn", description: "Kiểm tra quyền trước mỗi thao tác." },
+  { title: "Tập trung", description: "Chỉ hiện các phân hệ cần dùng." }
 ];
 
 export default function BackofficePage() {
@@ -59,18 +58,16 @@ export default function BackofficePage() {
         <div className="page-hero-card page-hero-card-dark">
           <div>
             <span className="section-eyebrow">Điều hành nội bộ</span>
-            <h1 className="page-title">
-              Trung tâm backoffice cho bán vé, hỗ trợ khách hàng, tài chính, nội dung và vận hành.
-            </h1>
+            <h1 className="page-title">Trung tâm vận hành nội bộ</h1>
             <p className="page-hero-copy">
-              Mỗi người dùng chỉ nhìn thấy những công cụ đang được cấp quyền trong phiên hiện tại để tránh thao tác vượt phạm vi.
+              Các công cụ hiển thị theo quyền truy cập của bạn.
             </p>
           </div>
           <div className="page-hero-stat-grid">
             {releaseNotes.map((item) => (
-              <article key={item} className="page-hero-stat dark-stat">
-                <strong>•</strong>
-                <span>{item}</span>
+              <article key={item.title} className="page-hero-stat dark-stat">
+                <strong>{item.title}</strong>
+                <span>{item.description}</span>
               </article>
             ))}
           </div>
@@ -79,8 +76,8 @@ export default function BackofficePage() {
         <div className="section-gap" />
         <SectionHeading
           eyebrow="Phân hệ nội bộ"
-          title="Công cụ đang khả dụng trong phiên làm việc"
-          description="Chỉ các phân hệ được cấp permission mới xuất hiện tại đây."
+          title="Công cụ của bạn"
+          description="Chọn một phân hệ để bắt đầu."
         />
         {allowedModules === null ? (
           <div className="module-grid">
@@ -98,22 +95,13 @@ export default function BackofficePage() {
               <Link key={module.key} href={module.href} prefetch={false} className="surface-card module-card">
                 <div className="module-card-head">
                   <BackofficeAccessChip moduleKey={module.key as BackofficeModuleKey} />
-                  <span className="pill">Phân khu nội bộ</span>
                   <strong>↗</strong>
                 </div>
                 <h3>{module.title}</h3>
                 <p>{module.summary}</p>
-                <ul className="list-clean">
-                  {module.highlights.map((highlight) => (
-                    <li key={highlight}>{highlight}</li>
-                  ))}
-                </ul>
-                <small>
-                  Vai trò:{" "}
-                  {module.roles
-                    .map((role) => ROLE_LABELS[role as keyof typeof ROLE_LABELS])
-                    .join(", ")}
-                </small>
+                <span className="module-card-link">
+                  Mở phân hệ <span aria-hidden="true">→</span>
+                </span>
               </Link>
             ))}
           </div>

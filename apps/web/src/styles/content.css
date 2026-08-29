@@ -48,6 +48,7 @@
 
 .backoffice-module-shell {
   min-width: 0;
+  --backoffice-module-nav-offset: 72px;
 }
 
 .backoffice-module-shell-nav {
@@ -139,11 +140,30 @@
 
 .module-card {
   min-width: 0;
-  min-height: 280px;
+  min-height: 220px;
 }
 
 .module-card h3 {
   text-wrap: balance;
+}
+
+.module-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  color: var(--brand-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.module-card-link span {
+  transition: transform 0.2s ease;
+}
+
+.module-card:hover .module-card-link span,
+.module-card:focus-visible .module-card-link span {
+  transform: translateX(3px);
 }
 
 @media (max-width: 1024px) {
@@ -275,5 +295,11 @@
   .backoffice-module-shell .table-card,
   .backoffice-module-shell .surface-card {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 820px) {
+  .backoffice-module-shell {
+    --backoffice-module-nav-offset: 62px;
   }
 }

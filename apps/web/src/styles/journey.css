@@ -2,6 +2,14 @@
   min-width: 0;
 }
 
+.passenger-selector-grid-item {
+  min-width: 0;
+}
+
+.passenger-selector-grid-item > .field {
+  height: 100%;
+}
+
 .passenger-selector-trigger {
   position: relative;
   display: grid;
@@ -29,9 +37,6 @@
 .passenger-selector-trigger strong,
 .passenger-selector-trigger small {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .passenger-selector-trigger strong {
@@ -42,6 +47,8 @@
   grid-column: 1;
   color: var(--muted);
   font-size: var(--text-xs);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .passenger-selector-trigger svg {
@@ -88,7 +95,9 @@
 }
 
 .search-panel > .field-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Tự chuyển 3 → 2 → 1 cột theo bề rộng thực của panel, kể cả khi
+     trình duyệt zoom hoặc form nằm trong cột desktop hẹp. */
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   align-items: end;
 }
 
@@ -143,6 +152,68 @@
   border-radius: var(--radius-md);
 }
 
+.home-hero-manage-link {
+  width: fit-content;
+  gap: 8px;
+}
+
+.search-panel > .route-pair {
+  margin-top: var(--space-4);
+}
+
+.home-hero-search-shell .search-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(148px, 0.55fr);
+  align-items: start;
+}
+
+.home-hero-search-shell .search-mini-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.home-hero-search-shell .search-mini-metrics div {
+  min-width: 0;
+  min-height: 78px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.home-hero-search-shell .search-mini-metrics strong,
+.home-hero-search-shell .search-mini-metrics span {
+  overflow-wrap: anywhere;
+}
+
+.home-hero-search-shell .search-assurance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.home-hero-search-shell .assurance-chip {
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.search-panel .search-footer {
+  justify-content: flex-end;
+}
+
+/* Chừa vùng an toàn cho nút Trợ lý AI cố định, tránh che CTA tìm chuyến. */
+.home-hero-search-shell .search-footer {
+  justify-content: flex-start;
+  padding-right: 96px;
+}
+
 .journey-phone-play.is-playing,
 .journey-phone-mute.is-playing {
   opacity: 0.18;
@@ -160,10 +231,7 @@
     order: -1;
   }
 
-  .home-hero-board,
-  .search-note,
-  .search-assurance,
-  .search-mini-metrics {
+  .home-hero-board {
     display: none;
   }
 
@@ -228,6 +296,19 @@
   .search-panel .toggle,
   .search-toolbar-trip-type .toggle {
     width: 100%;
+  }
+
+  .home-hero-search-shell .search-footer {
+    padding-right: 64px;
+  }
+
+  .home-hero-search-shell .search-panel-head {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .home-hero-search-shell .search-mini-metrics {
+    justify-content: stretch;
   }
 
   .search-toolbar-presets-strip {

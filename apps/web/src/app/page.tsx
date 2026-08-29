@@ -4,7 +4,6 @@ import Image from "next/image";
 import { FlightSearchPanel } from "@/components/flight-search-panel";
 import { JourneyPhoneVideo } from "@/components/journey-phone-video";
 import { SectionHeading } from "@/components/section-heading";
-import { StatusChip } from "@/components/status-chip";
 import {
   HanhLyIcon,
   LamThuTucIcon,
@@ -13,7 +12,6 @@ import {
 } from "@/components/utility-icons";
 import {
   destinations,
-  heroHighlights,
   promotions,
   quickServices,
   supportChannels
@@ -36,12 +34,6 @@ function getTienIchIcon(title: string) {
   return <TroLyHoTroIcon className="tien-ich-icon-svg" />;
 }
 
-const heroStats = [
-  { label: "Tỷ lệ lấp đầy trên tuyến trục", value: "92%", detail: "Cập nhật theo tình hình khai thác trong ngày" },
-  { label: "Tốc độ xuất vé", value: "Dưới 60 giây", detail: "Sau khi phản hồi thanh toán thành công" },
-  { label: "Yêu cầu hỗ trợ đang mở", value: "18", detail: "Ưu tiên phản hồi trong ngày đối với các tình huống cần hỗ trợ gấp" }
-];
-
 const liveOperations = [
   {
     title: "Bán vé công khai",
@@ -61,6 +53,24 @@ const travelServiceMetrics = [
   { label: "Mở làm thủ tục", value: "24 giờ", detail: "Trước giờ khởi hành với chặng nội địa" },
   { label: "Đóng làm thủ tục", value: "60 phút", detail: "Áp dụng cho hành khách khởi hành từ sân bay nội địa" },
   { label: "Giữ chỗ", value: "15 phút", detail: "Sau khi chọn chuyến bay và trước khi hoàn tất thanh toán" }
+];
+
+const servicePerformanceMetrics = [
+  {
+    label: "Tỷ lệ lấp đầy trên tuyến trực tuyến",
+    value: "92%",
+    detail: "Cập nhật theo tình hình khai thác trong ngày"
+  },
+  {
+    label: "Tốc độ xuất vé",
+    value: "Dưới 60 giây",
+    detail: "Sau khi phản hồi thanh toán thành công"
+  },
+  {
+    label: "Yêu cầu hỗ trợ đang mở",
+    value: "18",
+    detail: "Ưu tiên phản hồi trong ngày đối với các tình huống cần hỗ trợ gấp"
+  }
 ];
 
 const travelerTopics = [
@@ -107,28 +117,14 @@ export default async function HomePage() {
         <div className="container hero-grid home-hero-grid">
           <div className="hero-copy hero-copy-rich home-hero-copy">
             <span className="section-eyebrow home-hero-eyebrow">Vietnam Airlines</span>
-            <h1>Đặt vé linh hoạt. Hành trình trong tầm tay.</h1>
+            <h1>Tìm chuyến nhanh. Bay theo cách của bạn.</h1>
             <p>
-              Tìm chuyến phù hợp, chọn hạng vé và quản lý mọi bước trước giờ bay
-              trên cùng một trải nghiệm.
+              So sánh giờ bay, chọn hạng vé và bắt đầu hành trình ngay tại đây.
             </p>
-            <div className="hero-actions home-hero-actions">
-              <Link href="/booking" className="button button-primary home-hero-primary">
-                Đặt vé ngay
-              </Link>
-              <Link href="/manage-booking" className="button button-secondary home-hero-secondary">
-                Quản lý đặt chỗ
-              </Link>
-            </div>
-            <div className="hero-stat-grid home-hero-stat-grid">
-              {heroStats.map((item) => (
-                <article key={item.label} className="hero-stat-card">
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <p>{item.detail}</p>
-                </article>
-              ))}
-            </div>
+            <Link href="/manage-booking" className="text-button home-hero-manage-link">
+              Đã có vé? Quản lý đặt chỗ
+              <span aria-hidden="true">→</span>
+            </Link>
             <div className="hero-photo-ribbon home-hero-photo-ribbon">
               <div className="hero-photo-card hero-photo-card-large">
                 <Image
@@ -151,20 +147,6 @@ export default async function HomePage() {
           <div className="hero-panel-stack home-hero-panel-stack">
             <div className="home-hero-search-shell">
               <FlightSearchPanel />
-            </div>
-            <div className="hero-glass-board home-hero-board">
-              <div className="hero-glass-head">
-                <span className="pill">Vận hành trực tuyến</span>
-                <StatusChip tone="success" label="Ổn định" />
-              </div>
-              <div className="hero-glass-list">
-                {heroHighlights.map((item) => (
-                  <article key={item} className="hero-highlight-row">
-                    <span className="dot" />
-                    <p>{item}</p>
-                  </article>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -231,8 +213,8 @@ export default async function HomePage() {
                   Đặt vé, làm thủ tục và theo dõi hành trình trong một trải nghiệm liền mạch.
                 </p>
                 <div className="journey-actions">
-                  <Link href="/booking" className="journey-action journey-action-primary">
-                    Đặt vé ngay
+                  <Link href="/search" className="journey-action journey-action-primary">
+                    Tìm chuyến bay
                   </Link>
                   <Link href="/check-in" className="journey-action">
                     Làm thủ tục
@@ -450,6 +432,18 @@ export default async function HomePage() {
               </Link>
             </article>
           </div>
+        </div>
+      </section>
+
+      <section className="section home-service-metrics-section" aria-label="Thông số dịch vụ">
+        <div className="container home-service-metrics">
+          {servicePerformanceMetrics.map((metric) => (
+            <article key={metric.label} className="home-service-metric-card">
+              <span className="home-service-metric-label">{metric.label}</span>
+              <strong className="home-service-metric-value">{metric.value}</strong>
+              <p>{metric.detail}</p>
+            </article>
+          ))}
         </div>
       </section>
       <style>{`
@@ -2511,6 +2505,15 @@ export default async function HomePage() {
             height: 148px;
             border-radius: 0 0 22px 22px;
           }
+        }
+
+        /* Giữ khối thông số gần nội dung trước đó, tránh khoảng trắng kéo dài. */
+        .home-prep-section {
+          padding-bottom: 28px;
+        }
+
+        .home-service-metrics-section {
+          padding: 20px 0 28px;
         }
       `}</style>
     </>

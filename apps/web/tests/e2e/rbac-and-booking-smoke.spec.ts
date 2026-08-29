@@ -113,7 +113,10 @@ test("trang chủ mặc định chọn một chiều", async ({ page }) => {
 
   await expect(page.getByRole("button", { name: "Một chiều" })).toHaveClass(/active/);
   await expect(page.getByRole("button", { name: "Khứ hồi" })).not.toHaveClass(/active/);
-  await expect(page.locator('input[type="date"]').nth(1)).toBeDisabled();
+  await expect(page.locator('input[type="date"]')).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Khứ hồi" }).click();
+  await expect(page.locator('input[type="date"]')).toHaveCount(2);
 });
 
 test("trang hỗ trợ không render highlight FAQ", async ({ page }) => {

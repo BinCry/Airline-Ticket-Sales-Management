@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-import Link from "next/link";
-
 import type { AirportOption } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
@@ -39,9 +37,10 @@ import { pushToast } from "@/lib/toast";
 type OperationsState = "idle" | "loading" | "success" | "error";
 
 const OPERATIONS_NAV_ITEMS = [
-  { id: "operations-overview", label: "Tổng quan" },
-  { id: "operations-flights", label: "Chuyến bay" },
-  { id: "operations-vouchers", label: "Voucher hội viên" }
+  { id: "operations-create-flight", label: "Tạo chuyến bay" },
+  { id: "operations-flight-lookup", label: "Tra cứu vận hành" },
+  { id: "operations-create-voucher", label: "Tạo voucher mới" },
+  { id: "operations-voucher-lookup", label: "Tra cứu voucher" }
 ] as const;
 
 type OperationsNavId = (typeof OPERATIONS_NAV_ITEMS)[number]["id"];
@@ -304,7 +303,12 @@ export function BackofficeOperationsPageClient() {
           setActiveOperationsSection(visibleSection.target.id as OperationsNavId);
         }
       },
-      { rootMargin: "-124px 0px -58% 0px", threshold: [0.1, 0.35, 0.65] }
+      {
+        rootMargin: window.matchMedia("(max-width: 820px)").matches
+          ? "-188px 0px -55% 0px"
+          : "-210px 0px -55% 0px",
+        threshold: [0.1, 0.35, 0.65]
+      }
     );
 
     sections.forEach((section) => observer.observe(section));
@@ -726,13 +730,6 @@ export function BackofficeOperationsPageClient() {
         </div>
 
         <nav className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
-          <Link href="/backoffice" className="backoffice-local-nav-back" prefetch={false}>
-            ← Phân khu
-          </Link>
-          <div className="backoffice-local-nav-context">
-            <span>Đang làm việc tại</span>
-            <strong>Điều hành</strong>
-          </div>
           <div className="backoffice-local-nav-links">
             {OPERATIONS_NAV_ITEMS.map((item) => (
               <a
@@ -755,8 +752,8 @@ export function BackofficeOperationsPageClient() {
           </article>
         ) : null}
 
-        <div id="operations-flights" className="section-split backoffice-operations-anchor">
-          <article className="surface-card">
+        <div className="section-split">
+          <article id="operations-create-flight" className="surface-card backoffice-operations-anchor">
             <SectionHeading
               eyebrow="Tạo chuyến mới"
               title="Bổ sung chuyến bay vào hệ thống khai thác"
@@ -914,7 +911,7 @@ export function BackofficeOperationsPageClient() {
             </div>
           </article>
 
-          <article className="surface-card">
+          <article id="operations-flight-lookup" className="surface-card backoffice-operations-anchor">
             <SectionHeading
               eyebrow="Tra cứu vận hành"
               title="Lọc chuyến bay theo mã hoặc ngày"
@@ -1203,8 +1200,8 @@ export function BackofficeOperationsPageClient() {
           </article>
         ) : null}
 
-        <div id="operations-vouchers" className="section-split backoffice-operations-anchor">
-          <article className="surface-card">
+        <div className="section-split">
+          <article id="operations-create-voucher" className="surface-card backoffice-operations-anchor">
             <SectionHeading
               eyebrow="Tạo voucher mới"
               title="Cấp voucher trực tiếp cho hội viên"
@@ -1315,7 +1312,7 @@ export function BackofficeOperationsPageClient() {
             </div>
           </article>
 
-          <article className="surface-card">
+          <article id="operations-voucher-lookup" className="surface-card backoffice-operations-anchor">
             <SectionHeading
               eyebrow="Tra cứu voucher"
               title="Lọc nhanh theo hội viên, mã hoặc trạng thái"

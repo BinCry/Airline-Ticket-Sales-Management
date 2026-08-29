@@ -146,6 +146,11 @@ export function SiteHeader() {
   const navigationLinks = buildMainNavigation(permissions).filter(
     (link) => !(canOpenBackoffice && link.href === "/backoffice")
   );
+  const isBookingJourney =
+    pathname === "/" ||
+    pathname === "/search" ||
+    pathname === "/booking" ||
+    pathname.startsWith("/booking/");
   const headerClassName = isStaffRole ? "site-header site-header-staff" : "site-header";
 
   async function handleAccountLogout() {
@@ -293,9 +298,6 @@ export function SiteHeader() {
               />
             </span>
           </Link>
-          <span className="nav-language-control" aria-label="Ngôn ngữ hiện tại: Tiếng Việt">
-            Tiếng Việt
-          </span>
         </div>
 
         <nav className="main-nav desktop-main-nav" aria-label="Điều hướng chính">
@@ -315,6 +317,10 @@ export function SiteHeader() {
         </nav>
 
         <div className="nav-row-actions">
+          <span className="nav-language-control" aria-label="Ngôn ngữ hiện tại: Tiếng Việt">
+            <span className="nav-language-full">Tiếng Việt</span>
+            <span className="nav-language-short" aria-hidden="true">VI</span>
+          </span>
           {accountButtonLabel ? (
             renderAccountPanel("desktop")
           ) : (
@@ -342,12 +348,14 @@ export function SiteHeader() {
               Backoffice
             </Link>
           ) : null}
-          <Link
-            href="/booking"
-            className="button button-primary nav-action-button"
-          >
-            Đặt vé
-          </Link>
+          {!isBookingJourney ? (
+            <Link
+              href="/search"
+              className="button button-primary nav-action-button"
+            >
+              Đặt vé
+            </Link>
+          ) : null}
           <button
             type="button"
             className="mobile-menu-button"
@@ -418,7 +426,7 @@ export function SiteHeader() {
                 Backoffice
               </Link>
             ) : null}
-            <Link href="/booking" className="button button-primary">Đặt vé</Link>
+            <Link href="/search" className="button button-primary">Đặt vé</Link>
           </div>
         </div>
       </Drawer>

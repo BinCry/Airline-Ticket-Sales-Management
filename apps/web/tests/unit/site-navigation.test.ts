@@ -22,41 +22,27 @@ describe("site-navigation", () => {
     expect(buildMainNavigation(["backoffice.admin"]).some((item) => item.href === "/backoffice")).toBe(true);
   });
 
-  it("dieu huong dat ve cong khai di qua route booking", () => {
-    expect(layLienKetTheoHref("/booking")).toMatchObject({
-      href: "/booking"
-    });
+  it("khong lap lai dat ve trong dieu huong chinh", () => {
+    expect(mainNavigation.some((item) => item.href === "/booking")).toBe(false);
   });
 
-  it("to xanh dat ve tai route booking", () => {
-    const datVeLink = layLienKetTheoHref("/booking");
+  it("route booking khong to xanh nham tab tim chuyen bay", () => {
     const timChuyenBayLink = layLienKetTheoHref("/search");
 
-    expect(isMainNavigationLinkActive("/booking", datVeLink)).toBe(true);
     expect(isMainNavigationLinkActive("/booking", timChuyenBayLink)).toBe(false);
   });
 
-  it("to xanh dat ve tai route con cua booking", () => {
-    const datVeLink = layLienKetTheoHref("/booking");
-
-    expect(isMainNavigationLinkActive("/booking/QC5001/checkout", datVeLink)).toBe(true);
-  });
-
-  it("route search chi to xanh tab tim chuyen bay", () => {
-    const datVeLink = layLienKetTheoHref("/booking");
+  it("route search to xanh tab tim chuyen bay", () => {
     const timChuyenBayLink = layLienKetTheoHref("/search");
 
     expect(isMainNavigationLinkActive("/search", timChuyenBayLink)).toBe(true);
-    expect(isMainNavigationLinkActive("/search", datVeLink)).toBe(false);
   });
 
   it("route quan ly dat cho van to xanh dung tab", () => {
     const quanLyDatChoLink = layLienKetTheoHref("/manage-booking");
     const timChuyenBayLink = layLienKetTheoHref("/search");
-    const datVeLink = layLienKetTheoHref("/booking");
 
     expect(isMainNavigationLinkActive("/manage-booking", quanLyDatChoLink)).toBe(true);
     expect(isMainNavigationLinkActive("/manage-booking", timChuyenBayLink)).toBe(false);
-    expect(isMainNavigationLinkActive("/manage-booking", datVeLink)).toBe(false);
   });
 });

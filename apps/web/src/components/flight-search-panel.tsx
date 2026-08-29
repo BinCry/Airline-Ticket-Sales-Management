@@ -40,12 +40,10 @@ export function FlightSearchPanel() {
   const [dangTaiSanBayDi, setDangTaiSanBayDi] = useState(false);
   const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
 
-  const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
-
   useEffect(() => {
     const tuKhoa = from.trim();
 
-    if (!tuKhoa) {
+    if (!tuKhoa || /^[a-z]{3}$/i.test(tuKhoa)) {
       setGoiYSanBayDi([]);
       setDangTaiSanBayDi(false);
       return;
@@ -78,7 +76,7 @@ export function FlightSearchPanel() {
   useEffect(() => {
     const tuKhoa = to.trim();
 
-    if (!tuKhoa) {
+    if (!tuKhoa || /^[a-z]{3}$/i.test(tuKhoa)) {
       setGoiYSanBayDen([]);
       setDangTaiSanBayDen(false);
       return;
@@ -176,14 +174,14 @@ export function FlightSearchPanel() {
           <span className="panel-kicker">Tìm chuyến bay</span>
           <h2>Đặt vé nhanh cho hành trình nội địa</h2>
         </div>
-        <div className="search-mini-metrics">
+        <div className="search-mini-metrics" aria-label="Thông tin dịch vụ">
           <div>
             <strong>15&apos;</strong>
             <span>Giữ chỗ</span>
           </div>
           <div>
             <strong>24h</strong>
-            <span>Mở làm thủ tục</span>
+            <span title="Mở làm thủ tục">Mở check-in</span>
           </div>
         </div>
       </div>
@@ -198,10 +196,6 @@ export function FlightSearchPanel() {
             {tripLabels[item]}
           </button>
         ))}
-      </div>
-      <div className="search-note">
-        Bạn đang chọn <strong>{tripLabels[tripType]}</strong>. Hiện có thể tìm vé cho một chiều và
-        khứ hồi; hành trình nhiều chặng sẽ được bổ sung sau.
       </div>
       <div className="route-pair">
         <label className="field route-field">
@@ -219,7 +213,7 @@ export function FlightSearchPanel() {
               </option>
             ))}
           </datalist>
-          <small>
+          <small role="status">
             {dangTaiSanBayDi
               ? "Đang tải gợi ý sân bay..."
               : "Nhập mã hoặc tên thành phố để nhận gợi ý sân bay."}
@@ -248,7 +242,7 @@ export function FlightSearchPanel() {
               </option>
             ))}
           </datalist>
-          <small>
+          <small role="status">
             {dangTaiSanBayDen
               ? "Đang tải gợi ý sân bay..."
               : "Gợi ý sân bay sẽ hiển thị khi bạn nhập mã hoặc tên thành phố."}
@@ -264,35 +258,34 @@ export function FlightSearchPanel() {
             onChange={setDepartureDate}
           />
         </label>
-        <label className="field">
-          <span>Ngày về</span>
-          <DateField
-            min={departureDate || ngayHienTai}
-            value={tripType === "one_way" ? "" : returnDate}
-            disabled={tripType === "one_way"}
-            onChange={setReturnDate}
+        {tripType === "round_trip" ? (
+          <label className="field">
+            <span>Ngày về</span>
+            <DateField
+              min={departureDate || ngayHienTai}
+              value={returnDate}
+              onChange={setReturnDate}
+            />
+          </label>
+        ) : null}
+        <div className="passenger-selector-grid-item">
+          <PassengerSelector
+            counts={{ adult: adultCount, child: childCount, infant: infantCount }}
+            onChange={(counts) => {
+              setAdultCount(counts.adult);
+              setChildCount(counts.child);
+              setInfantCount(counts.infant);
+            }}
           />
-        </label>
-        <PassengerSelector
-          counts={{ adult: adultCount, child: childCount, infant: infantCount }}
-          onChange={(counts) => {
-            setAdultCount(counts.adult);
-            setChildCount(counts.child);
-            setInfantCount(counts.infant);
-          }}
-        />
+        </div>
       </div>
-      <div className="search-assurance">
-        <span className="assurance-chip">Giá tìm thấy luôn mở đầu từ Phổ thông tiết kiệm</span>
-        <span className="assurance-chip">Đổi hoặc hoàn theo điều kiện giá vé</span>
-        <span className="assurance-chip">Hỗ trợ thẻ, chuyển khoản và ví điện tử</span>
-        <span className="assurance-chip">Gửi vé điện tử và thông tin hành trình tự động</span>
+      <div className="search-assurance" aria-label="Quyền lợi khi tìm chuyến">
+        <span className="assurance-chip">Giá từ Phổ thông tiết kiệm</span>
+        <span className="assurance-chip">Đổi/hoàn theo điều kiện vé</span>
+        <span className="assurance-chip">Thanh toán đa dạng</span>
+        <span className="assurance-chip">Gửi vé điện tử tự động</span>
       </div>
       <div className="search-footer">
-        <div>
-          <strong>{passengerSummary}</strong>
-          <p>Giữ chỗ trong 15 phút sau khi bạn chọn được chuyến bay phù hợp.</p>
-        </div>
         <button
           type="submit"
           className="button button-primary"

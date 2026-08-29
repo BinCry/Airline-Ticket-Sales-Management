@@ -148,6 +148,7 @@ function SendIcon() {
 
 export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSearchPanelVisible, setIsSearchPanelVisible] = useState(false);
   const [activeMode, setActiveMode] = useState<ChatMode>("support");
   const [draftByMode, setDraftByMode] = useState<Record<ChatMode, string>>({
     support: "",
@@ -169,6 +170,30 @@ export function ChatbotWidget() {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const hasOpenedRef = useRef(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 820px)");
+    const searchPanel = document.querySelector<HTMLElement>(".search-panel");
+
+    if (!searchPanel) {
+      return;
+    }
+
+    const updateVisibility = () => {
+      const rect = searchPanel.getBoundingClientRect();
+      setIsSearchPanelVisible(
+        mediaQuery.matches && rect.bottom > 0 && rect.top < window.innerHeight
+      );
+    };
+
+    updateVisibility();
+    window.addEventListener("resize", updateVisibility);
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateVisibility);
+      window.removeEventListener("scroll", updateVisibility);
+    };
+  }, []);
 
   const activeConfig = chatbotModeConfig[activeMode];
   const activeDraft = draftByMode[activeMode];
@@ -340,7 +365,11 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="chatbot-root">
+    <div
+      className={`chatbot-root${
+        isSearchPanelVisible && !isOpen ? " chatbot-root-search-context" : ""
+      }`}
+    >
       {isOpen ? (
         <div
           id="chatbot-panel"
