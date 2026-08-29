@@ -1,81 +1,29 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export function JourneyPhoneVideo() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
 
-  async function togglePlayback() {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
-    if (video.paused) {
-      try {
-        await video.play();
-      } catch {
-        setIsPlaying(false);
-      }
-
-      return;
-    }
-
-    video.pause();
-  }
-
   function toggleMute() {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
-    video.muted = !video.muted;
-    setIsMuted(video.muted);
+    setIsMuted((currentMuted) => !currentMuted);
   }
 
   return (
-    <div className={`journey-phone-screen${isPlaying ? " is-playing" : ""}`}>
+    <div className="journey-phone-screen">
       <video
-        ref={videoRef}
         className="journey-phone-video"
         src="/video.mp4"
-        poster="/images/airport-terminal.jpg"
-        preload="none"
+        autoPlay
+        loop
+        preload="auto"
         playsInline
-        muted
+        muted={isMuted}
         aria-label="Video trải nghiệm hành trình Vietnam Airlines"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onVolumeChange={(event) => setIsMuted(event.currentTarget.muted)}
       />
-      <div className="journey-phone-overlay" aria-hidden="true" />
-      <span className="journey-phone-label">HÀNH TRÌNH MỖI NGÀY</span>
       <button
         type="button"
-        className={`journey-phone-play${isPlaying ? " is-playing" : ""}`}
-        onClick={() => void togglePlayback()}
-        aria-label={isPlaying ? "Tạm dừng video" : "Phát video"}
-        aria-pressed={isPlaying}
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          {isPlaying ? (
-            <>
-              <path d="M7 6.5v11" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-              <path d="M17 6.5v11" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-            </>
-          ) : (
-            <path d="m9 6 8 6-8 6V6Z" fill="currentColor" />
-          )}
-        </svg>
-      </button>
-      <button
-        type="button"
-        className={`journey-phone-mute${isPlaying ? " is-playing" : ""}`}
+        className="journey-phone-mute"
         onClick={toggleMute}
         aria-label={isMuted ? "Bật tiếng video" : "Tắt tiếng video"}
         aria-pressed={!isMuted}
@@ -93,7 +41,6 @@ export function JourneyPhoneVideo() {
           )}
         </svg>
       </button>
-      <span className="journey-phone-caption">Sẵn sàng cho chuyến bay tiếp theo</span>
     </div>
   );
 }

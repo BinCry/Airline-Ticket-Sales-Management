@@ -233,7 +233,7 @@ export default async function HomePage() {
               </div>
 
               <div className="journey-phone">
-                <div className="journey-phone-speaker" aria-hidden="true" />
+                <div className="journey-phone-island" aria-hidden="true" />
                 <JourneyPhoneVideo />
                 <span className="journey-phone-home" aria-hidden="true" />
               </div>
@@ -1908,16 +1908,45 @@ export default async function HomePage() {
           transform: rotate(1.5deg);
         }
 
-        .journey-phone-speaker {
+        .journey-phone-island {
           position: absolute;
-          z-index: 3;
-          top: 8px;
+          z-index: 4;
+          top: 12px;
           left: 50%;
-          width: 48px;
+          width: 66px;
+          height: 18px;
+          border-radius: 999px;
+          background: #080b0f;
+          box-shadow:
+            inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+            0 2px 7px rgba(3, 10, 17, 0.34);
+          pointer-events: none;
+          transform: translateX(-50%);
+        }
+
+        .journey-phone-island::before {
+          content: "";
+          position: absolute;
+          top: 50%;
+          right: 7px;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 35% 35%, #31516d 0 14%, #13283b 36%, #05080c 72%);
+          box-shadow: inset 0 0 2px rgba(100, 164, 214, 0.38);
+          transform: translateY(-50%);
+        }
+
+        .journey-phone-island::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 10px;
+          width: 34px;
           height: 5px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.38);
-          transform: translateX(-50%);
+          background: rgba(32, 39, 47, 0.58);
+          transform: translateY(-50%);
         }
 
         .journey-phone-screen {
@@ -1936,68 +1965,9 @@ export default async function HomePage() {
           height: 100%;
           object-fit: cover;
           object-position: 50% 58%;
+          filter: brightness(1.08);
         }
 
-        .journey-phone-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(180deg, rgba(9, 34, 56, 0.16), rgba(7, 24, 41, 0.74));
-        }
-
-        .journey-phone-label,
-        .journey-phone-caption {
-          position: absolute;
-          z-index: 1;
-          left: 16px;
-          right: 16px;
-          color: rgba(255, 251, 244, 0.96);
-        }
-
-        .journey-phone-label {
-          top: 24px;
-          font-size: 0.75rem;
-          font-weight: 800;
-          letter-spacing: 0.12em;
-        }
-
-        .journey-phone-caption {
-          bottom: 20px;
-          font-size: 0.88rem;
-          font-weight: 700;
-          line-height: 1.25;
-        }
-
-        .journey-phone-play {
-          position: absolute;
-          z-index: 2;
-          top: 50%;
-          left: 50%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 46px;
-          height: 46px;
-          border: 1px solid rgba(255, 255, 255, 0.72);
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.84);
-          color: #123d69;
-          cursor: pointer;
-          transform: translate(-50%, -50%);
-          transition: opacity 0.2s ease, transform 0.18s ease, background 0.18s ease;
-        }
-
-        .journey-phone-play.is-playing,
-        .journey-phone-mute.is-playing {
-          opacity: 0.22;
-        }
-
-        .journey-phone-play:hover,
-        .journey-phone-play:focus-visible {
-          background: #ffffff;
-          transform: translate(-50%, -50%) scale(1.06);
-        }
-
-        .journey-phone-play:focus-visible,
         .journey-phone-mute:focus-visible {
           outline: 3px solid rgba(255, 255, 255, 0.9);
           outline-offset: 3px;
@@ -2011,14 +1981,14 @@ export default async function HomePage() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 34px;
-          height: 34px;
+          width: 44px;
+          height: 44px;
           border: 1px solid rgba(255, 255, 255, 0.62);
           border-radius: 50%;
           background: rgba(7, 24, 41, 0.5);
           color: #ffffff;
           cursor: pointer;
-          transition: opacity 0.2s ease, transform 0.18s ease, background 0.18s ease;
+          transition: transform 0.18s ease, background 0.18s ease;
         }
 
         .journey-phone-mute:hover,
@@ -2027,21 +1997,9 @@ export default async function HomePage() {
           transform: scale(1.06);
         }
 
-        .journey-phone-play svg,
-        .journey-phone-mute svg {
-          width: 20px;
-          height: 20px;
-        }
-
         .journey-phone-mute svg {
           width: 18px;
           height: 18px;
-        }
-
-        .journey-phone-play svg {
-          width: 20px;
-          height: 20px;
-          margin-left: 2px;
         }
 
         .journey-phone-home {
