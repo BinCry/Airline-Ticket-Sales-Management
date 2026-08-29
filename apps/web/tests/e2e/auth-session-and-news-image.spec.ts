@@ -67,7 +67,7 @@ test("dang nhap xong vao backoffice ngay khong bi bat dang nhap lai", async ({ p
   await page.getByRole("button", { name: "Tiếp tục đăng nhập" }).click();
 
   await expect(page).toHaveURL(/\/backoffice$/);
-  await expect(page.getByText("Công cụ đang khả dụng trong phiên làm việc")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Công cụ của bạn" })).toBeVisible();
 });
 
 test("phien het access token van tu lam moi khi refresh token con song", async ({ page }) => {
@@ -115,7 +115,7 @@ test("phien het access token van tu lam moi khi refresh token con song", async (
   await backofficeLink.click();
 
   await expect(page).toHaveURL(/\/backoffice$/);
-  await expect(page.getByText("Công cụ đang khả dụng trong phiên làm việc")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Công cụ của bạn" })).toBeVisible();
 });
 
 test("route proxy anh bai bao tra anh du phong an toan cho host khong hop le", async ({ request }) => {

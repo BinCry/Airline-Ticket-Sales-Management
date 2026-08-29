@@ -26,9 +26,9 @@ for (const staffCase of staffCases) {
     });
 
     await page.goto("/");
-    await page.locator(".account-menu-trigger").last().click();
+    await page.locator(".account-menu-trigger:visible").click();
 
-    const menu = page.locator(".account-menu-panel").last();
+    const menu = page.locator(".account-menu-panel:visible");
     await expect(menu.getByRole("menuitem", { name: "Thông tin cá nhân" })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "Backoffice" })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "Hành khách" })).toHaveCount(0);
@@ -48,9 +48,9 @@ test("khách hàng không thấy hành khách, thông báo và điểm thưởng
   });
 
   await page.goto("/");
-  await page.locator(".account-menu-trigger").last().click();
+  await page.locator(".account-menu-trigger:visible").click();
 
-  const menu = page.locator(".account-menu-panel").last();
+  const menu = page.locator(".account-menu-panel:visible");
   await expect(menu.getByRole("menuitem", { name: "Thông tin cá nhân" })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "Vé của tôi" })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "Làm thủ tục" })).toBeVisible();

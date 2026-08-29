@@ -672,8 +672,14 @@ export function BackofficeOperationsPageClient() {
     setPendingVoucherAction(`revoke-voucher-${voucherId}`);
     setVoucherErrorMessage(null);
     try {
-      await revokeBackofficeOperationsVoucher(voucherId, accessToken);
-      await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
+      const updatedVoucher = await revokeBackofficeOperationsVoucher(voucherId, accessToken);
+      setVouchers((current) =>
+        current.map((voucher) => (voucher.voucherId === voucherId ? updatedVoucher : voucher))
+      );
+      setVoucherDrafts((current) => ({
+        ...current,
+        [voucherId]: buildVoucherDraft(updatedVoucher)
+      }));
       pushToast({
         title: "Đã thu hồi voucher",
         message: "Voucher đã được chuyển về trạng thái thu hồi an toàn.",
@@ -701,7 +707,12 @@ export function BackofficeOperationsPageClient() {
     setVoucherErrorMessage(null);
     try {
       await hideBackofficeOperationsVoucher(voucher.voucherId, accessToken);
-      await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
+      setVouchers((current) => current.filter((item) => item.voucherId !== voucher.voucherId));
+      setVoucherDrafts((current) => {
+        const next = { ...current };
+        delete next[voucher.voucherId];
+        return next;
+      });
       pushToast({
         title: voucher.status === "REVOKED" ? "Đã ẩn voucher thu hồi" : "Đã xóa lịch sử voucher",
         message:

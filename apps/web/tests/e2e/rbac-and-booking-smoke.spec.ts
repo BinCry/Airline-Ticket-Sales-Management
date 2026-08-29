@@ -92,7 +92,7 @@ test("customer_support vào được support nhưng bị chặn khỏi operation
 
   await page.goto("/backoffice/operations");
   await expect(page).toHaveURL(/\/backoffice$/);
-  await expect(page.getByText("Công cụ đang khả dụng trong phiên làm việc")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Công cụ của bạn" })).toBeVisible();
 });
 
 test("operations_staff vào được admin và operations", async ({ page }) => {
