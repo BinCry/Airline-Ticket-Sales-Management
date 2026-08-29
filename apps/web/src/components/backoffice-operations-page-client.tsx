@@ -264,7 +264,7 @@ export function BackofficeOperationsPageClient() {
   const [voucherDrafts, setVoucherDrafts] = useState<Record<number, BackofficeVoucherUpdateInput>>({});
   const [pendingVoucherAction, setPendingVoucherAction] = useState<string | null>(null);
   const [activeOperationsSection, setActiveOperationsSection] = useState<OperationsNavId>(
-    "operations-overview"
+    "operations-create-flight"
   );
 
   useEffect(() => {
