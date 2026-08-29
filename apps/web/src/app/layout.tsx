@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { AuthSessionKeeper } from "@/components/auth-session-keeper";
 import { ChatbotWidget } from "@/components/chatbot-widget";
+import { RouteFocusManager } from "@/components/route-focus-manager";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ToastProvider } from "@/components/toast-provider";
@@ -51,6 +52,7 @@ export default function RootLayout({
             <ToastProvider />
           </Suspense>
           <AuthSessionKeeper />
+          <RouteFocusManager />
           <SiteHeader />
           <main id="main-content" className="page-main" tabIndex={-1}>{children}</main>
           <SiteFooter />

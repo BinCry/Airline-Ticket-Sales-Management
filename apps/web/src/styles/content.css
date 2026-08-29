@@ -70,6 +70,15 @@
   backdrop-filter: blur(18px);
 }
 
+.backoffice-module-nav-loading {
+  min-height: 60px;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent),
+    var(--surface-soft);
+  background-size: 220% 100%, auto;
+  animation: ui-skeleton-shimmer 1.6s infinite;
+}
+
 .backoffice-module-nav-home,
 .backoffice-module-nav-link {
   display: inline-flex;
@@ -91,6 +100,12 @@
   gap: 8px;
   border: 1px solid var(--line);
   color: var(--brand-primary);
+}
+
+.backoffice-module-nav-home svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 
 .backoffice-module-nav-links {
@@ -240,8 +255,9 @@
     font-size: 0;
   }
 
-  .backoffice-module-nav-home span {
-    font-size: 1rem;
+  .backoffice-module-nav-home svg {
+    width: 20px;
+    height: 20px;
   }
 
   .backoffice-module-shell > .section {

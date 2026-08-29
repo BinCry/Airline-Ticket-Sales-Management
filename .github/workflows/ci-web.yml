@@ -75,7 +75,7 @@ jobs:
 
       - name: Cai trinh duyet Playwright
         working-directory: apps/web
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Chay smoke test E2E
         working-directory: apps/web

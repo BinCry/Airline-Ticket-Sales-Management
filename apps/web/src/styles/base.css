@@ -5,14 +5,14 @@
 }
 
 html {
-  min-width: 320px;
+  overflow-x: clip;
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  min-width: 320px;
-  overflow-x: hidden;
+  min-width: 0;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
@@ -78,4 +78,3 @@ button:disabled,
     transition-duration: 0.01ms !important;
   }
 }
-

@@ -18,7 +18,7 @@ const hiddenModuleKeys = new Set<BackofficeModuleKey>(["cms"]);
 
 export function BackofficeModuleNav() {
   const pathname = usePathname();
-  const [allowedModules, setAllowedModules] = useState<BackofficeModuleKey[]>([]);
+  const [allowedModules, setAllowedModules] = useState<BackofficeModuleKey[] | null>(null);
 
   useEffect(() => {
     function syncPermissions() {
@@ -38,11 +38,18 @@ export function BackofficeModuleNav() {
 
   const visibleModules = useMemo(
     () =>
+      allowedModules === null
+        ? []
+        :
       backofficeModules.filter(
         (module) => allowedModules.includes(module.key) && !hiddenModuleKeys.has(module.key)
       ),
     [allowedModules]
   );
+
+  if (allowedModules === null) {
+    return <div className="backoffice-module-nav backoffice-module-nav-loading" aria-hidden="true" />;
+  }
 
   if (visibleModules.length === 0) {
     return null;
@@ -51,7 +58,9 @@ export function BackofficeModuleNav() {
   return (
     <nav className="backoffice-module-nav" aria-label="Điều hướng phân hệ backoffice">
       <Link href="/backoffice" className="backoffice-module-nav-home" prefetch={false}>
-        <span aria-hidden="true">←</span>
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="m12.5 5-5 5 5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
         Tổng quan
       </Link>
       <div className="backoffice-module-nav-links">

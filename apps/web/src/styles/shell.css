@@ -20,7 +20,7 @@
   z-index: var(--z-header);
   min-height: var(--header-height);
   background: rgba(255, 255, 255, 0.96);
-  border-bottom-color: rgba(18, 61, 105, 0.1);
+  border-bottom: 1px solid rgba(18, 61, 105, 0.1);
   box-shadow: 0 8px 24px rgba(18, 61, 105, 0.06);
 }
 

@@ -46,7 +46,14 @@ export default async function BlogPage() {
               target={article.external ? "_blank" : undefined}
             >
               <div className="travel-news-card-media">
-                <img src={article.image} alt={article.title} loading="lazy" />
+                <img
+                  src={article.image}
+                  alt={article.title}
+                  width={640}
+                  height={410}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div className="travel-news-card-copy">
                 <span className="pill">{article.source}</span>
