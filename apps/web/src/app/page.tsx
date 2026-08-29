@@ -107,11 +107,10 @@ export default async function HomePage() {
         <div className="container hero-grid home-hero-grid">
           <div className="hero-copy hero-copy-rich home-hero-copy">
             <span className="section-eyebrow home-hero-eyebrow">Vietnam Airlines</span>
-            <h1>Đặt vé nội địa linh hoạt, quản lý hành trình thuận tiện từ trước đến sau chuyến bay.</h1>
+            <h1>Đặt vé linh hoạt. Hành trình trong tầm tay.</h1>
             <p>
-              Tìm chuyến bay theo giờ phù hợp, xem rõ ba hạng vé cố định, bổ sung
-              hành lý khi cần, làm thủ tục trực tuyến và nhận hỗ trợ nhanh trong
-              cùng một trải nghiệm thống nhất.
+              Tìm chuyến phù hợp, chọn hạng vé và quản lý mọi bước trước giờ bay
+              trên cùng một trải nghiệm.
             </p>
             <div className="hero-actions home-hero-actions">
               <Link href="/booking" className="button button-primary home-hero-primary">

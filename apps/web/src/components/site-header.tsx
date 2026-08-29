@@ -279,19 +279,24 @@ export function SiteHeader() {
   return (
     <header className={headerClassName}>
       <div className="container nav-row nav-row-compact">
-        <Link href="/" className="brand" aria-label="Vietnam Airlines - Trang chủ">
-          <span className="brand-logo">
-            <Image
-              src="/images/logo-vietnamairlines.jpg"
-              alt=""
-              width={1086}
-              height={159}
-              sizes="(max-width: 640px) 184px, 230px"
-              unoptimized
-              priority
-            />
+        <div className="nav-brand-stack">
+          <Link href="/" className="brand" aria-label="Vietnam Airlines - Trang chủ">
+            <span className="brand-logo">
+              <Image
+                src="/images/logo-vietnamairlines.jpg"
+                alt=""
+                width={1086}
+                height={159}
+                sizes="(max-width: 640px) 164px, 230px"
+                unoptimized
+                priority
+              />
+            </span>
+          </Link>
+          <span className="nav-language-control" aria-label="Ngôn ngữ hiện tại: Tiếng Việt">
+            Tiếng Việt
           </span>
-        </Link>
+        </div>
 
         <nav className="main-nav desktop-main-nav" aria-label="Điều hướng chính">
           {navigationLinks.map((link) => {
@@ -310,10 +315,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="nav-row-actions">
-          <span className="nav-language-control" aria-label="Ngôn ngữ hiện tại: Tiếng Việt">
-            <span aria-hidden="true" className="nav-language-short">VI</span>
-            <span aria-hidden="true" className="nav-language-full">Tiếng Việt</span>
-          </span>
           {accountButtonLabel ? (
             renderAccountPanel("desktop")
           ) : (

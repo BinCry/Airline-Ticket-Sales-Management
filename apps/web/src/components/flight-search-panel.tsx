@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TRIP_TYPES, type AirportOption, type TripType } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
+import { PassengerSelector } from "@/components/passenger-selector";
 import { fetchAirportOptions } from "@/lib/airport-api";
 import {
   taoDuongDanTimChuyenBay,
@@ -125,19 +126,6 @@ export function FlightSearchPanel() {
       resolveRoundTripReturnDate(ngayKhoiHanh, currentReturnDate)
     );
   }, [departureDate, ngayHienTai, tripType]);
-
-  function dieuChinhSoLuong(
-    giaTri: number,
-    giaTriMacDinh: number,
-    soToiThieu: number,
-    soToiDa: number
-  ) {
-    if (!Number.isFinite(giaTri)) {
-      return giaTriMacDinh;
-    }
-
-    return Math.min(Math.max(giaTri, soToiThieu), soToiDa);
-  }
 
   function xuLyDoiChieu() {
     setFrom(to);
@@ -285,47 +273,14 @@ export function FlightSearchPanel() {
             onChange={setReturnDate}
           />
         </label>
-        <div className="field field-inline">
-          <span>Hành khách</span>
-          <div className="counter-grid">
-            <label>
-              Người lớn
-              <input
-                type="number"
-                min={1}
-                max={9}
-                value={adultCount}
-                onChange={(event) =>
-                  setAdultCount(dieuChinhSoLuong(Number(event.target.value), 1, 1, 9))
-                }
-              />
-            </label>
-            <label>
-              Trẻ em
-              <input
-                type="number"
-                min={0}
-                max={8}
-                value={childCount}
-                onChange={(event) =>
-                  setChildCount(dieuChinhSoLuong(Number(event.target.value), 0, 0, 8))
-                }
-              />
-            </label>
-            <label>
-              Em bé
-              <input
-                type="number"
-                min={0}
-                max={8}
-                value={infantCount}
-                onChange={(event) =>
-                  setInfantCount(dieuChinhSoLuong(Number(event.target.value), 0, 0, 8))
-                }
-              />
-            </label>
-          </div>
-        </div>
+        <PassengerSelector
+          counts={{ adult: adultCount, child: childCount, infant: infantCount }}
+          onChange={(counts) => {
+            setAdultCount(counts.adult);
+            setChildCount(counts.child);
+            setInfantCount(counts.infant);
+          }}
+        />
       </div>
       <div className="search-assurance">
         <span className="assurance-chip">Giá tìm thấy luôn mở đầu từ Phổ thông tiết kiệm</span>

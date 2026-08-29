@@ -15,6 +15,7 @@ import {
 } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
+import { PassengerSelector } from "@/components/passenger-selector";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { fetchAirportOptions } from "@/lib/airport-api";
@@ -123,68 +124,12 @@ const routePresets = [
   { from: "SGN", to: "HPH", label: "TP. Hồ Chí Minh → Hải Phòng" }
 ] as const;
 
-type NhomHanhKhach = "adult" | "child" | "infant";
-
 interface SearchResultsPageClientProps {
   criteria: ApiFlightSearchCriteria;
   notice: string | null;
   searchData: ApiFlightSearchResponse | null;
   searchError: string | null;
   selectedOutboundFlightId: number | null;
-}
-
-interface PassengerCounterCardProps {
-  disabledIncrease: boolean;
-  disabledDecrease: boolean;
-  label: string;
-  note: string;
-  onDecrease: () => void;
-  onIncrease: () => void;
-  value: number;
-}
-
-function PassengerCounterCard({
-  disabledDecrease,
-  disabledIncrease,
-  label,
-  note,
-  onDecrease,
-  onIncrease,
-  value
-}: PassengerCounterCardProps) {
-  return (
-    <article className="passenger-counter-card">
-      <div className="passenger-counter-copy">
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small>{note}</small>
-      </div>
-      <div className="passenger-stepper">
-        <button
-          type="button"
-          className="passenger-stepper-button"
-          onClick={onDecrease}
-          disabled={disabledDecrease}
-          aria-label={`Giảm số lượng ${label.toLowerCase()}`}
-        >
-          −
-        </button>
-        <button
-          type="button"
-          className="passenger-stepper-button"
-          onClick={onIncrease}
-          disabled={disabledIncrease}
-          aria-label={`Tăng số lượng ${label.toLowerCase()}`}
-        >
-          +
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function tongHanhKhach(adultCount: number, childCount: number, infantCount: number): number {
-  return adultCount + childCount + infantCount;
 }
 
 function dinhDangNgay(value: string): string {
@@ -599,83 +544,8 @@ export function SearchResultsPageClient({
       : outboundFlightsRaw.find((flight) => flight.flightId === selectedOutboundFlightId) ?? null;
   const thongBaoDieuHuong = hienThiThongBaoDieuHuong(notice);
   const passengerSummary = `${adultCount} người lớn, ${childCount} trẻ em, ${infantCount} em bé`;
-  const tongKhach = tongHanhKhach(adultCount, childCount, infantCount);
   const sanBayDiPhoBien = sanBayPhoBien.slice(0, 6);
   const sanBayDenPhoBien = sanBayPhoBien.filter((sanBay) => sanBay.code !== from).slice(0, 6);
-
-  function coTheTangHanhKhach(nhom: NhomHanhKhach): boolean {
-    if (tongKhach >= 9) {
-      return false;
-    }
-
-    if (nhom === "adult") {
-      return adultCount < 9;
-    }
-
-    if (nhom === "child") {
-      return childCount < 8;
-    }
-
-    return infantCount < 8 && infantCount + 1 <= adultCount;
-  }
-
-  function coTheGiamHanhKhach(nhom: NhomHanhKhach): boolean {
-    if (nhom === "adult") {
-      return adultCount > 1 && adultCount - 1 >= infantCount;
-    }
-
-    if (nhom === "child") {
-      return childCount > 0;
-    }
-
-    return infantCount > 0;
-  }
-
-  function capNhatHanhKhach(nhom: NhomHanhKhach, delta: 1 | -1) {
-    let nextAdultCount = adultCount;
-    let nextChildCount = childCount;
-    let nextInfantCount = infantCount;
-
-    if (nhom === "adult") {
-      if (delta === 1 && !coTheTangHanhKhach("adult")) {
-        return;
-      }
-
-      if (delta === -1 && !coTheGiamHanhKhach("adult")) {
-        return;
-      }
-
-      nextAdultCount += delta;
-    }
-
-    if (nhom === "child") {
-      if (delta === 1 && !coTheTangHanhKhach("child")) {
-        return;
-      }
-
-      if (delta === -1 && !coTheGiamHanhKhach("child")) {
-        return;
-      }
-
-      nextChildCount += delta;
-    }
-
-    if (nhom === "infant") {
-      if (delta === 1 && !coTheTangHanhKhach("infant")) {
-        return;
-      }
-
-      if (delta === -1 && !coTheGiamHanhKhach("infant")) {
-        return;
-      }
-
-      nextInfantCount += delta;
-    }
-
-    setAdultCount(nextAdultCount);
-    setChildCount(nextChildCount);
-    setInfantCount(nextInfantCount);
-  }
 
   function chonSanBay(nhom: "from" | "to", airportCode: string) {
     const maSanBay = airportCode.toUpperCase();
@@ -763,7 +633,7 @@ export function SearchResultsPageClient({
           <div className="search-toolbar-head">
             <div>
               <span className="section-eyebrow">Hành trình bay</span>
-              <h2>Tìm lại chuyến bay</h2>
+              <h1 className="search-toolbar-title">Tìm lại chuyến bay</h1>
             </div>
             <div className="toggle-group search-toolbar-trip-type">
               {TRIP_TYPES.map((item) => (
@@ -880,42 +750,14 @@ export function SearchResultsPageClient({
               </div>
             </div>
 
-            <div className="search-toolbar-passenger-panel">
-              <div className="search-toolbar-passenger-head">
-                <span className="search-toolbar-support-title">Hành khách: {tongKhach} khách</span>
-                <small className="search-toolbar-passenger-note">Tối đa 9 khách</small>
-              </div>
-
-              <div className="passenger-counter-grid">
-                <PassengerCounterCard
-                  label="Người lớn"
-                  note="≥ 12 tuổi"
-                  value={adultCount}
-                  disabledDecrease={!coTheGiamHanhKhach("adult")}
-                  disabledIncrease={!coTheTangHanhKhach("adult")}
-                  onDecrease={() => capNhatHanhKhach("adult", -1)}
-                  onIncrease={() => capNhatHanhKhach("adult", 1)}
-                />
-                <PassengerCounterCard
-                  label="Trẻ em"
-                  note="2 - 11 tuổi"
-                  value={childCount}
-                  disabledDecrease={!coTheGiamHanhKhach("child")}
-                  disabledIncrease={!coTheTangHanhKhach("child")}
-                  onDecrease={() => capNhatHanhKhach("child", -1)}
-                  onIncrease={() => capNhatHanhKhach("child", 1)}
-                />
-                <PassengerCounterCard
-                  label="Em bé"
-                  note="< 2 tuổi"
-                  value={infantCount}
-                  disabledDecrease={!coTheGiamHanhKhach("infant")}
-                  disabledIncrease={!coTheTangHanhKhach("infant")}
-                  onDecrease={() => capNhatHanhKhach("infant", -1)}
-                  onIncrease={() => capNhatHanhKhach("infant", 1)}
-                />
-              </div>
-            </div>
+            <PassengerSelector
+              counts={{ adult: adultCount, child: childCount, infant: infantCount }}
+              onChange={(counts) => {
+                setAdultCount(counts.adult);
+                setChildCount(counts.child);
+                setInfantCount(counts.infant);
+              }}
+            />
           </div>
 
           <div className="search-toolbar-action-row">
@@ -1086,23 +928,28 @@ export function SearchResultsPageClient({
             />
             <div className="card-grid card-grid-3 fare-comparison-grid">
               {searchData.fares.map((fare) => (
-                <article key={fare.title} className={`surface-card fare-card ${layLopMauGoiGia(fare.fareFamily)}`}>
-                  <div className="fare-card-image">
-                    <Image
-                      src={fareImageMap[fare.fareFamily].src}
-                      alt={fareImageMap[fare.fareFamily].alt}
-                      fill
-                      sizes="(max-width: 820px) 100vw, 360px"
-                    />
-                  </div>
-                  <span className="pill fare-pill">{fare.title}</span>
-                  <strong className="fare-price">{formatCurrency(fare.price)}</strong>
+                <details key={fare.title} className={`surface-card fare-card ${layLopMauGoiGia(fare.fareFamily)}`}>
+                  <summary className="fare-card-summary">
+                    <div className="fare-card-image">
+                      <Image
+                        src={fareImageMap[fare.fareFamily].src}
+                        alt={fareImageMap[fare.fareFamily].alt}
+                        fill
+                        sizes="(max-width: 820px) 120px, 360px"
+                      />
+                    </div>
+                    <div className="fare-card-summary-copy">
+                      <span className="pill fare-pill">{fare.title}</span>
+                      <strong className="fare-price">{formatCurrency(fare.price)}</strong>
+                      <small className="fare-card-expand-label">Xem quyền lợi</small>
+                    </div>
+                  </summary>
                   <ul className="list-clean">
                     {fare.perks.map((perk) => (
                       <li key={perk}>{perk}</li>
                     ))}
                   </ul>
-                </article>
+                </details>
               ))}
             </div>
           </>

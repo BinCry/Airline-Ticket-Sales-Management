@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/toast-provider";
 
 import "./globals.css";
 import "../styles/shell.css";
+import "../styles/journey.css";
 
 export const metadata: Metadata = {
   title: "Vietnam Airlines",

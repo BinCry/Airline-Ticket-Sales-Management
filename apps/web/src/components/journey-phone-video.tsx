@@ -45,7 +45,7 @@ export function JourneyPhoneVideo() {
         className="journey-phone-video"
         src="/video.mp4"
         poster="/images/airport-terminal.jpg"
-        preload="metadata"
+        preload="none"
         playsInline
         muted
         aria-label="Video trải nghiệm hành trình Vietnam Airlines"

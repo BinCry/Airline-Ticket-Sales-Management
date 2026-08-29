@@ -14,6 +14,7 @@ import type {
 
 import { DateField } from "@/components/date-field";
 import { SectionHeading } from "@/components/section-heading";
+import { Stepper } from "@/components/ui/primitives";
 import { canAccessBackofficeModule } from "@/lib/access-control";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import {
@@ -484,10 +485,20 @@ export function BookingPageClient() {
         <div className="page-hero-card booking-flow-hero">
           <div>
             <span className="section-eyebrow">Đặt vé</span>
-            <h1 className="page-title">Chọn hạng vé và ghế theo từng hành khách trước khi giữ chỗ.</h1>
+            <h1 className="page-title">Thông tin hành khách và chỗ ngồi</h1>
             <p className="page-hero-copy">
-              Kiểm tra hành trình, nhập thông tin hành khách, chọn hạng vé phù hợp cho từng người và chốt ghế riêng ở từng chặng trước khi thanh toán.
+              Kiểm tra hành trình, chọn hạng vé và ghế trước khi giữ chỗ.
             </p>
+            <div className="booking-flow-progress">
+              <Stepper
+                current={1}
+                items={[
+                  { id: "flight", label: "Chuyến bay" },
+                  { id: "passenger", label: "Hành khách" },
+                  { id: "payment", label: "Thanh toán" }
+                ]}
+              />
+            </div>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Giữ chỗ trong 15 phút</span>

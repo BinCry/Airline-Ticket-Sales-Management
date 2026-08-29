@@ -34,21 +34,40 @@
   padding: 8px 0;
 }
 
-.nav-row-compact > .brand {
+.nav-brand-stack {
   grid-area: brand;
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 2px;
   width: 100%;
   max-width: 230px;
 }
 
-.nav-row-compact .brand-logo {
+.nav-brand-stack > .brand,
+.nav-brand-stack .brand-logo {
   width: 100%;
+}
+
+.nav-brand-stack > .brand {
+  grid-area: auto;
+  max-width: none;
+  order: 0;
+}
+
+.nav-brand-stack > .nav-language-control {
+  order: 1;
 }
 
 .desktop-main-nav {
   grid-area: nav;
   justify-self: center;
   margin: 0;
+  width: fit-content;
   overflow: visible;
+  border-color: rgba(18, 61, 105, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(18, 61, 105, 0.05);
 }
 
 .nav-row-compact > .nav-row-actions {
@@ -64,18 +83,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--brand-primary-soft);
   color: var(--brand-primary);
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.nav-language-short {
-  display: none;
 }
 
 .nav-row-compact .nav-action-button,
@@ -231,18 +247,8 @@
     font-size: 0.8rem;
   }
 
-  .nav-language-full,
   .nav-row-compact .nav-row-actions > .button-secondary[href="/register"] {
     display: none;
-  }
-
-  .nav-language-short {
-    display: inline;
-  }
-
-  .nav-language-control {
-    width: 40px;
-    padding: 0;
   }
 }
 
@@ -261,8 +267,8 @@
     padding: 6px 0;
   }
 
-  .nav-row-compact > .brand {
-    width: min(184px, 100%);
+  .nav-brand-stack {
+    width: min(164px, 100%);
     max-width: 100%;
   }
 
@@ -278,19 +284,15 @@
     gap: 6px;
   }
 
-  .nav-language-control {
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0;
-  }
-
-  .nav-language-full {
-    display: none;
-  }
-
-  .nav-language-short,
   .mobile-menu-button {
     display: inline-flex;
+  }
+
+  .nav-language-control {
+    min-height: 18px;
+    margin-left: 5px;
+    padding-inline: 6px;
+    font-size: 0.64rem;
   }
 
   .mobile-menu-button {
@@ -353,8 +355,8 @@
 }
 
 @media (max-width: 390px) {
-  .nav-row-compact > .brand {
-    width: min(158px, 100%);
+  .nav-brand-stack {
+    width: min(152px, 100%);
   }
 
   .mobile-menu-button span {

@@ -8,6 +8,7 @@ import type { ApiPaymentSessionResponse } from "@qlvmb/shared-types";
 
 import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
+import { Stepper } from "@/components/ui/primitives";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
@@ -469,13 +470,20 @@ export default function BookingCheckoutPage() {
         <div className="page-hero-card booking-flow-hero">
           <div>
             <span className="section-eyebrow">Thanh toán</span>
-            <h1 className="page-title">
-              Xác nhận thanh toán cho mã đặt chỗ {bookingCode || "..."}
-            </h1>
+            <h1 className="page-title">Thanh toán đặt chỗ {bookingCode || "..."}</h1>
             <p className="page-hero-copy">
-              Thanh toán để xuất vé, gửi thông tin hành trình qua email và mở các bước tự
-              phục vụ sau bán.
+              Hoàn tất giao dịch để nhận vé và thông tin hành trình qua email.
             </p>
+            <div className="booking-flow-progress">
+              <Stepper
+                current={2}
+                items={[
+                  { id: "flight", label: "Chuyến bay" },
+                  { id: "passenger", label: "Hành khách" },
+                  { id: "payment", label: "Thanh toán" }
+                ]}
+              />
+            </div>
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Bước thanh toán</span>
