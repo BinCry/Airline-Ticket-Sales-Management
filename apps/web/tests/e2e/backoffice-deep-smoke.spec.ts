@@ -677,8 +677,11 @@ test("backoffice operations thu hồi rồi xóa voucher đã thu hồi", async 
 
   const voucherCard = page.locator("article", { hasText: "OPS52026" }).first();
   await expect(voucherCard).toBeVisible();
+  page.once("dialog", async (dialog) => {
+    await dialog.accept();
+  });
   await voucherCard.getByRole("button", { name: "Thu hồi voucher" }).click();
-  await expect(voucherCard).toContainText("Đã thu hồi");
+  await expect(voucherCard.locator(".result-top")).toContainText("Đã thu hồi");
   await expect(voucherCard.getByRole("button", { name: "Xóa khỏi danh sách" })).toBeVisible();
 
   page.once("dialog", async (dialog) => {
