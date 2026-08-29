@@ -1,0 +1,263 @@
+.section-heading h1,
+.section-heading h2,
+.section-heading h3 {
+  margin: 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: var(--title-section);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.travel-news-grid {
+  align-items: stretch;
+}
+
+.travel-news-card {
+  min-width: 0;
+  height: 100%;
+}
+
+.travel-news-card-copy {
+  grid-template-rows: auto auto 1fr auto;
+}
+
+.travel-news-card-copy h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.travel-news-card-copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.support-note-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.support-note-card {
+  min-width: 0;
+}
+
+.backoffice-module-shell {
+  min-width: 0;
+}
+
+.backoffice-module-shell-nav {
+  position: sticky;
+  top: var(--site-header-height, 76px);
+  z-index: 24;
+  padding-top: 12px;
+}
+
+.backoffice-module-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-strong) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.backoffice-module-nav-home,
+.backoffice-module-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 750;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.backoffice-module-nav-home {
+  flex: 0 0 auto;
+  gap: 8px;
+  border: 1px solid var(--line);
+  color: var(--brand-primary);
+}
+
+.backoffice-module-nav-links {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.backoffice-module-nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.backoffice-module-nav-link:hover,
+.backoffice-module-nav-link:focus-visible,
+.backoffice-module-nav-home:hover,
+.backoffice-module-nav-home:focus-visible {
+  background: var(--surface-soft);
+  color: var(--brand-primary);
+}
+
+.backoffice-module-nav-link.active {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+.backoffice-module-shell > .section {
+  padding-top: clamp(26px, 4vw, 52px);
+}
+
+.module-card {
+  min-width: 0;
+  min-height: 280px;
+}
+
+.module-card h3 {
+  text-wrap: balance;
+}
+
+@media (max-width: 1024px) {
+  .travel-news-grid,
+  .promo-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .support-note-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .support-summary-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "actions"
+      "contact";
+  }
+
+  .support-contact-panel {
+    border-top: 1px solid rgba(18, 61, 105, 0.1);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .travel-news-grid,
+  .promo-card-grid,
+  .support-note-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .travel-news-grid,
+  .promo-card-grid {
+    gap: 16px;
+  }
+
+  .travel-news-card-media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .travel-news-card-copy {
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .travel-news-card-copy h3 {
+    -webkit-line-clamp: 2;
+  }
+
+  .travel-news-card-copy p {
+    -webkit-line-clamp: 3;
+  }
+
+  .support-summary-panel {
+    gap: 20px;
+  }
+
+  .support-summary-copy {
+    padding: 24px 20px 4px;
+  }
+
+  .support-summary-panel .page-title {
+    max-width: none;
+  }
+
+  .support-action-list {
+    margin-inline: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(18, 61, 105, 0.1);
+    border-radius: 16px;
+  }
+
+  .support-action-link {
+    grid-template-columns: 34px minmax(0, 1fr) 20px;
+    gap: 12px;
+    min-height: 76px;
+    padding: 14px;
+  }
+
+  .support-action-link span {
+    display: none;
+  }
+
+  .support-contact-panel {
+    padding: 18px;
+  }
+
+  .backoffice-module-shell-nav {
+    top: var(--site-header-height-mobile, 65px);
+    padding: 8px 12px 0;
+  }
+
+  .backoffice-module-nav {
+    gap: 6px;
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .backoffice-module-nav-home,
+  .backoffice-module-nav-link {
+    min-height: 40px;
+    padding-inline: 12px;
+    font-size: 0.78rem;
+  }
+
+  .backoffice-module-nav-home {
+    font-size: 0;
+  }
+
+  .backoffice-module-nav-home span {
+    font-size: 1rem;
+  }
+
+  .backoffice-module-shell > .section {
+    padding-top: 24px;
+  }
+
+  .module-card {
+    min-height: 0;
+  }
+
+  .module-card .list-clean {
+    display: none;
+  }
+
+  .backoffice-module-shell .table-card,
+  .backoffice-module-shell .surface-card {
+    max-width: 100%;
+  }
+}

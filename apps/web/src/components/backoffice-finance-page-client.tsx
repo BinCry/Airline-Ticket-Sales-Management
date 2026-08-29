@@ -149,6 +149,7 @@ export function BackofficeFinancePageClient() {
           eyebrow="Backoffice tài chính"
           title="Quản lý yêu cầu hoàn vé"
           description="Nhân viên chăm sóc khách hàng có thể rà soát, duyệt hoặc từ chối yêu cầu hoàn tiền ngay trên một bảng dữ liệu duy nhất."
+          level={1}
         />
 
         <article className="table-card finance-table-card">

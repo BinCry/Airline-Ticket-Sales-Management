@@ -1,8 +1,10 @@
 import { Suspense } from "react";
+import type { ReactNode } from "react";
 
 import { notFound } from "next/navigation";
 
 import { BackofficeAdminPageClient } from "@/components/backoffice-admin-page-client";
+import { BackofficeModuleShell } from "@/components/backoffice-module-shell";
 import { BackofficeCmsPageClient } from "@/components/backoffice-cms-page-client";
 import { BackofficeFinancePageClient } from "@/components/backoffice-finance-page-client";
 import { BackofficeOperationsPageClient } from "@/components/backoffice-operations-page-client";
@@ -28,26 +30,37 @@ export default async function BackofficeModulePage({ params }: ModulePageProps) 
     notFound();
   }
 
+  let content: ReactNode;
+
   switch (module) {
     case "sales":
-      return (
+      content = (
         <Suspense fallback={null}>
           <BackofficeSalesPageClient />
         </Suspense>
       );
+      break;
     case "support":
-      return <BackofficeSupportPageClient />;
+      content = <BackofficeSupportPageClient />;
+      break;
     case "finance":
-      return <BackofficeFinancePageClient />;
+      content = <BackofficeFinancePageClient />;
+      break;
     case "operations":
-      return <BackofficeOperationsPageClient />;
+      content = <BackofficeOperationsPageClient />;
+      break;
     case "revenue":
-      return <BackofficeRevenuePageClient />;
+      content = <BackofficeRevenuePageClient />;
+      break;
     case "cms":
-      return <BackofficeCmsPageClient />;
+      content = <BackofficeCmsPageClient />;
+      break;
     case "admin":
-      return <BackofficeAdminPageClient />;
+      content = <BackofficeAdminPageClient />;
+      break;
     default:
       notFound();
   }
+
+  return <BackofficeModuleShell>{content}</BackofficeModuleShell>;
 }

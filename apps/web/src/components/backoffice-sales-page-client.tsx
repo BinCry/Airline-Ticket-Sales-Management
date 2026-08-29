@@ -173,6 +173,7 @@ export function BackofficeSalesPageClient() {
           eyebrow="Backoffice bán vé"
           title="Đặt vé hộ, tra cứu booking và xuất vé ngay tại một màn hình"
           description="Nhân sự chăm sóc khách hàng có thể mở luồng tìm chuyến bay, chọn ghế, tạo booking hộ rồi quay lại đây để theo dõi trạng thái thanh toán và xuất vé."
+          level={1}
         />
 
         {errorMessage ? (

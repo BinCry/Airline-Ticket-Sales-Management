@@ -32,8 +32,9 @@ export default async function BlogPage() {
         <div id="bai-viet" />
         <SectionHeading
           eyebrow="Tin du lịch mới"
-          title="Danh sách bài báo du lịch đang được cập nhật từ nguồn tin tiếng Việt"
-          description="Trang này gom nhiều bài báo du lịch để bạn theo dõi nhanh các điểm đến, trải nghiệm nghỉ dưỡng và xu hướng đi lại mới."
+          title="Cẩm nang và tin du lịch mới"
+          description="Chín gợi ý mới nhất về điểm đến, trải nghiệm và hành trình bay."
+          level={1}
         />
         <div className="card-grid card-grid-3 travel-news-grid">
           {travelArticles.map((article) => (

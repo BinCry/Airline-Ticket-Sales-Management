@@ -658,6 +658,13 @@ export function BackofficeOperationsPageClient() {
       return;
     }
 
+    const shouldRevoke = window.confirm(
+      "Thu hồi voucher này? Hội viên sẽ không thể tiếp tục sử dụng voucher sau thao tác này."
+    );
+    if (!shouldRevoke) {
+      return;
+    }
+
     setPendingVoucherAction(`revoke-voucher-${voucherId}`);
     setVoucherErrorMessage(null);
     try {
@@ -714,6 +721,7 @@ export function BackofficeOperationsPageClient() {
             eyebrow="Backoffice điều hành"
             title="Vận hành chuyến bay, trạng thái bán và voucher hội viên"
             description="Nhóm operations có thể tạo chuyến, hủy chuyến, ẩn chuyến đã hủy, đồng thời cấp và quản lý voucher đúng theo quy trình vận hành."
+            level={1}
           />
         </div>
 

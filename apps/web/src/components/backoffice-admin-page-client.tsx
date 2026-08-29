@@ -209,6 +209,7 @@ export function BackofficeAdminPageClient() {
           eyebrow="Backoffice quản trị"
           title="Theo dõi chỉ số vận hành và quản lý tài khoản nội bộ"
           description="Dữ liệu dưới đây lấy trực tiếp từ booking, refund, notification outbox và nhật ký thao tác."
+          level={1}
         />
 
         {errorMessage ? (

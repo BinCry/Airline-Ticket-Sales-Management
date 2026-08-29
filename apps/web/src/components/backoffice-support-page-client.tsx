@@ -102,6 +102,7 @@ export function BackofficeSupportPageClient() {
           eyebrow="Backoffice hỗ trợ"
           title="Theo dõi và gửi lại email vé"
           description="Nhân viên chăm sóc khách hàng có thể rà soát toàn bộ email vé đã gửi, đang chờ gửi hoặc bị lỗi."
+          level={1}
         />
 
         <article className="table-card support-table-card">

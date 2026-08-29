@@ -245,6 +245,7 @@ export function BackofficeCmsPageClient() {
           eyebrow="Backoffice nội dung"
           title="Biên tập và phát hành nội dung công khai"
           description="Tạo mới, chỉnh sửa, phát hành hoặc lưu trữ mềm các mục banner, bài viết và FAQ đang dùng cho website."
+          level={1}
         />
 
         {errorMessage ? (

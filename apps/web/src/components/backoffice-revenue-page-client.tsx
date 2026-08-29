@@ -211,6 +211,7 @@ export function BackofficeRevenuePageClient() {
           eyebrow="Backoffice vận hành"
           title="Dashboard quản lý doanh thu"
           description="Theo dõi doanh thu thực theo công thức tổng tiền vé đã thanh toán trừ tổng tiền vé đã hoàn tiền, gom nhóm theo thời gian để đội vận hành nắm biến động nhanh."
+          level={1}
         />
 
         <div className="revenue-toolbar">
