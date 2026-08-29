@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { ToastProvider } from "@/components/toast-provider";
 
 import "./globals.css";
+import "../styles/shell.css";
 
 export const metadata: Metadata = {
   title: "Vietnam Airlines",
@@ -38,15 +39,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang="vi" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
+        <a className="skip-link" href="#main-content">
+          Chuyển đến nội dung chính
+        </a>
         <div className="site-shell">
           <Suspense>
             <ToastProvider />
           </Suspense>
           <AuthSessionKeeper />
           <SiteHeader />
-          <main className="page-main">{children}</main>
+          <main id="main-content" className="page-main" tabIndex={-1}>{children}</main>
           <SiteFooter />
           <ChatbotWidget />
         </div>

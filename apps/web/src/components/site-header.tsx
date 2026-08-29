@@ -14,10 +14,22 @@ import {
 } from "@/lib/auth-session";
 import { hasAnyBackofficeAccess, ROLE_LABELS } from "@/lib/access-control";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { utilityLinks } from "@/lib/public-content";
 import { buildMainNavigation, isMainNavigationLinkActive } from "@/lib/site-navigation";
+import { Drawer } from "@/components/ui/overlays";
 
 const DEFAULT_AVATAR_URL = "/images/default-avatar.svg";
+
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      {open ? (
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      ) : (
+        <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}
 
 function resolveAvatarUrl(avatarUrl: string | null | undefined) {
   if (!avatarUrl) {
@@ -61,6 +73,7 @@ export function SiteHeader() {
       if (
         isMobileOpen &&
         !event.target.closest(".nav-cluster") &&
+        !event.target.closest(".mobile-drawer-shell") &&
         !event.target.closest(".mobile-menu-button")
       ) {
         setIsMobileOpen(false);
@@ -265,86 +278,42 @@ export function SiteHeader() {
 
   return (
     <header className={headerClassName}>
-      <div className="container nav-row">
-        <div className="nav-row-primary">
-          <Link href="/" className="brand">
-            <span className="brand-logo">
-              <Image
-                src="/images/logo-vietnamairlines.jpg"
-                alt="Logo Vietnam Airlines"
-                width={1086}
-                height={159}
-                sizes="(max-width: 640px) 248px, 280px"
-                unoptimized
-                priority
-              />
-            </span>
-          </Link>
-          <div className="nav-brand-meta">
-            {primaryRoleLabel ? <span className="pill nav-role-pill">{primaryRoleLabel}</span> : null}
-            <div className="nav-meta nav-meta-brand">
-              <span>Trung tâm hỗ trợ</span>
-              <strong>1900 6868</strong>
-            </div>
-            <span className="pill nav-language">Tiếng Việt</span>
-          </div>
-        </div>
-        <div
-          id="site-mobile-navigation"
-          className={isMobileOpen ? "nav-cluster mobile-open" : "nav-cluster"}
-        >
-          <nav className="main-nav" aria-label="Điều hướng chính">
-            {navigationLinks.map((link) => {
-              const isActive = isMainNavigationLinkActive(pathname, link);
+      <div className="container nav-row nav-row-compact">
+        <Link href="/" className="brand" aria-label="Vietnam Airlines - Trang chủ">
+          <span className="brand-logo">
+            <Image
+              src="/images/logo-vietnamairlines.jpg"
+              alt=""
+              width={1086}
+              height={159}
+              sizes="(max-width: 640px) 184px, 230px"
+              unoptimized
+              priority
+            />
+          </span>
+        </Link>
 
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={isActive ? "nav-link active" : "nav-link"}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="nav-actions-wrap">
-            <nav className="mobile-utility-nav" aria-label="Tiện ích nhanh trên di động">
-              {utilityLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="mobile-utility-link">
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="nav-actions">
-              <div className="nav-meta nav-meta-mobile">
-                <span>Trung tâm hỗ trợ</span>
-                <strong>1900 6868</strong>
-              </div>
-              {accountButtonLabel ? (
-                renderAccountPanel("mobile")
-              ) : (
-                <>
-                  <Link href="/login" className="button button-secondary">
-                    Đăng nhập
-                  </Link>
-                  <Link href="/register" className="button button-secondary">
-                    Tạo tài khoản
-                  </Link>
-                </>
-              )}
-              {canOpenBackoffice ? (
-                <Link href="/backoffice" prefetch={false} className="button button-secondary">
-                  Backoffice
-                </Link>
-              ) : null}
-              <Link href="/booking" className="button button-primary">
-                Đặt vé
+        <nav className="main-nav desktop-main-nav" aria-label="Điều hướng chính">
+          {navigationLinks.map((link) => {
+            const isActive = isMainNavigationLinkActive(pathname, link);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={isActive ? "nav-link active" : "nav-link"}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {link.label}
               </Link>
-            </div>
-          </div>
-        </div>
+            );
+          })}
+        </nav>
+
         <div className="nav-row-actions">
+          <span className="nav-language-control" aria-label="Ngôn ngữ hiện tại: Tiếng Việt">
+            <span aria-hidden="true" className="nav-language-short">VI</span>
+            <span aria-hidden="true" className="nav-language-full">Tiếng Việt</span>
+          </span>
           {accountButtonLabel ? (
             renderAccountPanel("desktop")
           ) : (
@@ -383,13 +352,75 @@ export function SiteHeader() {
             className="mobile-menu-button"
             onClick={() => setIsMobileOpen((value) => !value)}
             aria-expanded={isMobileOpen}
-            aria-controls="site-mobile-navigation"
+            aria-controls="site-mobile-drawer"
             aria-label={isMobileOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
           >
-            {isMobileOpen ? "Đóng" : "Menu"}
+            <MenuIcon open={isMobileOpen} />
+            <span>Menu</span>
           </button>
         </div>
       </div>
+
+      <Drawer
+        open={isMobileOpen}
+        onClose={() => setIsMobileOpen(false)}
+        labelId="site-mobile-menu-title"
+      >
+        <div id="site-mobile-drawer" className="mobile-drawer-shell">
+          <div className="mobile-drawer-heading">
+            <div>
+              <span className="section-eyebrow">Vietnam Airlines</span>
+              <h2 id="site-mobile-menu-title">Điều hướng</h2>
+            </div>
+            <button
+              type="button"
+              className="icon-button mobile-drawer-close"
+              onClick={() => setIsMobileOpen(false)}
+              aria-label="Đóng menu điều hướng"
+            >
+              <MenuIcon open />
+            </button>
+          </div>
+
+          <nav className="mobile-drawer-nav" aria-label="Điều hướng chính trên di động">
+            {navigationLinks.map((link) => {
+              const isActive = isMainNavigationLinkActive(pathname, link);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={isActive ? "mobile-drawer-link active" : "mobile-drawer-link"}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <a className="mobile-drawer-support" href="tel:19006868">
+            <span>Trung tâm hỗ trợ</span>
+            <strong>1900 6868</strong>
+          </a>
+
+          <div className="mobile-drawer-actions">
+            {accountButtonLabel ? (
+              <div className="mobile-drawer-account">{renderAccountPanel("mobile")}</div>
+            ) : (
+              <>
+                <Link href="/login" className="button button-secondary">Đăng nhập</Link>
+                <Link href="/register" className="button button-secondary">Tạo tài khoản</Link>
+              </>
+            )}
+            {canOpenBackoffice ? (
+              <Link href="/backoffice" prefetch={false} className="button button-secondary">
+                Backoffice
+              </Link>
+            ) : null}
+            <Link href="/booking" className="button button-primary">Đặt vé</Link>
+          </div>
+        </div>
+      </Drawer>
     </header>
   );
 }

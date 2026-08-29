@@ -12,8 +12,8 @@ import { footerSections } from "@/lib/public-content";
 
 const footerHighlights = [
   "Tổng đài hỗ trợ 1900 6868",
-  "Tra cứu đặt chỗ và làm thủ tục mọi lúc",
-  "Thông báo chuyến bay và hỗ trợ sau bán luôn sẵn sàng"
+  "Tự phục vụ hành trình mọi lúc",
+  "Hỗ trợ trước và sau chuyến bay"
 ];
 
 const officialSocialChannels = [
@@ -65,10 +65,7 @@ export function SiteFooter() {
             />
           </span>
           <div>
-            <p>
-              Hãng hàng không nội địa với dịch vụ đặt vé, quản lý hành trình,
-              hỗ trợ hành khách và vận hành khai thác được kết nối liền mạch.
-            </p>
+            <p>Đặt vé, quản lý hành trình và nhận hỗ trợ trên cùng một trải nghiệm.</p>
           </div>
         </div>
         <div className="footer-highlight-list">
@@ -81,8 +78,13 @@ export function SiteFooter() {
       </div>
       <div className="container footer-grid">
         {footerSections.map((column) => (
-          <section key={column.title} className="footer-section">
-            <h3>{column.title}</h3>
+          <details key={column.title} className="footer-section">
+            <summary>
+              <span>{column.title}</span>
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                <path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </summary>
             <ul className="footer-links">
               {column.links.map((link) => (
                 <li key={link.href}>
@@ -90,7 +92,7 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
-          </section>
+          </details>
         ))}
       </div>
 
