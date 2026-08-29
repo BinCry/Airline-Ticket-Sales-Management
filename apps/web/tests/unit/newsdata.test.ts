@@ -240,6 +240,50 @@ describe("newsdata", () => {
     expect(articles).toHaveLength(0);
   });
 
+  it("loai bai chi nhac den du lich trong ngu canh doi song khac", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              category: ["lifestyle"],
+              description: "Người bệnh cần ưu tiên rau xanh và thực phẩm ít chất béo khi đi du lịch.",
+              image_url: "https://newsdata.invalid/suc-khoe.jpg",
+              link: "https://vnexpress.net/bi-trao-nguoc-da-day-nen-an-uong-the-nao-khi-di-du-lich-1234567.html",
+              pubDate: "2026-08-29 10:42:00",
+              source_id: "vnexpress",
+              source_name: "VnExpress",
+              title: "Bị trào ngược dạ dày nên ăn uống thế nào khi đi du lịch"
+            },
+            {
+              category: ["lifestyle"],
+              description: "Câu chuyện khác biệt trong cách nhìn về tiền bạc sau chuyến đi.",
+              image_url: "https://newsdata.invalid/tinh-cam.jpg",
+              link: "https://tintuc24h.vn/chia-tay-ban-trai-vi-di-du-lich-hay-mac-ca-1234567.html",
+              pubDate: "2026-08-29 10:41:00",
+              source_id: "tintuc24h",
+              source_name: "Tin tức 24h",
+              title: "Chia tay bạn trai vì đi du lịch hay mặc cả"
+            }
+          ],
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getTravelArticles(2, true);
+
+    expect(articles).toHaveLength(0);
+  });
+
   it("loai lai bai khi metadata goc thay tieu de du lich bang noi dung ngoai le", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
@@ -305,7 +349,7 @@ describe("newsdata", () => {
       pubDate: `2026-08-28 10:${String(42 - index).padStart(2, "0")}:00`,
       source_id: "tuoitre",
       source_name: "Tuổi Trẻ Online",
-      title: `Kinh nghiệm du lịch mới ${index + 1}`
+      title: `Kinh nghiệm hành trình du lịch mới ${index + 1}`
     }));
 
     global.fetch = vi.fn((input: RequestInfo | URL) => {

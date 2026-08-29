@@ -166,7 +166,49 @@ const travelKeywords = [
   "ẩm thực",
   "lịch trình",
   "đường bay",
-  "chặng bay"
+  "chặng bay",
+  "MICE",
+  "hội nghị",
+  "triển lãm",
+  "du lịch công vụ",
+  "nghỉ lễ",
+  "cuối tuần",
+  "điểm vui chơi"
+];
+
+// "Du lịch" xuất hiện trong rất nhiều bài đời sống không liên quan. Chỉ dùng
+// cụm này khi đi cùng một địa danh hoặc một tín hiệu hành trình cụ thể.
+const travelLocationKeywords = [
+  "việt nam",
+  "hà nội",
+  "tp.hcm",
+  "tp hcm",
+  "hồ chí minh",
+  "sài gòn",
+  "đà nẵng",
+  "huế",
+  "hội an",
+  "nha trang",
+  "phú quốc",
+  "đà lạt",
+  "cần thơ",
+  "hải phòng",
+  "hạ long",
+  "quảng ninh",
+  "sa pa",
+  "sapa",
+  "mộc châu",
+  "quy nhơn",
+  "phan thiết",
+  "vũng tàu",
+  "ninh bình",
+  "phú yên",
+  "quảng bình",
+  "quảng nam",
+  "lào cai",
+  "hà giang",
+  "côn đảo",
+  "bà rịa"
 ];
 
 // Danh sách từ khoá tiêu cực hoặc không liên quan cần lọc bỏ triệt để
@@ -506,6 +548,14 @@ const normalizedTravelKeywords = travelKeywords.map((keyword) =>
   normalizeText(keyword)
 );
 
+const normalizedTravelLocationKeywords = travelLocationKeywords.map((keyword) =>
+  normalizeText(keyword)
+);
+
+const normalizedSpecificTravelKeywords = normalizedTravelKeywords.filter(
+  (keyword) => keyword !== normalizeText("du lịch")
+);
+
 const normalizedBlockedKeywords = blockedKeywords.map((keyword) =>
   normalizeText(keyword)
 );
@@ -601,11 +651,24 @@ function hasTravelSignal(article: NewsDataArticle) {
   const hasTravelKeywordInDetails = normalizedTravelKeywords.some((keyword) =>
     detailContent.includes(keyword)
   );
+  const hasTravelMention = hasTravelKeywordInTitle || hasTravelKeywordInDetails;
+  const hasTravelLocation = normalizedTravelLocationKeywords.some(
+    (keyword) => `${titleContent} ${detailContent}`.includes(keyword)
+  );
+  const hasSpecificTravelSignalInTitle = normalizedSpecificTravelKeywords.some(
+    (keyword) => titleContent.includes(keyword)
+  );
+  const hasSpecificTravelSignalInDetails = normalizedSpecificTravelKeywords.some(
+    (keyword) => detailContent.includes(keyword)
+  );
 
   // Category lifestyle quá rộng nên không được tự quyết định một bài là du lịch.
+  // Cụm "du lịch" đơn độc không đủ mạnh: nó thường xuất hiện trong các bài
+  // sức khỏe, tình cảm hoặc đời sống chỉ nhắc đến việc đi du lịch.
   return (
-    hasTravelKeywordInTitle ||
-    (hasTravelCategory && hasTravelKeywordInDetails)
+    (hasTravelMention && hasTravelLocation) ||
+    hasSpecificTravelSignalInTitle ||
+    (hasTravelCategory && hasSpecificTravelSignalInDetails)
   );
 }
 
