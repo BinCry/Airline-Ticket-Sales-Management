@@ -1,0 +1,109 @@
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --bg: #ffffff;
+  --brand-primary: #123d69;
+  --brand-primary-hover: #184e84;
+  --brand-primary-pressed: #0c3158;
+  --brand-primary-soft: rgba(18, 61, 105, 0.09);
+  --brand-accent: #caa45f;
+  --brand-accent-hover: #b8924b;
+  --brand-accent-soft: rgba(202, 164, 95, 0.16);
+
+  /* Surfaces */
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-strong: #ffffff;
+  --surface-soft: #f4f7fb;
+  --surface-subtle: #f8fafc;
+  --surface-dark: #0c223d;
+  --surface-dark-2: #133357;
+
+  /* Typography */
+  --text: #13243b;
+  --text-primary: #13243b;
+  --text-secondary: #334155;
+  --text-muted: #5e6b7c;
+  --muted: #5e6b7c;
+  --text-inverse: #ffffff;
+  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: var(--font-sans);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --title-card: clamp(1.125rem, 1.5vw, 1.375rem);
+  --title-section: clamp(1.75rem, 2.8vw, 2.75rem);
+  --title-page: clamp(2rem, 3.2vw, 3.25rem);
+  --title-hero: clamp(2.25rem, 4vw, 3.75rem);
+  --title-metric: clamp(1.5rem, 2.3vw, 2.2rem);
+
+  /* Lines and states */
+  --line: rgba(19, 36, 59, 0.11);
+  --line-strong: rgba(19, 36, 59, 0.22);
+  --border-subtle: var(--line);
+  --border-strong: var(--line-strong);
+  --focus-ring: #d3a94c;
+  --success: #0f7a55;
+  --success-soft: rgba(15, 122, 85, 0.13);
+  --status-success: var(--success);
+  --warning: #a85f08;
+  --warning-soft: rgba(168, 95, 8, 0.13);
+  --status-warning: var(--warning);
+  --danger: #b73535;
+  --danger-soft: rgba(183, 53, 53, 0.12);
+  --status-danger: var(--danger);
+  --info: #1464b1;
+  --info-soft: rgba(20, 100, 177, 0.13);
+  --status-info: var(--info);
+
+  /* Legacy aliases */
+  --primary: var(--brand-primary);
+  --primary-2: #1a588b;
+  --primary-soft: var(--brand-primary-soft);
+  --accent: var(--brand-accent);
+  --accent-2: #e1c381;
+  --accent-soft: var(--brand-accent-soft);
+
+  /* Fare families */
+  --fare-economy: #2f7d72;
+  --fare-economy-rgb: 47, 125, 114;
+  --fare-flex: #496f9f;
+  --fare-flex-rgb: 73, 111, 159;
+  --fare-business: #92702f;
+  --fare-business-rgb: 146, 112, 47;
+  --fare-default: #5e6b7c;
+  --fare-default-rgb: 94, 107, 124;
+
+  /* Layout */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --container: min(1240px, calc(100vw - 32px));
+  --content-narrow: min(760px, calc(100vw - 32px));
+  --header-height: 76px;
+
+  /* Shape, depth and motion */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-soft: 0 12px 32px rgba(20, 36, 58, 0.07);
+  --shadow-strong: 0 24px 64px rgba(17, 35, 59, 0.13);
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --z-header: 40;
+  --z-overlay: 70;
+  --z-toast: 90;
+}
+

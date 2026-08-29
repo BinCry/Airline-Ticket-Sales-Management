@@ -1,3 +1,9 @@
+@import "../styles/tokens.css";
+@import "../styles/base.css";
+@import "../styles/components.css";
+
+/* Kept temporarily as a non-matching compatibility reference while page rules migrate. */
+@media not all {
 :root {
   color-scheme: light;
   /* Hệ thống màu thương hiệu Vietnam Airlines & Nền tảng */
@@ -135,6 +141,7 @@ textarea {
 img {
   max-width: 100%;
   display: block;
+}
 }
 
 .site-shell {
@@ -351,6 +358,15 @@ img {
   gap: 2px;
 }
 
+.nav-brand-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  width: 100%;
+  min-width: 0;
+}
+
 .nav-meta-brand {
   margin: 0;
   padding-left: 20px;
@@ -363,6 +379,12 @@ img {
 
 .nav-meta-brand strong {
   font-size: 0.82rem;
+}
+
+.nav-language {
+  min-height: 28px;
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
 .nav-row-actions {
@@ -731,6 +753,10 @@ img {
     padding-left: 0;
   }
 
+  .nav-role-pill {
+    display: none;
+  }
+
   .brand {
     max-width: min(100%, 200px);
     order: 1;
@@ -903,6 +929,20 @@ img {
 .nav-meta-mobile,
 .mobile-utility-nav {
   display: none;
+}
+
+@media (max-width: 820px) {
+  .nav-row-primary .brand {
+    order: 0;
+  }
+
+  .nav-brand-meta {
+    order: 1;
+  }
+
+  .nav-meta-brand {
+    display: none;
+  }
 }
 
 .mobile-utility-link {

@@ -265,24 +265,6 @@ export function SiteHeader() {
 
   return (
     <header className={headerClassName}>
-      <div className="topbar">
-        <div className="container topbar-row">
-          <div className="topbar-badges">
-            {primaryRoleLabel ? <span className="pill">{primaryRoleLabel}</span> : null}
-            <span className="pill">Tiếng Việt</span>
-            <span className="pill topbar-tagline">
-              Đặt vé nội địa, quản lý hành trình và làm thủ tục trực tuyến thuận tiện
-            </span>
-          </div>
-          <nav className="utility-nav" aria-label="Tiện ích nhanh">
-            {utilityLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
       <div className="container nav-row">
         <div className="nav-row-primary">
           <Link href="/" className="brand">
@@ -298,9 +280,13 @@ export function SiteHeader() {
               />
             </span>
           </Link>
-          <div className="nav-meta nav-meta-brand">
-            <span>Trung tâm hỗ trợ</span>
-            <strong>1900 6868</strong>
+          <div className="nav-brand-meta">
+            {primaryRoleLabel ? <span className="pill nav-role-pill">{primaryRoleLabel}</span> : null}
+            <div className="nav-meta nav-meta-brand">
+              <span>Trung tâm hỗ trợ</span>
+              <strong>1900 6868</strong>
+            </div>
+            <span className="pill nav-language">Tiếng Việt</span>
           </div>
         </div>
         <div
