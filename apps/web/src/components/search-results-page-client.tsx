@@ -896,7 +896,11 @@ export function SearchResultsPageClient({
             />
             <div className="card-grid card-grid-3 fare-comparison-grid">
               {searchData.fares.map((fare) => (
-                <details key={fare.title} className={`surface-card fare-card ${layLopMauGoiGia(fare.fareFamily)}`}>
+                <details
+                  key={fare.title}
+                  open
+                  className={`surface-card fare-card ${layLopMauGoiGia(fare.fareFamily)}`}
+                >
                   <summary className="fare-card-summary">
                     <div className="fare-card-image">
                       <Image
@@ -910,6 +914,11 @@ export function SearchResultsPageClient({
                       <span className="pill fare-pill">{fare.title}</span>
                       <strong className="fare-price">{formatCurrency(fare.price)}</strong>
                       <small className="fare-card-expand-label">Xem quyền lợi</small>
+                      <ul className="list-clean fare-card-mobile-perks" aria-label={`Quyền lợi ${fare.title}`}>
+                        {fare.perks.map((perk) => (
+                          <li key={perk}>{perk}</li>
+                        ))}
+                      </ul>
                     </div>
                   </summary>
                   <ul className="list-clean">

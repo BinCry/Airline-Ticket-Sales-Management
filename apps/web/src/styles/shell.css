@@ -109,12 +109,13 @@
 
 .mobile-drawer-shell {
   display: grid;
-  gap: var(--space-5);
+  align-content: start;
+  gap: var(--space-4);
 }
 
 .mobile-drawer-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
 }
@@ -131,9 +132,17 @@
 }
 
 .mobile-drawer-close {
+  display: inline-grid;
+  place-items: center;
   min-width: 44px;
   min-height: 44px;
+  padding: 0;
   border-radius: 999px;
+  line-height: 0;
+}
+
+.mobile-drawer-close svg {
+  display: block;
 }
 
 .mobile-drawer-nav,
@@ -167,25 +176,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 56px;
-  gap: var(--space-4);
-  padding: 10px 14px;
+  min-height: 48px;
+  gap: 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
   background: var(--surface-soft);
 }
 
 .mobile-drawer-support span {
   color: var(--muted);
-  font-size: var(--text-sm);
+  font-size: 0.8rem;
 }
 
 .mobile-drawer-support strong {
   color: var(--brand-primary);
+  font-size: 0.88rem;
+  white-space: nowrap;
 }
 
 .mobile-drawer-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding-top: var(--space-4);
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
@@ -194,6 +206,13 @@
 .mobile-drawer-account .account-menu-wrap,
 .mobile-drawer-account .account-menu-trigger {
   width: 100%;
+}
+
+.mobile-drawer-actions > .button {
+  min-height: 44px;
+  padding-inline: 10px;
+  font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .mobile-drawer-account {
@@ -209,7 +228,8 @@
 
 .mobile-drawer-account .account-menu-trigger {
   display: flex;
-  min-height: 48px;
+  min-height: 44px;
+  padding-inline: 10px;
   box-sizing: border-box;
 }
 
@@ -223,8 +243,33 @@
   width: 100%;
   min-width: 0;
   max-height: none;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 12px;
   box-shadow: none;
+}
+
+.mobile-drawer-account .account-menu-identity {
+  gap: 8px;
+  padding: 2px 2px 8px;
+}
+
+.mobile-drawer-account .account-menu-avatar-large {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+}
+
+.mobile-drawer-account .account-menu-group {
+  gap: 2px;
+  padding-bottom: 6px;
+}
+
+.mobile-drawer-account .account-menu-group a,
+.mobile-drawer-account .account-menu-logout {
+  min-height: 40px;
+  padding-inline: 8px;
+  font-size: 0.84rem;
 }
 
 .footer-section {
@@ -408,7 +453,8 @@
     padding: 0;
   }
 
-  .mobile-drawer-actions {
-    grid-template-columns: 1fr;
+  .mobile-drawer-actions > .button {
+    padding-inline: 8px;
+    font-size: 0.8rem;
   }
 }

@@ -124,12 +124,15 @@ export function PassengerSelector({
             ))}
           </div>
 
-          <button type="button" className="button button-primary" onClick={() => setOpen(false)}>
-            Xong · {total} khách
+          <button
+            type="button"
+            className="button button-primary passenger-selector-confirm"
+            onClick={() => setOpen(false)}
+          >
+            Hoàn tất
           </button>
         </div>
       </Drawer>
     </>
   );
 }
-

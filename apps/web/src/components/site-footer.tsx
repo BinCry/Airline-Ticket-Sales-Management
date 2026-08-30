@@ -10,12 +10,6 @@ import {
 } from "@/components/utility-icons";
 import { footerSections } from "@/lib/public-content";
 
-const footerHighlights = [
-  "Tổng đài hỗ trợ 1900 6868",
-  "Tự phục vụ hành trình mọi lúc",
-  "Hỗ trợ trước và sau chuyến bay"
-];
-
 const officialSocialChannels = [
   {
     name: "Facebook",
@@ -67,13 +61,6 @@ export function SiteFooter() {
           <div>
             <p>Đặt vé, quản lý hành trình và nhận hỗ trợ trên cùng một trải nghiệm.</p>
           </div>
-        </div>
-        <div className="footer-highlight-list">
-          {footerHighlights.map((item) => (
-            <span key={item} className="assurance-chip">
-              {item}
-            </span>
-          ))}
         </div>
       </div>
       <nav className="container footer-grid" aria-label="Điều hướng cuối trang">
@@ -137,9 +124,6 @@ export function SiteFooter() {
         <span>
           © 2026 Vietnam Airlines. Hỗ trợ thanh toán, đổi hoặc hoàn và theo dõi tình
           trạng chuyến bay trên cùng một cổng dịch vụ.
-        </span>
-        <span>
-          Dự án mô phỏng phục vụ khai thác và đặt vé các đường bay nội địa.
         </span>
       </div>
     </footer>

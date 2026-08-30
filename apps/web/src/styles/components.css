@@ -290,13 +290,13 @@
   }
 
   .ui-overlay-drawer .ui-overlay-surface {
-    inset: 0 auto 0 0;
+    inset: 0 0 0 auto;
     width: min(320px, calc(100vw - 24px));
     max-height: 100dvh;
     padding: var(--space-5);
     padding-top: max(var(--space-5), env(safe-area-inset-top));
     padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
-    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   }
 
   .ui-table-region table[data-mobile-stack="true"] thead {

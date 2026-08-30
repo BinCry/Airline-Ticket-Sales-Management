@@ -4513,7 +4513,7 @@ img {
   overflow: hidden;
   min-height: 148px;
   margin: -24px -24px 6px;
-  border-radius: 24px 24px 18px 18px;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
 }
 
 .fare-card-image::after {
@@ -4871,13 +4871,6 @@ thead th {
   line-height: 1.4;
 }
 
-.footer-highlight-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
-
 .footer-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5059,10 +5052,6 @@ thead th {
     align-items: flex-start;
     gap: 12px;
     padding-bottom: 12px;
-  }
-
-  .footer-highlight-list {
-    justify-content: flex-start;
   }
 
   .footer-grid {
