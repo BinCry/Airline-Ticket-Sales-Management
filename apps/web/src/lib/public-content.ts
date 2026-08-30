@@ -57,6 +57,8 @@ export const mainNavigation: SiteLink[] = [
   { label: "Trang chủ", href: "/" },
   { label: "Tìm chuyến bay", href: "/search" },
   { label: "Quản lý đặt chỗ", href: "/manage-booking" },
+  // Bổ sung nút "Làm thủ tục" dẫn tới trang check-in theo yêu cầu
+  { label: "Làm thủ tục", href: "/check-in" },
   { label: "Cẩm nang", href: "/blog" },
   { label: "Hỗ trợ", href: "/support" }
 ];

@@ -305,19 +305,42 @@
   bottom: max(20px, env(safe-area-inset-bottom));
 }
 
-@media (max-width: 1180px) and (min-width: 821px) {
+/* Tối ưu hiển thị thanh điều hướng trên màn hình laptop (1101px - 1280px) */
+@media (max-width: 1280px) and (min-width: 1101px) {
   .nav-row.nav-row-compact {
     grid-template-columns: 190px minmax(0, 1fr) auto;
     gap: 10px;
   }
 
   .desktop-main-nav .nav-link {
-    padding-inline: 9px;
+    padding-inline: 10px;
+    font-size: 0.84rem;
+  }
+
+  .nav-row-compact .nav-action-button {
+    padding-inline: 12px;
+  }
+}
+
+/* Tối ưu hiển thị thanh điều hướng trên laptop nhỏ / tablet ngang (821px - 1100px) */
+@media (max-width: 1100px) and (min-width: 821px) {
+  .nav-row.nav-row-compact {
+    grid-template-columns: 180px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .desktop-main-nav .nav-link {
+    padding-inline: 8px;
     font-size: 0.8rem;
   }
 
   .nav-row-compact .nav-row-actions > .button-secondary[href="/register"] {
     display: none;
+  }
+
+  .nav-row-compact .nav-action-button {
+    padding-inline: 10px;
+    font-size: 0.84rem;
   }
 }
 

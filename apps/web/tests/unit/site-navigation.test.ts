@@ -45,4 +45,23 @@ describe("site-navigation", () => {
     expect(isMainNavigationLinkActive("/manage-booking", quanLyDatChoLink)).toBe(true);
     expect(isMainNavigationLinkActive("/manage-booking", timChuyenBayLink)).toBe(false);
   });
+
+  it("chua nut lam thu tuc o giua quan ly dat cho va cam nang", () => {
+    const labels = mainNavigation.map((item) => item.label);
+    const manageIndex = labels.indexOf("Quản lý đặt chỗ");
+    const checkInIndex = labels.indexOf("Làm thủ tục");
+    const blogIndex = labels.indexOf("Cẩm nang");
+
+    expect(manageIndex).toBeGreaterThan(-1);
+    expect(checkInIndex).toBe(manageIndex + 1);
+    expect(blogIndex).toBe(checkInIndex + 1);
+  });
+
+  it("route check-in to xanh dung tab lam thu tuc", () => {
+    const lamThuTucLink = layLienKetTheoHref("/check-in");
+    const quanLyDatChoLink = layLienKetTheoHref("/manage-booking");
+
+    expect(isMainNavigationLinkActive("/check-in", lamThuTucLink)).toBe(true);
+    expect(isMainNavigationLinkActive("/check-in", quanLyDatChoLink)).toBe(false);
+  });
 });
