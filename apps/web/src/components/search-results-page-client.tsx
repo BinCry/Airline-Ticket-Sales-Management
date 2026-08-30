@@ -813,38 +813,6 @@ export function SearchResultsPageClient({
               </div>
 
               <div className="search-filter-section">
-                <span className="search-filter-title">Ngân sách mở đầu</span>
-                <p className="filter-note filter-note-inline">
-                  Tính theo giá Phổ thông tiết kiệm của từng chuyến bay.
-                </p>
-                <div className={taoLopDanhSachChipBoLoc(Math.max(budgetOptions.length, 1))}>
-                  {budgetOptions.length > 0 ? (
-                    budgetOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={
-                          filterState.budgetId === option.id
-                            ? "assurance-chip filter-chip-button active"
-                            : "assurance-chip filter-chip-button"
-                        }
-                        onClick={() =>
-                          setFilterState((currentState) => ({
-                            ...currentState,
-                            budgetId: currentState.budgetId === option.id ? null : option.id
-                          }))
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="filter-note">Bộ giá sẽ hiện khi có chuyến bay phù hợp.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="search-filter-section">
                 <span className="search-filter-title">Còn ghế</span>
                 <div className={taoLopDanhSachChipBoLoc(minimumSeatOptions.length)}>
                   {minimumSeatOptions.map((value) => (

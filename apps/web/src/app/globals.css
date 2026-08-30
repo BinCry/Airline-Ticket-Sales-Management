@@ -4262,7 +4262,7 @@ img {
 }
 
 .filter-toolbar-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .filter-summary-row {
@@ -5777,6 +5777,10 @@ thead th {
   .fare-comparison-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .filter-toolbar-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
@@ -6723,5 +6727,118 @@ thead th {
   .revenue-chart-point button:hover .revenue-chart-dot,
   .revenue-chart-point button:focus-visible .revenue-chart-dot {
     transform: none;
+  }
+}
+
+/* Bố cục mobile: không để grid desktop ép nội dung thành cột siêu hẹp. */
+@media (max-width: 820px) {
+  .page-hero-card,
+  .booking-flow-layout,
+  .booking-manage-layout,
+  .account-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .page-hero-card .page-title {
+    max-width: none;
+  }
+
+  .booking-fare-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .booking-fare-grid .result-card {
+    padding: 18px;
+  }
+
+  .booking-fare-grid .result-grid-rich {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-summary-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .filter-summary-row .filter-note {
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .result-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result-timeline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .result-timeline > * {
+    min-width: 0;
+  }
+
+  .timeline-stop strong {
+    font-size: clamp(1rem, 4.8vw, 1.2rem);
+  }
+
+  .backoffice-local-nav {
+    margin: 16px 0;
+  }
+
+  .backoffice-local-nav-link {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-hero-card {
+    padding: 20px;
+  }
+
+  .page-hero-stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .page-hero-stat {
+    padding: 14px 16px;
+  }
+
+  .booking-summary-card {
+    padding: 18px;
+  }
+
+  .booking-seat-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .booking-seat-head strong {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 375px) {
+  .booking-fare-grid .result-grid-rich {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .backoffice-local-nav-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    overflow: visible;
+  }
+
+  .backoffice-local-nav-link {
+    width: 100%;
+    padding-inline: 8px;
+    text-align: center;
   }
 }

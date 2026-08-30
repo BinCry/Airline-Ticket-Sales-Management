@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getTravelArticles } from "@/lib/newsdata";
+import {
+  getBlogTravelArticles,
+  getLatestTravelArticles,
+  getTravelArticles
+} from "@/lib/newsdata";
 
 const originalFetch = global.fetch;
 
@@ -457,5 +461,80 @@ describe("newsdata", () => {
 
     expect(articles).toHaveLength(10);
     expect(articles.every((article) => !article.external)).toBe(true);
+  });
+
+  it("giu luoi blog o moc 6 bai khi API chi tra ve 4 bai live", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            "Hành trình du lịch Hà Nội cuối tuần",
+            "Kinh nghiệm làm thủ tục tại sân bay",
+            "Du lịch MICE và hội nghị tại Đà Nẵng",
+            "Hành lý xách tay cần biết trước chuyến bay"
+          ].map((title, index) => ({
+            category: ["lifestyle"],
+            description: "Gợi ý hành trình và trải nghiệm phù hợp cho chuyến đi.",
+            image_url: `https://newsdata.invalid/blog-${index}.jpg`,
+            link: `https://tuoitre.vn/blog-${index}.htm`,
+            pubDate: `2026-08-29 10:${String(42 - index).padStart(2, "0")}:00`,
+            source_id: "tuoitre",
+            source_name: "Tuổi Trẻ Online",
+            title
+          })),
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getBlogTravelArticles(9);
+
+    expect(articles).toHaveLength(6);
+    expect(articles.slice(0, 4).every((article) => article.external)).toBe(true);
+    expect(articles.slice(4).every((article) => !article.external)).toBe(true);
+  });
+
+  it("khong de khu bai viet trang chu bi rong khi API tra ve nguon hop le khac", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    global.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              category: ["lifestyle"],
+              description: "Gợi ý điểm đến và trải nghiệm cho chuyến đi.",
+              image_url: "https://newsdata.invalid/home.jpg",
+              link: "https://danviet.vn/du-lich-ninh-binh-1234567.htm",
+              pubDate: "2026-08-30 10:42:00",
+              source_id: "danviet",
+              source_name: "Báo Dân Việt",
+              title: "Du lịch Ninh Bình: gợi ý hành trình cuối tuần"
+            }
+          ],
+          status: "success"
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json"
+          },
+          status: 200
+        }
+      )
+    ) as typeof fetch;
+
+    const articles = await getLatestTravelArticles(4);
+
+    expect(articles).toHaveLength(4);
+    expect(articles[0].external).toBe(true);
+    expect(articles.slice(1).every((article) => !article.external)).toBe(true);
   });
 });

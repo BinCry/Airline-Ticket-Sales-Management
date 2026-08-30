@@ -111,6 +111,7 @@
 
 .backoffice-module-nav-links {
   display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
@@ -132,6 +133,10 @@
 .backoffice-module-nav-link.active {
   background: var(--brand-primary);
   color: #ffffff;
+}
+
+.backoffice-module-nav-link {
+  flex: 0 0 auto;
 }
 
 .backoffice-module-shell > .section {
@@ -262,6 +267,7 @@
     gap: 6px;
     padding: 6px;
     border-radius: 18px;
+    overflow: hidden;
   }
 
   .backoffice-module-nav-home,
@@ -273,6 +279,11 @@
 
   .backoffice-module-nav-home {
     font-size: 0;
+  }
+
+  .backoffice-module-nav-links {
+    overflow-x: auto;
+    padding-right: 2px;
   }
 
   .backoffice-module-nav-home svg {

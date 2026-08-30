@@ -200,9 +200,28 @@
   grid-column: 1 / -1;
 }
 
-.mobile-drawer-account .account-menu-panel {
+.mobile-drawer-account .account-menu-wrap {
+  display: block;
   position: static;
   width: 100%;
+  max-width: none;
+}
+
+.mobile-drawer-account .account-menu-trigger {
+  display: flex;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.mobile-drawer-account .nav-account-button {
+  max-width: none;
+}
+
+.mobile-drawer-account .account-menu-panel {
+  position: static;
+  display: grid;
+  width: 100%;
+  min-width: 0;
   max-height: none;
   margin-top: 8px;
   box-shadow: none;

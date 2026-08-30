@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { getTravelArticles } from "@/lib/newsdata";
+import { getBlogTravelArticles } from "@/lib/newsdata";
 import { SectionHeading } from "@/components/section-heading";
 import { promotions } from "@/lib/public-content";
 
@@ -24,7 +24,7 @@ const promotionPhotos = [
 export const revalidate = 0;
 
 export default async function BlogPage() {
-  const travelArticles = await getTravelArticles(BLOG_ARTICLE_LIMIT, true);
+  const travelArticles = await getBlogTravelArticles(BLOG_ARTICLE_LIMIT);
 
   return (
     <section className="section">
@@ -273,6 +273,10 @@ export default async function BlogPage() {
             .travel-news-grid,
             .promo-card-grid {
               grid-template-columns: minmax(0, 1fr);
+            }
+
+            .travel-news-card:nth-child(n + 4) {
+              display: none;
             }
 
             .blog-promo-card {

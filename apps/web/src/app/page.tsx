@@ -16,7 +16,7 @@ import {
   quickServices,
   supportChannels
 } from "@/lib/public-content";
-import { getLatestTravelArticles } from "@/lib/newsdata";
+import { getBlogTravelArticles } from "@/lib/newsdata";
 
 const promotionPhotos = [
   { src: "/images/summer-promo.jpg", alt: "Hình minh hoạ chiến dịch mùa hè" },
@@ -109,7 +109,7 @@ const featuredDestinations = [
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const latestArticleShowcase = await getLatestTravelArticles(4);
+  const latestArticleShowcase = await getBlogTravelArticles(9);
 
   return (
     <>
@@ -1399,7 +1399,7 @@ export default async function HomePage() {
 
         .home-latest-articles-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 24px;
         }
 
@@ -2411,6 +2411,10 @@ export default async function HomePage() {
             grid-template-columns: 1fr;
           }
 
+          .home-latest-article-card:nth-child(n + 4) {
+            display: none;
+          }
+
           .home-latest-article-card {
             gap: 14px;
           }
@@ -2462,6 +2466,17 @@ export default async function HomePage() {
             width: 100%;
             height: 148px;
             border-radius: 0 0 22px 22px;
+          }
+
+          .home-promo-card-image,
+          .home-promo-card-media-1 .home-promo-card-image {
+            transform: none;
+          }
+        }
+
+        @media (min-width: 521px) and (max-width: 640px) {
+          .home-latest-article-card:nth-child(n + 4) {
+            display: none;
           }
         }
 

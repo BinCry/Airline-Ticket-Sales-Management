@@ -4,10 +4,11 @@ import { getNewsDataApiKey } from "@/lib/server-env";
 
 const NEWSDATA_ENDPOINT = "https://newsdata.io/api/1/latest";
 const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
-const NEWSDATA_MAX_PAGES = 4;
+const NEWSDATA_MAX_PAGES = 6;
 const ARTICLE_METADATA_REVALIDATE_SECONDS = 60 * 60 * 12;
 const ARTICLE_METADATA_USER_AGENT =
   "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
+const BLOG_ARTICLE_MINIMUM = 6;
 
 const fallbackTravelArticles = [
   {
@@ -939,5 +940,22 @@ export async function getTravelArticles(
 }
 
 export async function getLatestTravelArticles(limit = 4) {
-  return getTravelArticles(limit, false);
+  const articles = await getTravelArticles(limit, true);
+
+  // Khu bài viết trên trang chủ phải luôn có nội dung ở mọi breakpoint.
+  return mergeWithFallback(articles, limit);
+}
+
+export async function getBlogTravelArticles(limit = 9) {
+  const articles = await getTravelArticles(limit, true);
+
+  if (limit < BLOG_ARTICLE_MINIMUM || articles.length >= limit) {
+    return articles.slice(0, limit);
+  }
+
+  // Lưới blog chỉ nhận hai mốc ổn định: 6 bài hoặc đủ 9 bài. Khi nguồn live
+  // chưa cung cấp đủ 6 bài hợp lệ, dùng nội dung dự phòng để không làm vỡ bố cục.
+  const displayLimit = BLOG_ARTICLE_MINIMUM;
+
+  return mergeWithFallback(articles.slice(0, displayLimit), displayLimit);
 }
