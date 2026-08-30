@@ -5,12 +5,6 @@ import { FlightSearchPanel } from "@/components/flight-search-panel";
 import { JourneyPhoneVideo } from "@/components/journey-phone-video";
 import { SectionHeading } from "@/components/section-heading";
 import {
-  HanhLyIcon,
-  LamThuTucIcon,
-  NangHangGheIcon,
-  TroLyHoTroIcon
-} from "@/components/utility-icons";
-import {
   destinations,
   promotions,
   quickServices,
@@ -23,16 +17,6 @@ const promotionPhotos = [
   { src: "/images/member-promo-v2.png", alt: "Hình minh hoạ hội viên Vietnam Airlines" },
   { src: "/images/business-promo.jpg", alt: "Hình minh hoạ doanh nghiệp với dữ liệu tài chính" }
 ] as const;
-
-function getTienIchIcon(title: string) {
-  const normalized = title.toLowerCase();
-
-  if (normalized.includes("hành lý")) return <HanhLyIcon className="tien-ich-icon-svg" />;
-  if (normalized.includes("nâng hạng")) return <NangHangGheIcon className="tien-ich-icon-svg" />;
-  if (normalized.includes("làm thủ tục")) return <LamThuTucIcon className="tien-ich-icon-svg" />;
-
-  return <TroLyHoTroIcon className="tien-ich-icon-svg" />;
-}
 
 const liveOperations = [
   {
@@ -189,9 +173,6 @@ export default async function HomePage() {
                       <span className={`pill tien-ich-tag tien-ich-tag-${index}`}>
                         {index === 0 ? "Đặt vé" : index === 1 ? "Sau bán" : index === 2 ? "Check-in" : "24/7"}
                       </span>
-                      <div className={`tien-ich-icon tien-ich-icon-${index}`} aria-hidden="true">
-                        {getTienIchIcon(service.title)}
-                      </div>
                     </div>
                     <div className="tien-ich-body">
                       <h3 className="tien-ich-title">{service.title}</h3>
@@ -1649,41 +1630,6 @@ export default async function HomePage() {
           background: rgba(20, 100, 177, 0.1);
           color: #125ea8;
           border: 1px solid rgba(20, 100, 177, 0.2);
-        }
-
-        .tien-ich-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
-          color: #ffffff;
-        }
-
-        .tien-ich-icon-svg {
-          width: 20px;
-          height: 20px;
-        }
-
-        .tien-ich-icon-0 {
-          background: linear-gradient(135deg, #123d69, #1e5f9e);
-          box-shadow: 0 6px 14px rgba(18, 61, 105, 0.2);
-        }
-
-        .tien-ich-icon-1 {
-          background: linear-gradient(135deg, #c79838, #e5b85a);
-          box-shadow: 0 6px 14px rgba(199, 152, 56, 0.25);
-        }
-
-        .tien-ich-icon-2 {
-          background: linear-gradient(135deg, #0f8b60, #16a374);
-          box-shadow: 0 6px 14px rgba(15, 139, 96, 0.22);
-        }
-
-        .tien-ich-icon-3 {
-          background: linear-gradient(135deg, #1464b1, #38bdf8);
-          box-shadow: 0 6px 14px rgba(20, 100, 177, 0.22);
         }
 
         .tien-ich-body {
