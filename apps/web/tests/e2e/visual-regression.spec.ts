@@ -1,34 +1,48 @@
 import { expect, test } from "@playwright/test";
 
 test("header giữ đúng nhịp, đường viền và không chồng cụm tác vụ", async ({ page }, testInfo) => {
-  await page.goto("/");
+  // Kiểm tra trên nhiều trang khác nhau bao gồm cả trang có nút Đặt vé
+  const testPaths = ["/", "/manage-booking", "/login"];
 
-  const header = page.locator(".site-header");
-  await expect(header).toBeVisible();
+  for (const path of testPaths) {
+    await page.goto(path);
 
-  const metrics = await header.evaluate((element) => {
-    const headerRect = element.getBoundingClientRect();
-    const navRect = element.querySelector(".desktop-main-nav")?.getBoundingClientRect();
-    const actionsRect = element.querySelector(".nav-actions")?.getBoundingClientRect();
-    const style = getComputedStyle(element);
+    const header = page.locator(".site-header");
+    await expect(header).toBeVisible();
 
-    return {
-      height: headerRect.height,
-      borderWidth: Number.parseFloat(style.borderBottomWidth),
-      navRight: navRect?.right ?? null,
-      actionsLeft: actionsRect?.left ?? null
-    };
-  });
+    const metrics = await header.evaluate((element) => {
+      const headerRect = element.getBoundingClientRect();
+      const desktopNavEl = element.querySelector<HTMLElement>(".desktop-main-nav");
+      const isDesktopNavVisible =
+        desktopNavEl !== null && getComputedStyle(desktopNavEl).display !== "none";
+      const navRect = isDesktopNavVisible ? desktopNavEl.getBoundingClientRect() : null;
+      const actionsRect = (element.querySelector(".nav-row-actions") || element.querySelector(".nav-actions"))?.getBoundingClientRect();
+      const brandRect = element.querySelector(".nav-brand-stack")?.getBoundingClientRect();
+      const style = getComputedStyle(element);
 
-  expect(metrics.borderWidth).toBeGreaterThanOrEqual(1);
-  expect(metrics.height).toBeLessThanOrEqual(testInfo.project.name.includes("mobile") ? 68 : 84);
+      return {
+        height: headerRect.height,
+        borderWidth: Number.parseFloat(style.borderBottomWidth),
+        brandRight: brandRect?.right ?? null,
+        navLeft: navRect?.left ?? null,
+        navRight: navRect?.right ?? null,
+        actionsLeft: actionsRect?.left ?? null
+      };
+    });
 
-  if (metrics.navRight !== null && metrics.actionsLeft !== null) {
-    expect(metrics.navRight).toBeLessThanOrEqual(metrics.actionsLeft);
+    expect(metrics.borderWidth).toBeGreaterThanOrEqual(1);
+    expect(metrics.height).toBeLessThanOrEqual(testInfo.project.name.includes("mobile") ? 68 : 84);
+
+    if (metrics.navRight !== null && metrics.actionsLeft !== null) {
+      expect(metrics.navRight).toBeLessThanOrEqual(metrics.actionsLeft);
+    }
+    if (metrics.brandRight !== null && metrics.navLeft !== null) {
+      expect(metrics.brandRight).toBeLessThanOrEqual(metrics.navLeft);
+    }
   }
 
   await testInfo.attach("site-header", {
-    body: await header.screenshot({ animations: "disabled" }),
+    body: await page.locator(".site-header").screenshot({ animations: "disabled" }),
     contentType: "image/png"
   });
 });
