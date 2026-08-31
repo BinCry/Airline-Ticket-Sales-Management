@@ -6729,6 +6729,27 @@ thead th {
     gap: 20px;
   }
 
+  .account-dashboard-grid .account-loyalty-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .account-loyalty-metric-grid .metric-card {
+    min-width: 0;
+    padding-inline: 12px;
+    border-radius: 18px;
+  }
+
+  .account-loyalty-metric-grid .metric-card span,
+  .account-loyalty-metric-grid .metric-card strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .account-loyalty-metric-grid .metric-card strong {
+    font-size: clamp(1.2rem, 5.2vw, 1.55rem);
+  }
+
   .page-hero-card .page-title {
     max-width: none;
   }
