@@ -9,14 +9,20 @@ const NEWSDATA_ARCHIVE_ENDPOINT = "https://newsdata.io/api/1/archive";
 // Chỉ làm mới nguồn tin mỗi hai tuần sau khi đã có đủ một bộ bài thật.
 const TRAVEL_ARTICLE_REFRESH_SECONDS = 60 * 60 * 24 * 14;
 const TRAVEL_ARTICLE_SNAPSHOT_LIMIT = 12;
-const NEWSDATA_LATEST_MAX_PAGES = 12;
-const NEWSDATA_ARCHIVE_MAX_PAGES = 12;
+const NEWSDATA_LATEST_MAX_PAGES = 3;
+const NEWSDATA_ARCHIVE_MAX_PAGES = 2;
 const NEWSDATA_ARCHIVE_LOOKBACK_DAYS = 90;
 const ARTICLE_METADATA_REVALIDATE_SECONDS = TRAVEL_ARTICLE_REFRESH_SECONDS;
 const ARTICLE_METADATA_USER_AGENT =
   "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
-const NEWSDATA_TRAVEL_QUERY =
-  '"du lịch" OR "điểm đến" OR "nghỉ dưỡng" OR "sân bay" OR "chuyến bay" OR "khách sạn" OR resort OR "hành trình" OR "khám phá"';
+const NEWSDATA_TRAVEL_QUERIES = [
+  "du lịch",
+  "điểm đến",
+  "khám phá",
+  "nghỉ dưỡng",
+  "chuyến bay",
+  "sân bay"
+] as const;
 
 const fallbackTravelArticles = [
   {
@@ -891,12 +897,13 @@ export async function getTravelArticles(
     return [];
   }
 
-  const searchParams = new URLSearchParams({
+  const buildSearchParams = (query: string) =>
+    new URLSearchParams({
     apikey: apiKey,
     country: "vn",
     image: "1",
     language: "vi",
-    q: NEWSDATA_TRAVEL_QUERY,
+    q: query,
     removeduplicate: "1",
     size: "10"
   });
@@ -979,24 +986,37 @@ export async function getTravelArticles(
       }
     };
 
-    await readPages(
-      NEWSDATA_LATEST_ENDPOINT,
-      searchParams,
-      NEWSDATA_LATEST_MAX_PAGES
-    );
+    for (const query of NEWSDATA_TRAVEL_QUERIES) {
+      if (liveArticles.length >= limit) {
+        break;
+      }
+
+      await readPages(
+        NEWSDATA_LATEST_ENDPOINT,
+        buildSearchParams(query),
+        NEWSDATA_LATEST_MAX_PAGES
+      );
+    }
 
     if (liveArticles.length < limit) {
       const { fromDate, toDate } = getArchiveDateRange();
-      const archiveParams = new URLSearchParams(searchParams);
 
-      archiveParams.set("from_date", fromDate);
-      archiveParams.set("to_date", toDate);
+      for (const query of NEWSDATA_TRAVEL_QUERIES) {
+        if (liveArticles.length >= limit) {
+          break;
+        }
 
-      await readPages(
-        NEWSDATA_ARCHIVE_ENDPOINT,
-        archiveParams,
-        NEWSDATA_ARCHIVE_MAX_PAGES
-      );
+        const archiveParams = buildSearchParams(query);
+
+        archiveParams.set("from_date", fromDate);
+        archiveParams.set("to_date", toDate);
+
+        await readPages(
+          NEWSDATA_ARCHIVE_ENDPOINT,
+          archiveParams,
+          NEWSDATA_ARCHIVE_MAX_PAGES
+        );
+      }
     }
 
     // API thành công nhưng không đủ bài phù hợp: giữ nguyên toàn bộ bài live.

@@ -437,8 +437,64 @@ describe("newsdata", () => {
     );
     const query = new URL(String(firstNewsDataRequest?.[0])).searchParams.get("q");
 
-    expect(query).toContain('"điểm đến"');
-    expect(query).toContain(" OR ");
+    expect(query).toBe("du lịch");
+  });
+
+  it("mo rong sang query tiep theo khi query dau khong du bai", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    const article = {
+      category: ["lifestyle"],
+      description: "Gợi ý hành trình và điểm đến du lịch phù hợp.",
+      image_url: "https://newsdata.invalid/query-step.jpg",
+      link: "https://tuoitre.vn/query-step.htm",
+      pubDate: "2026-08-30 10:42:00",
+      source_id: "tuoitre",
+      source_name: "Tuổi Trẻ Online",
+      title: "Khám phá Huế với lịch trình cuối tuần"
+    };
+
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("tuoitre.vn")) {
+        return Promise.resolve(new Response("forbidden", { status: 403 }));
+      }
+
+      if (url.includes("newsdata.io/api/1/latest")) {
+        const query = new URL(url).searchParams.get("q");
+
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              results: query === "du lịch" ? [] : [article],
+              status: "success"
+            }),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          )
+        );
+      }
+
+      return Promise.resolve(
+        new Response(JSON.stringify({ results: [], status: "success" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        })
+      );
+    }) as typeof fetch;
+
+    const articles = await getTravelArticles(1, true);
+    const latestQueries = vi
+      .mocked(global.fetch)
+      .mock.calls.filter(([input]) => String(input).includes("newsdata.io/api/1/latest"))
+      .map(([input]) => new URL(String(input)).searchParams.get("q"));
+
+    expect(articles).toHaveLength(1);
+    expect(latestQueries).toContain("du lịch");
+    expect(latestQueries).toContain("điểm đến");
   });
 
   it("giu cac bai that cung chu de khi tieu de va lien ket khac nhau", async () => {
