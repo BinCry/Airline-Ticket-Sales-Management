@@ -8,7 +8,6 @@ const NEWSDATA_LATEST_ENDPOINT = "https://newsdata.io/api/1/latest";
 const NEWSDATA_ARCHIVE_ENDPOINT = "https://newsdata.io/api/1/archive";
 // Chỉ làm mới nguồn tin mỗi hai tuần sau khi đã có đủ một bộ bài thật.
 const TRAVEL_ARTICLE_REFRESH_SECONDS = 60 * 60 * 24 * 14;
-const TRAVEL_ARTICLE_SNAPSHOT_RECHECK_SECONDS = 60 * 60 * 24;
 const TRAVEL_ARTICLE_SNAPSHOT_LIMIT = 12;
 const NEWSDATA_LATEST_MAX_PAGES = 12;
 const NEWSDATA_ARCHIVE_MAX_PAGES = 12;
@@ -1012,26 +1011,21 @@ export async function getTravelArticles(
   }
 }
 
-const getCachedTravelArticleCandidates = unstable_cache(
-  () => getTravelArticles(TRAVEL_ARTICLE_SNAPSHOT_LIMIT, true),
-  ["travel-article-candidates-v1"],
+const getCachedTravelArticleSnapshot = unstable_cache(
+  async () => {
+    const articles = await getTravelArticles(TRAVEL_ARTICLE_SNAPSHOT_LIMIT, true);
+
+    if (articles.length < TRAVEL_ARTICLE_SNAPSHOT_LIMIT) {
+      throw new IncompleteTravelArticleSnapshotError(articles);
+    }
+
+    return articles;
+  },
+  ["travel-article-snapshot-v3"],
   { revalidate: TRAVEL_ARTICLE_REFRESH_SECONDS }
 );
 
 async function getTravelArticleSnapshot() {
-  const candidateArticles = await getCachedTravelArticleCandidates();
-  const getCachedTravelArticleSnapshot = unstable_cache(
-    async () => {
-      if (candidateArticles.length < TRAVEL_ARTICLE_SNAPSHOT_LIMIT) {
-        throw new IncompleteTravelArticleSnapshotError(candidateArticles);
-      }
-
-      return candidateArticles;
-    },
-    ["travel-article-snapshot-v2"],
-    { revalidate: TRAVEL_ARTICLE_SNAPSHOT_RECHECK_SECONDS }
-  );
-
   try {
     return await getCachedTravelArticleSnapshot();
   } catch (error) {

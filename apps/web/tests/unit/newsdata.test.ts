@@ -543,12 +543,8 @@ describe("newsdata", () => {
     expect(cacheConfigurations).toEqual(
       expect.arrayContaining([
         {
-          keyParts: ["travel-article-candidates-v1"],
+          keyParts: ["travel-article-snapshot-v3"],
           revalidate: 60 * 60 * 24 * 14
-        },
-        {
-          keyParts: ["travel-article-snapshot-v2"],
-          revalidate: 60 * 60 * 24
         }
       ])
     );
