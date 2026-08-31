@@ -502,6 +502,66 @@ describe("newsdata", () => {
     expect(articles.slice(4).every((article) => !article.external)).toBe(true);
   });
 
+  it("lay tiep bai cu trong archive truoc khi chen fallback vao blog", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    const createArticle = (index: number) => ({
+      category: ["lifestyle"],
+      description: "Du lịch Việt Nam cập nhật thêm trải nghiệm hữu ích.",
+      image_url: `https://newsdata.invalid/archive-${index}.jpg`,
+      link: `https://tuoitre.vn/archive-${index}.htm`,
+      pubDate: `2026-08-${String(31 - index).padStart(2, "0")} 10:42:00`,
+      source_id: "tuoitre",
+      source_name: "Tuổi Trẻ Online",
+      title: `Trải nghiệm du lịch chuyên đề ${index + 1}`
+    });
+
+    const latestArticles = Array.from({ length: 4 }, (_, index) =>
+      createArticle(index)
+    );
+    const archiveArticles = Array.from({ length: 5 }, (_, index) =>
+      createArticle(index + 4)
+    );
+
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("newsdata.io/api/1/latest")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ results: latestArticles, status: "success" }),
+            { headers: { "Content-Type": "application/json" }, status: 200 }
+          )
+        );
+      }
+
+      if (url.includes("newsdata.io/api/1/archive")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ results: archiveArticles, status: "success" }),
+            { headers: { "Content-Type": "application/json" }, status: 200 }
+          )
+        );
+      }
+
+      return Promise.resolve(new Response("forbidden", { status: 403 }));
+    }) as typeof fetch;
+
+    const articles = await getBlogTravelArticles(9);
+
+    expect(articles).toHaveLength(9);
+    expect(articles.every((article) => article.external)).toBe(true);
+    expect(articles.slice(4).map((article) => article.title)).toEqual(
+      archiveArticles.map((article) => article.title)
+    );
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /newsdata\.io\/api\/1\/archive\?.*from_date=.*&to_date=/
+      ),
+      expect.any(Object)
+    );
+  });
+
   it("khong de khu bai viet trang chu bi rong khi API tra ve nguon hop le khac", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 

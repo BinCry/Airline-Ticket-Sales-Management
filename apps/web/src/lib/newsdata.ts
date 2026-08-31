@@ -2,9 +2,13 @@ import { formatDate } from "@/lib/format";
 import { rewriteNewsImageUrl } from "@/lib/news-images";
 import { getNewsDataApiKey } from "@/lib/server-env";
 
-const NEWSDATA_ENDPOINT = "https://newsdata.io/api/1/latest";
-const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 7;
-const NEWSDATA_MAX_PAGES = 6;
+const NEWSDATA_LATEST_ENDPOINT = "https://newsdata.io/api/1/latest";
+const NEWSDATA_ARCHIVE_ENDPOINT = "https://newsdata.io/api/1/archive";
+// Dự án demo: chỉ làm mới dữ liệu tin tức mỗi 3 ngày để tiết kiệm quota API.
+const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 3;
+const NEWSDATA_LATEST_MAX_PAGES = 6;
+const NEWSDATA_ARCHIVE_MAX_PAGES = 6;
+const NEWSDATA_ARCHIVE_LOOKBACK_DAYS = 90;
 const ARTICLE_METADATA_REVALIDATE_SECONDS = 60 * 60 * 12;
 const ARTICLE_METADATA_USER_AGENT =
   "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
@@ -687,6 +691,23 @@ function formatPublishedDate(value: string | null | undefined) {
   return `Đăng ngày ${formatDate(publishedAt)}`;
 }
 
+function formatDateParameter(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getArchiveDateRange() {
+  const toDate = new Date();
+  const fromDate = new Date(toDate);
+
+  fromDate.setUTCDate(fromDate.getUTCDate() - NEWSDATA_ARCHIVE_LOOKBACK_DAYS);
+  toDate.setUTCDate(toDate.getUTCDate() - 2);
+
+  return {
+    fromDate: formatDateParameter(fromDate),
+    toDate: formatDateParameter(toDate)
+  };
+}
+
 function scoreArticle(article: NewsDataArticle) {
   let score = 0;
 
@@ -862,80 +883,130 @@ export async function getTravelArticles(
     image: "1",
     language: "vi",
     q: "du lịch",
-    removeduplicate: "1"
+    removeduplicate: "1",
+    size: "10"
   });
 
+  const liveArticles: TravelArticlePreview[] = [];
+  const seenArticleKeys = new Set<string>();
+  const seenTopicKeys = new Set<string>();
+  let apiResponded = false;
+
   try {
-    const liveArticles: TravelArticlePreview[] = [];
-    const seenArticleKeys = new Set<string>();
-    const seenTopicKeys = new Set<string>();
-    let nextPage: string | null = null;
+    const readPages = async (
+      endpoint: string,
+      params: URLSearchParams,
+      maxPages: number
+    ) => {
+      let nextPage: string | null = null;
 
-    for (let pageIndex = 0; pageIndex < NEWSDATA_MAX_PAGES; pageIndex += 1) {
-      if (nextPage) {
-        searchParams.set("page", nextPage);
-      } else {
-        searchParams.delete("page");
+      for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+        if (nextPage) {
+          params.set("page", nextPage);
+        } else {
+          params.delete("page");
+        }
+
+        let response: Response | undefined;
+
+        try {
+          response = await fetch(`${endpoint}?${params.toString()}`, {
+            next: { revalidate: NEWSDATA_REVALIDATE_SECONDS }
+          });
+        } catch {
+          return;
+        }
+
+        if (!response?.ok) {
+          return;
+        }
+
+        let data: NewsDataResponse;
+
+        try {
+          data = (await response.json()) as NewsDataResponse;
+        } catch {
+          return;
+        }
+
+        if (data.status === "error") {
+          return;
+        }
+
+        apiResponded = true;
+
+        const results = Array.isArray(data.results) ? data.results : [];
+        const pageArticles = await filterLiveArticles(
+          results,
+          includeSecondarySources,
+          limit
+        );
+
+        for (const article of pageArticles) {
+          const articleKey = article.href || normalizeText(article.title);
+
+          if (seenArticleKeys.has(articleKey)) {
+            continue;
+          }
+
+          seenArticleKeys.add(articleKey);
+
+          const topicKey = getArticleTopicKey(article);
+
+          if (topicKey && seenTopicKeys.has(topicKey)) {
+            continue;
+          }
+
+          if (topicKey) {
+            seenTopicKeys.add(topicKey);
+          }
+
+          liveArticles.push(article);
+
+          if (liveArticles.length >= limit) {
+            return;
+          }
+        }
+
+        nextPage = data.nextPage || null;
+
+        if (!nextPage || results.length === 0) {
+          return;
+        }
       }
+    };
 
-      const response = await fetch(`${NEWSDATA_ENDPOINT}?${searchParams.toString()}`, {
-        next: { revalidate: NEWSDATA_REVALIDATE_SECONDS }
-      });
+    await readPages(
+      NEWSDATA_LATEST_ENDPOINT,
+      searchParams,
+      NEWSDATA_LATEST_MAX_PAGES
+    );
 
-      if (!response.ok) {
-        return mergeWithFallback([], limit);
-      }
+    if (liveArticles.length < limit) {
+      const { fromDate, toDate } = getArchiveDateRange();
+      const archiveParams = new URLSearchParams(searchParams);
 
-      const data = (await response.json()) as NewsDataResponse;
+      archiveParams.set("from_date", fromDate);
+      archiveParams.set("to_date", toDate);
 
-      if (data.status === "error") {
-        return mergeWithFallback([], limit);
-      }
-
-      const results = Array.isArray(data.results) ? data.results : [];
-      const pageArticles = await filterLiveArticles(
-        results,
-        includeSecondarySources,
-        limit
+      await readPages(
+        NEWSDATA_ARCHIVE_ENDPOINT,
+        archiveParams,
+        NEWSDATA_ARCHIVE_MAX_PAGES
       );
-
-      for (const article of pageArticles) {
-        const articleKey = article.href || normalizeText(article.title);
-
-        if (seenArticleKeys.has(articleKey)) {
-          continue;
-        }
-
-        seenArticleKeys.add(articleKey);
-
-        const topicKey = getArticleTopicKey(article);
-
-        if (topicKey && seenTopicKeys.has(topicKey)) {
-          continue;
-        }
-
-        if (topicKey) {
-          seenTopicKeys.add(topicKey);
-        }
-
-        liveArticles.push(article);
-
-        if (liveArticles.length >= limit) {
-          return liveArticles.slice(0, limit);
-        }
-      }
-
-      nextPage = data.nextPage || null;
-
-      if (!nextPage || results.length === 0) {
-        break;
-      }
     }
 
-    // API thành công nhưng không đủ bài phù hợp: không trộn mock vào dữ liệu live.
-    return liveArticles.slice(0, limit);
-  } catch {
+    // API thành công nhưng không đủ bài phù hợp: giữ nguyên toàn bộ bài live.
+    // Chỉ dùng fallback khi API không có phản hồi thành công nào.
+    if (liveArticles.length > 0 || apiResponded) {
+      return liveArticles.slice(0, limit);
+    }
+
     return mergeWithFallback([], limit);
+  } catch {
+    return liveArticles.length > 0 || apiResponded
+      ? liveArticles.slice(0, limit)
+      : mergeWithFallback([], limit);
   }
 }
 
