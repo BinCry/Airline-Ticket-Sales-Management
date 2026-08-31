@@ -4,7 +4,7 @@ import { getBlogTravelArticles } from "@/lib/newsdata";
 import { SectionHeading } from "@/components/section-heading";
 import { promotions } from "@/lib/public-content";
 
-const BLOG_ARTICLE_LIMIT = 9;
+const BLOG_ARTICLE_LIMIT = 12;
 
 const promotionPhotos = [
   {
@@ -33,7 +33,7 @@ export default async function BlogPage() {
         <SectionHeading
           eyebrow="Tin du lịch mới"
           title="Cẩm nang và tin du lịch mới"
-          description="Chín gợi ý mới nhất về điểm đến, trải nghiệm và hành trình bay."
+          description="Các gợi ý mới nhất về điểm đến, trải nghiệm và hành trình bay."
           level={1}
         />
         <div className="card-grid card-grid-3 travel-news-grid">
@@ -254,6 +254,10 @@ export default async function BlogPage() {
           }
 
           @media (max-width: 1024px) {
+            .travel-news-card:nth-child(n + 7) {
+              display: none;
+            }
+
             .blog-promo-card {
               min-height: 304px;
             }

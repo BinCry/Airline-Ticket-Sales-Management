@@ -10,7 +10,7 @@ import {
   quickServices,
   supportChannels
 } from "@/lib/public-content";
-import { getBlogTravelArticles } from "@/lib/newsdata";
+import { getLatestTravelArticles } from "@/lib/newsdata";
 
 const promotionPhotos = [
   { src: "/images/summer-promo.jpg", alt: "Hình minh hoạ chiến dịch mùa hè" },
@@ -93,7 +93,7 @@ const featuredDestinations = [
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const latestArticleShowcase = await getBlogTravelArticles(9);
+  const latestArticleShowcase = await getLatestTravelArticles(3);
 
   return (
     <>

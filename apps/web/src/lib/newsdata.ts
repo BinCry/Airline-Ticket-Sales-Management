@@ -1,18 +1,23 @@
+import { unstable_cache } from "next/cache";
+
 import { formatDate } from "@/lib/format";
 import { rewriteNewsImageUrl } from "@/lib/news-images";
 import { getNewsDataApiKey } from "@/lib/server-env";
 
 const NEWSDATA_LATEST_ENDPOINT = "https://newsdata.io/api/1/latest";
 const NEWSDATA_ARCHIVE_ENDPOINT = "https://newsdata.io/api/1/archive";
-// Dự án demo: chỉ làm mới dữ liệu tin tức mỗi 3 ngày để tiết kiệm quota API.
-const NEWSDATA_REVALIDATE_SECONDS = 60 * 60 * 24 * 3;
-const NEWSDATA_LATEST_MAX_PAGES = 6;
-const NEWSDATA_ARCHIVE_MAX_PAGES = 6;
+// Chỉ làm mới nguồn tin mỗi hai tuần sau khi đã có đủ một bộ bài thật.
+const TRAVEL_ARTICLE_REFRESH_SECONDS = 60 * 60 * 24 * 14;
+const TRAVEL_ARTICLE_SNAPSHOT_RECHECK_SECONDS = 60 * 60 * 24;
+const TRAVEL_ARTICLE_SNAPSHOT_LIMIT = 12;
+const NEWSDATA_LATEST_MAX_PAGES = 12;
+const NEWSDATA_ARCHIVE_MAX_PAGES = 12;
 const NEWSDATA_ARCHIVE_LOOKBACK_DAYS = 90;
-const ARTICLE_METADATA_REVALIDATE_SECONDS = 60 * 60 * 12;
+const ARTICLE_METADATA_REVALIDATE_SECONDS = TRAVEL_ARTICLE_REFRESH_SECONDS;
 const ARTICLE_METADATA_USER_AGENT =
   "Mozilla/5.0 (compatible; QLVMBArticleMetadata/1.0; +https://airticket.bincrydev.id.vn)";
-const BLOG_ARTICLE_MINIMUM = 6;
+const NEWSDATA_TRAVEL_QUERY =
+  '"du lịch" OR "điểm đến" OR "nghỉ dưỡng" OR "sân bay" OR "chuyến bay" OR "khách sạn" OR resort OR "hành trình" OR "khám phá"';
 
 const fallbackTravelArticles = [
   {
@@ -290,6 +295,16 @@ export interface TravelArticlePreview {
   summary: string;
   href: string;
   external: boolean;
+}
+
+class IncompleteTravelArticleSnapshotError extends Error {
+  readonly articles: TravelArticlePreview[];
+
+  constructor(articles: TravelArticlePreview[]) {
+    super("Chưa đủ 12 bài viết du lịch thật để thay bộ nhớ đệm hiện tại.");
+    this.name = "IncompleteTravelArticleSnapshotError";
+    this.articles = articles;
+  }
 }
 
 const namedHtmlEntities: Record<string, string> = {
@@ -874,7 +889,7 @@ export async function getTravelArticles(
   const apiKey = getNewsDataApiKey();
 
   if (!apiKey) {
-    return mergeWithFallback([], limit);
+    return [];
   }
 
   const searchParams = new URLSearchParams({
@@ -882,14 +897,13 @@ export async function getTravelArticles(
     country: "vn",
     image: "1",
     language: "vi",
-    q: "du lịch",
+    q: NEWSDATA_TRAVEL_QUERY,
     removeduplicate: "1",
     size: "10"
   });
 
   const liveArticles: TravelArticlePreview[] = [];
   const seenArticleKeys = new Set<string>();
-  const seenTopicKeys = new Set<string>();
   let apiResponded = false;
 
   try {
@@ -911,7 +925,7 @@ export async function getTravelArticles(
 
         try {
           response = await fetch(`${endpoint}?${params.toString()}`, {
-            next: { revalidate: NEWSDATA_REVALIDATE_SECONDS }
+            next: { revalidate: TRAVEL_ARTICLE_REFRESH_SECONDS }
           });
         } catch {
           return;
@@ -950,16 +964,6 @@ export async function getTravelArticles(
           }
 
           seenArticleKeys.add(articleKey);
-
-          const topicKey = getArticleTopicKey(article);
-
-          if (topicKey && seenTopicKeys.has(topicKey)) {
-            continue;
-          }
-
-          if (topicKey) {
-            seenTopicKeys.add(topicKey);
-          }
 
           liveArticles.push(article);
 
@@ -1002,31 +1006,58 @@ export async function getTravelArticles(
       return liveArticles.slice(0, limit);
     }
 
-    return mergeWithFallback([], limit);
+    return [];
   } catch {
-    return liveArticles.length > 0 || apiResponded
-      ? liveArticles.slice(0, limit)
-      : mergeWithFallback([], limit);
+    return liveArticles.slice(0, limit);
   }
 }
 
-export async function getLatestTravelArticles(limit = 4) {
-  const articles = await getTravelArticles(limit, true);
+const getCachedTravelArticleCandidates = unstable_cache(
+  () => getTravelArticles(TRAVEL_ARTICLE_SNAPSHOT_LIMIT, true),
+  ["travel-article-candidates-v1"],
+  { revalidate: TRAVEL_ARTICLE_REFRESH_SECONDS }
+);
 
-  // Khu bài viết trên trang chủ phải luôn có nội dung ở mọi breakpoint.
-  return mergeWithFallback(articles, limit);
+async function getTravelArticleSnapshot() {
+  const candidateArticles = await getCachedTravelArticleCandidates();
+  const getCachedTravelArticleSnapshot = unstable_cache(
+    async () => {
+      if (candidateArticles.length < TRAVEL_ARTICLE_SNAPSHOT_LIMIT) {
+        throw new IncompleteTravelArticleSnapshotError(candidateArticles);
+      }
+
+      return candidateArticles;
+    },
+    ["travel-article-snapshot-v2"],
+    { revalidate: TRAVEL_ARTICLE_SNAPSHOT_RECHECK_SECONDS }
+  );
+
+  try {
+    return await getCachedTravelArticleSnapshot();
+  } catch (error) {
+    return error instanceof IncompleteTravelArticleSnapshotError
+      ? error.articles
+      : [];
+  }
 }
 
-export async function getBlogTravelArticles(limit = 9) {
-  const articles = await getTravelArticles(limit, true);
+export async function getLatestTravelArticles(limit = 3) {
+  const articles = await getTravelArticleSnapshot();
 
-  if (limit < BLOG_ARTICLE_MINIMUM || articles.length >= limit) {
-    return articles.slice(0, limit);
-  }
+  return articles.slice(0, limit);
+}
 
-  // Lưới blog chỉ nhận hai mốc ổn định: 6 bài hoặc đủ 9 bài. Khi nguồn live
-  // chưa cung cấp đủ 6 bài hợp lệ, dùng nội dung dự phòng để không làm vỡ bố cục.
-  const displayLimit = BLOG_ARTICLE_MINIMUM;
+export async function getBlogTravelArticles(limit = 12) {
+  const articles = await getTravelArticleSnapshot();
+  const limitedArticles = articles.slice(0, limit);
+  const displayCount =
+    limitedArticles.length >= 12
+      ? 12
+      : limitedArticles.length >= 6
+        ? 6
+        : limitedArticles.length >= 3
+          ? 3
+          : limitedArticles.length;
 
-  return mergeWithFallback(articles.slice(0, displayLimit), displayLimit);
+  return limitedArticles.slice(0, displayCount);
 }

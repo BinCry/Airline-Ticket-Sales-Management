@@ -1,5 +1,33 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const cacheConfigurations = vi.hoisted(
+  () => [] as Array<{ keyParts: string[]; revalidate: number }>
+);
+const cacheState = vi.hoisted(() => ({
+  activeDepth: 0,
+  maxDepth: 0
+}));
+
+vi.mock("next/cache", () => ({
+  unstable_cache: (
+    callback: () => unknown,
+    keyParts: string[],
+    options: { revalidate: number }
+  ) => {
+    cacheConfigurations.push({ keyParts, revalidate: options.revalidate });
+    return async () => {
+      cacheState.activeDepth += 1;
+      cacheState.maxDepth = Math.max(cacheState.maxDepth, cacheState.activeDepth);
+
+      try {
+        return await callback();
+      } finally {
+        cacheState.activeDepth -= 1;
+      }
+    };
+  }
+}));
+
 import {
   getBlogTravelArticles,
   getLatestTravelArticles,
@@ -10,6 +38,8 @@ const originalFetch = global.fetch;
 
 afterEach(() => {
   global.fetch = originalFetch;
+  cacheState.activeDepth = 0;
+  cacheState.maxDepth = 0;
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
@@ -397,9 +427,21 @@ describe("newsdata", () => {
       expect.stringContaining("page=next-page"),
       expect.any(Object)
     );
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("newsdata.io/api/1/latest"),
+      { next: { revalidate: 60 * 60 * 24 * 14 } }
+    );
+
+    const firstNewsDataRequest = vi.mocked(global.fetch).mock.calls.find(
+      ([input]) => String(input).includes("newsdata.io/api/1/latest")
+    );
+    const query = new URL(String(firstNewsDataRequest?.[0])).searchParams.get("q");
+
+    expect(query).toContain('"điểm đến"');
+    expect(query).toContain(" OR ");
   });
 
-  it("gioi han moi nhom chu de mot bai de tranh lap noi dung", async () => {
+  it("giu cac bai that cung chu de khi tieu de va lien ket khac nhau", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
     const results = [
@@ -437,18 +479,18 @@ describe("newsdata", () => {
       );
     }) as typeof fetch;
 
-    const articles = await getTravelArticles(4, false);
+    const articles = await getTravelArticles(6, false);
     const miceArticles = articles.filter((article) =>
       article.title.toLowerCase().includes("mice")
     );
 
-    expect(articles).toHaveLength(3);
-    expect(miceArticles).toHaveLength(1);
+    expect(articles).toHaveLength(6);
+    expect(miceArticles).toHaveLength(4);
     expect(articles.some((article) => article.title.includes("Phú Quốc"))).toBe(true);
     expect(articles.some((article) => article.title.includes("Hành lý"))).toBe(true);
   });
 
-  it("chi dung fallback khi API that bai", async () => {
+  it("khong dung bai local khi API that bai", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
     global.fetch = vi.fn().mockResolvedValueOnce(
@@ -459,11 +501,10 @@ describe("newsdata", () => {
 
     const articles = await getTravelArticles(10, true);
 
-    expect(articles).toHaveLength(10);
-    expect(articles.every((article) => !article.external)).toBe(true);
+    expect(articles).toHaveLength(0);
   });
 
-  it("giu luoi blog o moc 6 bai khi API chi tra ve 4 bai live", async () => {
+  it("blog lui ve moc 3 khi API chi co 4 bai that", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
     global.fetch = vi.fn().mockResolvedValueOnce(
@@ -495,14 +536,70 @@ describe("newsdata", () => {
       )
     ) as typeof fetch;
 
-    const articles = await getBlogTravelArticles(9);
+    const articles = await getBlogTravelArticles(12);
 
-    expect(articles).toHaveLength(6);
-    expect(articles.slice(0, 4).every((article) => article.external)).toBe(true);
-    expect(articles.slice(4).every((article) => !article.external)).toBe(true);
+    expect(articles).toHaveLength(3);
+    expect(articles.every((article) => article.external)).toBe(true);
+    expect(cacheConfigurations).toEqual(
+      expect.arrayContaining([
+        {
+          keyParts: ["travel-article-candidates-v1"],
+          revalidate: 60 * 60 * 24 * 14
+        },
+        {
+          keyParts: ["travel-article-snapshot-v2"],
+          revalidate: 60 * 60 * 24
+        }
+      ])
+    );
+    expect(cacheState.maxDepth).toBe(1);
   });
 
-  it("lay tiep bai cu trong archive truoc khi chen fallback vao blog", async () => {
+  it("blog lui ve moc 6 khi API chi co 8 bai that", async () => {
+    vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
+
+    const results = Array.from({ length: 8 }, (_, index) => ({
+      category: ["lifestyle"],
+      description: "Gợi ý điểm đến và hành trình du lịch phù hợp.",
+      image_url: `https://newsdata.invalid/blog-eight-${index}.jpg`,
+      link: `https://tuoitre.vn/blog-eight-${index}.htm`,
+      pubDate: `2026-08-29 10:${String(42 - index).padStart(2, "0")}:00`,
+      source_id: "tuoitre",
+      source_name: "Tuổi Trẻ Online",
+      title: `Khám phá điểm đến du lịch số ${index + 1}`
+    }));
+
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes("newsdata.io/api/1/latest")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ results, status: "success" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          })
+        );
+      }
+
+      if (url.includes("newsdata.io/api/1/archive")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ results: [], status: "success" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          })
+        );
+      }
+
+      return Promise.resolve(new Response("forbidden", { status: 403 }));
+    }) as typeof fetch;
+
+    const articles = await getBlogTravelArticles(12);
+
+    expect(articles).toHaveLength(6);
+    expect(articles.every((article) => article.external)).toBe(true);
+  });
+
+  it("lay tiep bai cu trong archive den khi du 12 bai that cho blog", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
     const createArticle = (index: number) => ({
@@ -519,7 +616,7 @@ describe("newsdata", () => {
     const latestArticles = Array.from({ length: 4 }, (_, index) =>
       createArticle(index)
     );
-    const archiveArticles = Array.from({ length: 5 }, (_, index) =>
+    const archiveArticles = Array.from({ length: 8 }, (_, index) =>
       createArticle(index + 4)
     );
 
@@ -547,9 +644,9 @@ describe("newsdata", () => {
       return Promise.resolve(new Response("forbidden", { status: 403 }));
     }) as typeof fetch;
 
-    const articles = await getBlogTravelArticles(9);
+    const articles = await getBlogTravelArticles(12);
 
-    expect(articles).toHaveLength(9);
+    expect(articles).toHaveLength(12);
     expect(articles.every((article) => article.external)).toBe(true);
     expect(articles.slice(4).map((article) => article.title)).toEqual(
       archiveArticles.map((article) => article.title)
@@ -562,24 +659,22 @@ describe("newsdata", () => {
     );
   });
 
-  it("khong de khu bai viet trang chu bi rong khi API tra ve nguon hop le khac", async () => {
+  it("trang chu chi lay 3 bai that tu nguon hop le", async () => {
     vi.stubEnv("NEWSDATA_API_KEY", "newsdata-test-key");
 
     global.fetch = vi.fn().mockResolvedValueOnce(
       new Response(
         JSON.stringify({
-          results: [
-            {
-              category: ["lifestyle"],
-              description: "Gợi ý điểm đến và trải nghiệm cho chuyến đi.",
-              image_url: "https://newsdata.invalid/home.jpg",
-              link: "https://danviet.vn/du-lich-ninh-binh-1234567.htm",
-              pubDate: "2026-08-30 10:42:00",
-              source_id: "danviet",
-              source_name: "Báo Dân Việt",
-              title: "Du lịch Ninh Bình: gợi ý hành trình cuối tuần"
-            }
-          ],
+          results: Array.from({ length: 3 }, (_, index) => ({
+            category: ["lifestyle"],
+            description: "Gợi ý điểm đến và trải nghiệm cho chuyến đi.",
+            image_url: `https://newsdata.invalid/home-${index}.jpg`,
+            link: `https://danviet.vn/du-lich-ninh-binh-${index}.htm`,
+            pubDate: "2026-08-30 10:42:00",
+            source_id: "danviet",
+            source_name: "Báo Dân Việt",
+            title: `Du lịch Ninh Bình: gợi ý hành trình ${index + 1}`
+          })),
           status: "success"
         }),
         {
@@ -591,10 +686,18 @@ describe("newsdata", () => {
       )
     ) as typeof fetch;
 
-    const articles = await getLatestTravelArticles(4);
+    const articles = await getLatestTravelArticles(3);
 
-    expect(articles).toHaveLength(4);
-    expect(articles[0].external).toBe(true);
-    expect(articles.slice(1).every((article) => !article.external)).toBe(true);
+    expect(articles).toHaveLength(3);
+    expect(articles.every((article) => article.external)).toBe(true);
+  });
+
+  it("khong dung bai local khi thieu khoa API", async () => {
+    global.fetch = vi.fn() as typeof fetch;
+
+    const articles = await getTravelArticles(3, true);
+
+    expect(articles).toHaveLength(0);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
