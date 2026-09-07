@@ -303,11 +303,27 @@ function taoTheKetQua(
                 <span>Giá mở đầu</span>
                 <strong>{formatCurrency(flight.baseFare)}</strong>
               </div>
+              <div className="result-metric-image">
+                <Image
+                  src="/images/ticket.jpg"
+                  alt="Minh họa giá vé và thanh toán"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 32vw"
+                />
+              </div>
             </div>
             <div className="result-metric-card">
               <div>
                 <span>Tổng ghế còn bán</span>
                 <strong>{flight.fares.reduce((tong, fare) => tong + fare.seatsLeft, 0)} ghế</strong>
+              </div>
+              <div className="result-metric-image">
+                <Image
+                  src="/images/pho-thong-tiet-kiem-vietnam-airline-3.jpg"
+                  alt="Khoang ghế máy bay minh họa cho số ghế còn bán"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 32vw"
+                />
               </div>
             </div>
             <div className="result-grid-fare-box">
