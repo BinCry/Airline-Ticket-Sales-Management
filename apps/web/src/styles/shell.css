@@ -236,6 +236,10 @@
   white-space: nowrap;
 }
 
+.mobile-drawer-actions > .button-primary {
+  grid-column: 1 / -1;
+}
+
 .mobile-drawer-account {
   grid-column: 1 / -1;
 }
