@@ -192,14 +192,14 @@ export default async function BlogPage() {
           }
 
           .travel-news-card-media {
-            aspect-ratio: 1.56;
             overflow: hidden;
+            border-radius: 22px 22px 0 0;
             background: linear-gradient(180deg, rgba(232, 240, 248, 0.9), rgba(246, 249, 252, 0.98));
           }
 
           .travel-news-card-media img {
             width: 100%;
-            height: 100%;
+            height: auto;
             display: block;
             object-fit: contain;
             object-position: center;

@@ -285,6 +285,8 @@ export default async function HomePage() {
                   <img
                     src={article.image}
                     alt={article.title}
+                    width={640}
+                    height={410}
                     loading="lazy"
                   />
                 </div>
@@ -1415,7 +1417,7 @@ export default async function HomePage() {
         .home-latest-article-media {
           position: relative;
           overflow: hidden;
-          aspect-ratio: 1.44;
+          border-radius: 22px 22px 0 0;
           background: linear-gradient(180deg, rgba(230, 239, 248, 0.62), rgba(244, 248, 252, 0.98));
         }
 
@@ -1429,7 +1431,7 @@ export default async function HomePage() {
 
         .home-latest-article-media img {
           width: 100%;
-          height: 100%;
+          height: auto;
           display: block;
           object-fit: contain;
           object-position: center;
