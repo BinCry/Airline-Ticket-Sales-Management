@@ -16,7 +16,7 @@ function findStyleRule(styles: string[], selector: string) {
   return "";
 }
 
-test("giữ trọn nội dung ảnh bài viết trên trang chủ và cẩm nang", async ({ page }) => {
+test("ảnh bài viết phủ kín khung đồng nhất trên trang chủ và cẩm nang", async ({ page }) => {
   await page.goto("/");
 
   const homeStyles = await page.locator("style").allTextContents();
@@ -26,7 +26,7 @@ test("giữ trọn nội dung ảnh bài viết trên trang chủ và cẩm nang
   expect(homeMediaRule).toContain("border-radius: 22px 22px 0 0");
   expect(homeMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
   expect(homeImageRule).toContain("height: 100%");
-  expect(homeImageRule).toContain("object-fit: contain");
+  expect(homeImageRule).toContain("object-fit: cover");
 
   await page.goto("/blog");
 
@@ -37,5 +37,5 @@ test("giữ trọn nội dung ảnh bài viết trên trang chủ và cẩm nang
   expect(blogMediaRule).toContain("border-radius: 22px 22px 0 0");
   expect(blogMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
   expect(blogImageRule).toContain("height: 100%");
-  expect(blogImageRule).toContain("object-fit: contain");
+  expect(blogImageRule).toContain("object-fit: cover");
 });

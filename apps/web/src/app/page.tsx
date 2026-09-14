@@ -1434,7 +1434,7 @@ export default async function HomePage() {
           width: 100%;
           height: 100%;
           display: block;
-          object-fit: contain;
+          object-fit: cover;
           object-position: center;
         }
 
