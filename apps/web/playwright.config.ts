@@ -40,7 +40,7 @@ export default defineConfig({
     },
     {
       name: "chromium-tablet",
-      testMatch: /responsive-ui\.spec\.ts|visual-regression\.spec\.ts/,
+      testMatch: /responsive-ui\.spec\.ts|news-layout\.spec\.ts|visual-regression\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 768, height: 1024 }
@@ -48,7 +48,7 @@ export default defineConfig({
     },
     {
       name: "chromium-mobile",
-      testMatch: /responsive-ui\.spec\.ts|visual-regression\.spec\.ts/,
+      testMatch: /responsive-ui\.spec\.ts|news-layout\.spec\.ts|visual-regression\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 }

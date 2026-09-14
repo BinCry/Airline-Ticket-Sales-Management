@@ -193,7 +193,8 @@ export default async function BlogPage() {
 
           .travel-news-card-media {
             overflow: hidden;
-            height: clamp(220px, 19vw, 278px);
+            width: 100%;
+            aspect-ratio: 16 / 9;
             border-radius: 22px 22px 0 0;
             background: #ffffff;
           }
@@ -278,10 +279,6 @@ export default async function BlogPage() {
 
             .travel-news-card:nth-child(n + 4) {
               display: none;
-            }
-
-            .travel-news-card-media {
-              height: clamp(210px, 56vw, 250px);
             }
 
             .blog-promo-card {

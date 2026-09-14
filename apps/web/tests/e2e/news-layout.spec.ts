@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 function findStyleRule(styles: string[], selector: string) {
   for (const style of styles) {
@@ -16,6 +16,29 @@ function findStyleRule(styles: string[], selector: string) {
   return "";
 }
 
+async function getMediaDimensions(page: Page, selector: string) {
+  return page.locator(selector).evaluateAll((elements, mediaSelector) =>
+    elements.slice(0, 3).map((element) => {
+      const mediaRect = element.getBoundingClientRect();
+      const image = element.querySelector("img");
+
+      if (!image) {
+        throw new Error(`Không tìm thấy ảnh trong ${mediaSelector}`);
+      }
+
+      const imageRect = image.getBoundingClientRect();
+
+      return {
+        mediaHeight: mediaRect.height,
+        mediaWidth: mediaRect.width,
+        imageHeight: imageRect.height,
+        imageWidth: imageRect.width
+      };
+    }),
+    selector
+  );
+}
+
 test("ảnh bài viết phủ kín khung đồng nhất trên trang chủ và cẩm nang", async ({ page }) => {
   await page.goto("/");
 
@@ -24,9 +47,16 @@ test("ảnh bài viết phủ kín khung đồng nhất trên trang chủ và c�
   const homeImageRule = findStyleRule(homeStyles, ".home-latest-article-media img {");
 
   expect(homeMediaRule).toContain("border-radius: 22px 22px 0 0");
-  expect(homeMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
+  expect(homeMediaRule).toContain("aspect-ratio: 16 / 9");
+  expect(homeMediaRule).toContain("width: 100%");
   expect(homeImageRule).toContain("height: 100%");
   expect(homeImageRule).toContain("object-fit: cover");
+
+  for (const dimensions of await getMediaDimensions(page, ".home-latest-article-media")) {
+    expect(dimensions.mediaWidth / dimensions.mediaHeight).toBeCloseTo(16 / 9, 1);
+    expect(Math.abs(dimensions.imageWidth - dimensions.mediaWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dimensions.imageHeight - dimensions.mediaHeight)).toBeLessThanOrEqual(1);
+  }
 
   await page.goto("/blog");
 
@@ -35,7 +65,14 @@ test("ảnh bài viết phủ kín khung đồng nhất trên trang chủ và c�
   const blogImageRule = findStyleRule(blogStyles, ".travel-news-card-media img {");
 
   expect(blogMediaRule).toContain("border-radius: 22px 22px 0 0");
-  expect(blogMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
+  expect(blogMediaRule).toContain("aspect-ratio: 16 / 9");
+  expect(blogMediaRule).toContain("width: 100%");
   expect(blogImageRule).toContain("height: 100%");
   expect(blogImageRule).toContain("object-fit: cover");
+
+  for (const dimensions of await getMediaDimensions(page, ".travel-news-card-media")) {
+    expect(dimensions.mediaWidth / dimensions.mediaHeight).toBeCloseTo(16 / 9, 1);
+    expect(Math.abs(dimensions.imageWidth - dimensions.mediaWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(dimensions.imageHeight - dimensions.mediaHeight)).toBeLessThanOrEqual(1);
+  }
 });

@@ -1417,7 +1417,8 @@ export default async function HomePage() {
         .home-latest-article-media {
           position: relative;
           overflow: hidden;
-          height: clamp(220px, 19vw, 278px);
+          width: 100%;
+          aspect-ratio: 16 / 9;
           border-radius: 22px 22px 0 0;
           background: #ffffff;
         }
@@ -2366,10 +2367,6 @@ export default async function HomePage() {
 
           .home-latest-article-copy {
             padding: 16px 18px 20px;
-          }
-
-          .home-latest-article-media {
-            height: clamp(210px, 56vw, 250px);
           }
 
           .home-latest-article-copy h3 {
