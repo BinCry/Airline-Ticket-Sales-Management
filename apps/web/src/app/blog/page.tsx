@@ -201,12 +201,8 @@ export default async function BlogPage() {
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: cover;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          }
-
-          .travel-news-card:hover .travel-news-card-media img {
-            transform: scale(1.05);
+            object-fit: contain;
+            object-position: center;
           }
 
           .travel-news-card-copy {

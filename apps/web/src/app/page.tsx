@@ -1431,12 +1431,8 @@ export default async function HomePage() {
           width: 100%;
           height: 100%;
           display: block;
-          object-fit: cover;
-          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .home-latest-article-card:hover .home-latest-article-media img {
-          transform: scale(1.05);
+          object-fit: contain;
+          object-position: center;
         }
 
         .home-latest-article-copy {
