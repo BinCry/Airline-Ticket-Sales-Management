@@ -24,8 +24,8 @@ test("giữ trọn nội dung ảnh bài viết trên trang chủ và cẩm nang
   const homeImageRule = findStyleRule(homeStyles, ".home-latest-article-media img {");
 
   expect(homeMediaRule).toContain("border-radius: 22px 22px 0 0");
-  expect(homeMediaRule).not.toContain("aspect-ratio");
-  expect(homeImageRule).toContain("height: auto");
+  expect(homeMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
+  expect(homeImageRule).toContain("height: 100%");
   expect(homeImageRule).toContain("object-fit: contain");
 
   await page.goto("/blog");
@@ -35,7 +35,7 @@ test("giữ trọn nội dung ảnh bài viết trên trang chủ và cẩm nang
   const blogImageRule = findStyleRule(blogStyles, ".travel-news-card-media img {");
 
   expect(blogMediaRule).toContain("border-radius: 22px 22px 0 0");
-  expect(blogMediaRule).not.toContain("aspect-ratio");
-  expect(blogImageRule).toContain("height: auto");
+  expect(blogMediaRule).toContain("height: clamp(220px, 19vw, 278px)");
+  expect(blogImageRule).toContain("height: 100%");
   expect(blogImageRule).toContain("object-fit: contain");
 });

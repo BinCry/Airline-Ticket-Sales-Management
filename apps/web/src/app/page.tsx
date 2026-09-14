@@ -1417,8 +1417,9 @@ export default async function HomePage() {
         .home-latest-article-media {
           position: relative;
           overflow: hidden;
+          height: clamp(220px, 19vw, 278px);
           border-radius: 22px 22px 0 0;
-          background: linear-gradient(180deg, rgba(230, 239, 248, 0.62), rgba(244, 248, 252, 0.98));
+          background: #ffffff;
         }
 
         .home-latest-article-media::after {
@@ -1431,7 +1432,7 @@ export default async function HomePage() {
 
         .home-latest-article-media img {
           width: 100%;
-          height: auto;
+          height: 100%;
           display: block;
           object-fit: contain;
           object-position: center;
@@ -2365,6 +2366,10 @@ export default async function HomePage() {
 
           .home-latest-article-copy {
             padding: 16px 18px 20px;
+          }
+
+          .home-latest-article-media {
+            height: clamp(210px, 56vw, 250px);
           }
 
           .home-latest-article-copy h3 {
