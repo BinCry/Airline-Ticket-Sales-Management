@@ -50,6 +50,14 @@ Hệ thống quản lý bán vé máy bay được phát triển với kiến tr
   - [docs/setup/production-azure-coolify.md](docs/setup/production-azure-coolify.md)
   - [docs/architecture/ma-tran-vai-tro-production.md](docs/architecture/ma-tran-vai-tro-production.md)
 
+## Quản lý dự án trên Jira
+
+WBS, Gantt Chart và các quan hệ phụ thuộc được theo dõi trên project Jira với 26 task và 6 Epic:
+
+- [Jira Timeline](https://doletuankiet06.atlassian.net/jira/software/projects/QLVMB/boards/2/timeline)
+- [Jira Backlog](https://doletuankiet06.atlassian.net/jira/software/projects/QLVMB/boards/2/backlog)
+- [Hồ sơ quản lý dự án](docs/project-management/README.md)
+
 ### GitNexus dùng chung
 - Kho mã chỉ theo dõi bộ hướng dẫn nhỏ ở `.claude/skills/gitnexus`.
 - Không đưa `.gitnexus/` vào Git vì đây là chỉ mục cục bộ và có kích thước lớn.
