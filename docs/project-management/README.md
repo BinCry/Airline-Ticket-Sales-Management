@@ -8,14 +8,20 @@ Bộ tài liệu quản lý dự án được lập theo định hướng PMBOK 
 | --- | --- | --- |
 | Phạm Minh Quân | 24521449 | Project Manager |
 | Phan Nguyễn Anh Kiệt | 24520910 | Thành viên dự án |
-| Nguyễn Văn Tin | 24521788 | Thành viên dự án |
 | Đỗ Lê Tuấn Kiệt | 24520895 | Thành viên dự án |
+| Nguyễn Văn Tin | 24521788 | Thành viên dự án |
 
 ## Tài liệu
 
 - `Project_Charter_Quan_Ly_Ban_Ve_May_Bay.docx`: Hiến chương dự án, phạm vi cấp cao, mục tiêu, stakeholder, nguồn lực, mốc chính và tiêu chí đóng dự án.
 - `Project_Management_Plan_Quan_Ly_Ban_Ve_May_Bay.docx`: Kế hoạch quản lý dự án theo PMBOK 6, gồm phạm vi, tiến độ, chất lượng, nguồn lực, truyền thông, rủi ro và quản lý thay đổi.
 - `PMBOK_WBS_Schedule_Forms_Quan_Ly_Ban_Ve_May_Bay.docx`: WBS Dictionary, Schedule Management Plan, Activity List và Gantt Chart theo mẫu PMBOK.
+
+## Hồ sơ nộp giai đoạn 1
+
+Thư mục `phase1_submission/` chứa bộ hồ sơ đã đối chiếu theo yêu cầu nộp: Project Charter, Project Management Plan, WBS, Gantt Chart riêng, Schedule Tools và tương tác thành viên, file thông tin thành viên, checklist. Charter dùng cách ghi nền tảng **web** thay cho `apps/web` theo yêu cầu nhóm.
+
+- [Tải hồ sơ nén giai đoạn 1](./Ho_So_Giai_Doan_1_Quan_Ly_Ban_Ve_May_Bay.zip)
 
 ## Baseline tiến độ
 
