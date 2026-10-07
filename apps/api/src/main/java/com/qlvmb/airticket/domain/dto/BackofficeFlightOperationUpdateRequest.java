@@ -15,6 +15,10 @@ public record BackofficeFlightOperationUpdateRequest(
     String note,
     boolean salesOpen,
     @Min(1)
-    Long baseFare
+    Long baseFare,
+    @Min(1) Long aircraftId
 ) {
+  public BackofficeFlightOperationUpdateRequest(String status, String gate, String note, boolean salesOpen, Long baseFare) {
+    this(status, gate, note, salesOpen, baseFare, null);
+  }
 }

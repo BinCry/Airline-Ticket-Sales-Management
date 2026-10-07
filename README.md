@@ -173,6 +173,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
 - Tích điểm chạy sau khi cập nhật chuyến bay đã lưu thành công; lỗi tích điểm không hoàn tác trạng thái chuyến. Tác vụ đối soát chạy mỗi phút để thử lại chặng còn thiếu điểm.
 - Trang `/account` hiển thị hạng, số dư, tổng điểm tích lũy, tiến độ lên hạng và lịch sử gần đây. Thông báo nâng hạng dùng cấu hình thư hiện có; không cần biến môi trường production mới.
 
+### Sơ đồ ghế theo tàu bay
+- Di trú `V32` bổ sung loại tàu, tàu bay vật lý, cấu hình cabin và tàu bay của chuyến. Không sửa di trú đã phát hành.
+- Đặt vé và làm thủ tục dùng chung sơ đồ từ `GET /api/flights/{flightId}/seat-map`; phản hồi công khai chỉ có cabin và trạng thái ghế, không có thông tin người giữ.
+- Điều hành quản lý loại tàu, JSON cabin và tàu vật lý tại `/backoffice/operations`, mục **Tàu bay và sơ đồ ghế**. Chỉ tàu `ACTIVE` được gán mới. Thay đổi làm ghế đang giữ không hợp lệ sẽ bị chặn và trả danh sách ghế xung đột.
+- Giữ chỗ còn hạn, vé chưa hủy và thẻ lên máy bay còn hiệu lực chiếm ghế; giữ chỗ hết hạn và vé hủy không chiếm ghế. Làm thủ tục phải xác nhận ghế, không cấp ngẫu nhiên.
+- Di trú kiểm tra dữ liệu ghế cũ trước khi gán tàu. Cabin riêng bảo toàn vị trí cũ nằm ngoài sơ đồ chuẩn; nếu dữ liệu cũ trùng ghế hoặc một hàng có nhiều hạng vé, di trú dừng với lỗi cụ thể để người vận hành xử lý, không tự chuyển ghế hành khách.
+- Không thêm thư viện, biến môi trường bắt buộc hoặc thay đổi cấu hình triển khai. Hướng dẫn thao tác và đủ 18 kịch bản: [Kiểm thử sơ đồ ghế](docs/testing/nghiep-vu-4-so-do-ghe.md).
+
 ## Production trên Azure + Coolify
 
 ### Thành phần chính
@@ -225,7 +233,7 @@ cd apps/api
 .\mvnw.cmd test
 ```
 
-- Kiểm thử tích hợp tích điểm cần cơ sở dữ liệu PostgreSQL **riêng cho kiểm thử**, tài khoản có quyền tạo lược đồ; bài kiểm thử chạy toàn bộ di trú trong một lược đồ mới. Không trỏ đến dữ liệu production.
+- Kiểm thử tích hợp tích điểm và sơ đồ ghế cần cơ sở dữ liệu PostgreSQL **riêng cho kiểm thử**, tài khoản có quyền tạo lược đồ; bài kiểm thử chạy toàn bộ di trú trong một lược đồ mới. Không trỏ đến dữ liệu production.
 - Khai báo các biến chỉ dành cho kiểm thử rồi chạy lại lệnh backend phía trên:
 
 ```powershell
@@ -234,7 +242,7 @@ $env:LOYALTY_TEST_DB_USER="postgres"
 $env:LOYALTY_TEST_DB_PASSWORD="mat-khau-database-kiem-thu"
 ```
 
-- Khi không có `LOYALTY_TEST_DB_URL`, chỉ bộ kiểm thử PostgreSQL này không chạy; các kiểm thử backend còn lại vẫn chạy như hiện tại. Hai biến tài khoản mặc định là `loyalty_test` và mật khẩu rỗng, nên cần ghi đè theo cơ sở dữ liệu kiểm thử của bạn. Không cần cấu hình các biến này trong Coolify; pipeline hiện có giữ nguyên. Khi chạy bộ kiểm thử này trên CI, cấu hình chúng ở môi trường kiểm thử của job, mật khẩu dùng secret.
+- Các bộ kiểm thử PostgreSQL tích điểm và sơ đồ ghế dùng chung ba biến kiểm thử phía trên. Khi không có `LOYALTY_TEST_DB_URL`, các bộ này không chạy; các kiểm thử backend còn lại vẫn chạy như hiện tại. Hai biến tài khoản mặc định là `loyalty_test` và mật khẩu rỗng, nên cần ghi đè theo cơ sở dữ liệu kiểm thử của bạn. Không cần cấu hình các biến này trong Coolify; pipeline hiện có giữ nguyên. Khi chạy chúng trên CI, cấu hình các biến ở môi trường kiểm thử của job, mật khẩu dùng secret. Không coi kết quả chỉ có mock là bằng chứng cho tính đúng đắn của khóa ghế.
 
 - Web:
 

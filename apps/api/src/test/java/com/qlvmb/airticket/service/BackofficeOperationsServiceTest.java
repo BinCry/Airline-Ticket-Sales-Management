@@ -72,9 +72,14 @@ class BackofficeOperationsServiceTest {
   private ApplicationEventPublisher eventPublisher;
 
   private BackofficeOperationsService backofficeOperationsService;
+  @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
+    SeatMapTestFixtures.stubValidation(seatMapService);
+    org.mockito.Mockito.lenient().when(seatMapService.lockFlight(org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(a -> flightRepository.findDetailedById(a.getArgument(0)).orElseThrow());
+    org.mockito.Mockito.lenient().when(seatMapService.requireActiveAircraft(1L)).thenReturn(SeatMapTestFixtures.aircraft());
     backofficeOperationsService = new BackofficeOperationsService(
         flightRepository,
         airportRepository,
@@ -85,7 +90,8 @@ class BackofficeOperationsServiceTest {
         new ProductCatalogService(),
         notificationOutboxService,
         bookingService,
-        eventPublisher
+        eventPublisher,
+        seatMapService
     );
   }
 
@@ -182,7 +188,8 @@ class BackofficeOperationsServiceTest {
         "g12",
         "Chuyen bay bo sung.",
         true,
-        1200000L
+        1200000L,
+        1L
     );
 
     BackofficeFlightOperationsResponse.FlightItem item = backofficeOperationsService.createFlight(actor(), request);

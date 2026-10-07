@@ -70,7 +70,8 @@ public record BookingOverviewResponse(
       String status,
       String statusLabel,
       String gate,
-      String note
+      String note,
+      Long flightId
   ) {
   }
 
@@ -118,8 +119,12 @@ public record BookingOverviewResponse(
       String ticketNumber,
       String passengerName,
       String status,
-      OffsetDateTime issuedAt
+      OffsetDateTime issuedAt,
+      String currentSeatNumber
   ) {
+    public TicketItem(long inventoryId, String ticketNumber, String passengerName, String status, OffsetDateTime issuedAt) {
+      this(inventoryId, ticketNumber, passengerName, status, issuedAt, null);
+    }
   }
 
   public record BoardingPassItem(

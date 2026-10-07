@@ -7,6 +7,7 @@ export interface BackofficeOperationsFlightQuery {
 }
 
 export interface BackofficeOperationsUpdateInput {
+  aircraftId?: number | null;
   status: string;
   gate: string | null;
   note: string | null;
@@ -24,6 +25,7 @@ export interface BackofficeFareReadonlyItem {
 }
 
 export interface BackofficeOperationsFlightCreateInput {
+  aircraftId?: number | null;
   code: string;
   originCode: string;
   destinationCode: string;
@@ -36,6 +38,7 @@ export interface BackofficeOperationsFlightCreateInput {
 }
 
 export interface BackofficeOperationsFlightItem {
+  aircraftId?: number | null;
   flightId: number;
   code: string;
   from: string;
@@ -142,6 +145,7 @@ function laDanhSachFareReadonlyItem(value: unknown): value is BackofficeFareRead
 function laFlightItem(value: unknown): value is BackofficeOperationsFlightItem {
   return (
     laBanGhi(value) &&
+    (value.aircraftId === undefined || value.aircraftId === null || laSo(value.aircraftId)) &&
     laSo(value.flightId) &&
     laChuoi(value.code) &&
     laChuoi(value.from) &&

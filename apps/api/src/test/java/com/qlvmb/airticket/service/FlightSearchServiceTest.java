@@ -49,16 +49,23 @@ class FlightSearchServiceTest {
   private BookingSeatSelectionRepository bookingSeatSelectionRepository;
 
   private FlightSearchService flightSearchService;
+  @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
+    lenient().when(seatMapService.lockFlight(org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(a -> flightRepository.findDetailedById(a.getArgument(0)).orElseThrow());
+    lenient().when(seatMapService.getSeatMapForFlight(org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(a -> SeatMapTestFixtures.map(a.getArgument(0), new java.util.LinkedHashSet<>(
+            bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(a.getArgument(0), OffsetDateTime.now()))));
     flightSearchService = new FlightSearchService(
         airportRepository,
         bookingService,
         bookingSeatSelectionRepository,
         flightRepository,
         new ProductCatalogService(),
-        new FlightSearchMapper()
+        new FlightSearchMapper(),
+        seatMapService
     );
   }
 

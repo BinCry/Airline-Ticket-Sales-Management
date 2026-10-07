@@ -36,10 +36,11 @@ class FinanceServiceTest {
   private NotificationOutboxService notificationOutboxService;
 
   private FinanceService financeService;
+  @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
-    financeService = new FinanceService(refundRequestRepository, notificationOutboxService);
+    financeService = new FinanceService(refundRequestRepository, notificationOutboxService, seatMapService);
   }
 
   @Test

@@ -1,4 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { aircraftFixture, aircraftTypeFixture, seatMapFixture } from "./seat-map-fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/flights/18/seat-map", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify(seatMapFixture()) }));
+  await page.route("**/api/backoffice/operations/aircraft", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify([aircraftFixture]) }));
+  await page.route("**/api/backoffice/operations/aircraft-types", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify([aircraftTypeFixture]) }));
+});
 
 import { jsonResponse, seedAuthSession, taoThoiDiemTuongLai } from "./e2e-helpers";
 
@@ -400,9 +407,9 @@ test("backoffice sales tạo booking hộ rồi xuất vé", async ({ page }) =>
   await page.getByLabel("Email").fill("khach.hang@gmail.com");
   await page.getByLabel("Số điện thoại").fill("0900000001");
   await page.getByLabel("Họ và tên").nth(1).fill("Nguyễn Văn A");
-  await page.getByLabel("Ngày sinh").fill("1995-05-12");
+  await page.getByLabel("Ngày sinh").fill("12/05/1995");
   await page.getByLabel("Số giấy tờ").fill("079123456789");
-  await page.getByRole("button", { name: /^9A$/ }).click();
+  await page.getByRole("button", { name: /^Ghế 9A,/ }).click();
   await page.getByRole("button", { name: "Xác nhận đặt vé hộ" }).click();
 
   await expect.poll(() => createPayload).not.toBeNull();
@@ -606,6 +613,7 @@ test("backoffice operations cho phép nhập tiền trực tiếp và gợi ý m
   await expect(voucherDiscountField).toHaveValue("250000");
 
   await page.getByPlaceholder("Ví dụ: VN6201").fill("vn6201");
+  await page.getByLabel("Tàu bay cho chuyến mới").selectOption("18");
   await page.getByRole("button", { name: "Tạo chuyến bay mới" }).click();
 
   await expect

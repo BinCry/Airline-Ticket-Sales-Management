@@ -321,6 +321,23 @@ export interface ApiFlightBookingSeatItem {
   occupied: boolean;
 }
 
+export interface AircraftSeatLayout {
+  columns: string[];
+  aislesAfter: string[];
+  rows: Array<{ row: number; fareFamily: FareFamily; seats: string[] }>;
+  disabledSeats: string[];
+}
+
+export interface ApiFlightSeatMap {
+  flightId: number;
+  aircraftId: number;
+  aircraftRegistration: string;
+  aircraftTypeCode: string;
+  aircraftTypeName: string;
+  layout: AircraftSeatLayout;
+  seats: Array<ApiFlightBookingSeatItem & { disabled: boolean }>;
+}
+
 export interface ApiFlightBookingFareOption {
   inventoryId: number;
   fareFamily: FareFamily;
@@ -460,6 +477,7 @@ export interface ApiRefundRequest {
 }
 
 export interface ApiManageBookingSegment {
+  flightId?: number;
   inventoryId: number;
   code: string;
   from: string;
@@ -511,6 +529,7 @@ export interface ApiManageBookingSeatSelection {
 }
 
 export interface ApiManageBookingTicket {
+  currentSeatNumber?: string | null;
   inventoryId?: number;
   ticketNumber: string;
   passengerName: string;

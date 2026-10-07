@@ -74,6 +74,7 @@ public class SecurityConfig {
                 HttpMethod.GET,
                 "/api/flights/search",
                 "/api/flights/*/booking-options",
+                "/api/flights/*/seat-map",
                 "/api/flights/status",
                 "/api/airports",
                 "/api/cms/homepage",

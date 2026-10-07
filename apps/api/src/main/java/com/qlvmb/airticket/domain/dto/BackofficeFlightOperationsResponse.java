@@ -24,7 +24,8 @@ public record BackofficeFlightOperationsResponse(
       String note,
       boolean salesOpen,
       long baseFare,
-      List<FareReadonlyItem> fareSummaries
+      List<FareReadonlyItem> fareSummaries,
+      Long aircraftId
   ) {
   }
 

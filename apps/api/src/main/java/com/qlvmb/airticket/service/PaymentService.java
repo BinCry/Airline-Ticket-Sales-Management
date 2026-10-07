@@ -260,11 +260,10 @@ public class PaymentService {
         transaction.getBooking().getBookingCode(),
         bookingService.getBookingNotFoundMessage()
     );
+    bookingService.refreshLockedBookingForPayment(booking);
     OffsetDateTime currentTime = OffsetDateTime.now();
 
-    if (BookingEntity.STATUS_CANCELLED.equals(booking.getStatus())
-        && BookingEntity.PAYMENT_STATUS_EXPIRED.equals(booking.getPaymentStatus())) {
-      transaction.markExpired(currentTime);
+    if (rejectInactiveBooking(booking, transaction, currentTime)) {
       return;
     }
 
@@ -324,7 +323,7 @@ public class PaymentService {
         return false;
       }
 
-      finalizeSuccessfulPayment(
+      return finalizeSuccessfulPayment(
           booking,
           transaction,
           null,
@@ -332,7 +331,6 @@ public class PaymentService {
           currentTime,
           matchedTransaction.toString()
       );
-      return true;
     } catch (RuntimeException exception) {
       LOGGER.warn(
           "Booking {} không thể đối soát lại giao dịch SePay với từ khóa {}.",
@@ -344,7 +342,7 @@ public class PaymentService {
     }
   }
 
-  private void finalizeSuccessfulPayment(
+  private boolean finalizeSuccessfulPayment(
       BookingEntity booking,
       PaymentTransactionEntity transaction,
       Long externalTransactionId,
@@ -352,6 +350,8 @@ public class PaymentService {
       OffsetDateTime currentTime,
       String rawPayload
   ) {
+    // Chốt chung thay cho việc phát vé cả khi hold đã hết hạn hoặc booking đã hủy.
+    if (rejectInactiveBooking(booking, transaction, OffsetDateTime.now())) return false;
     String resolvedPaymentReference = paymentReference == null || paymentReference.isBlank()
         ? transaction.getOrderCode()
         : paymentReference.trim();
@@ -400,6 +400,16 @@ public class PaymentService {
     }
 
     notificationOutboxService.createAndSendTicketEmail(booking);
+    return true;
+  }
+
+  private boolean rejectInactiveBooking(BookingEntity booking, PaymentTransactionEntity transaction,
+      OffsetDateTime currentTime) {
+    bookingService.reconcileBookingExpiration(booking, currentTime);
+    if (booking.isHold() && !booking.isExpired(currentTime)) return false;
+    if (booking.isTicketed() && BookingEntity.PAYMENT_STATUS_PAID.equals(booking.getPaymentStatus())) return false;
+    if (BookingEntity.PAYMENT_STATUS_EXPIRED.equals(booking.getPaymentStatus())) transaction.markExpired(currentTime);
+    return true;
   }
 
   private String buildTicketScopeKey(BookingPassengerEntity passenger, BookingSegmentEntity segment) {

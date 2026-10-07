@@ -48,6 +48,7 @@ public class BackofficeOperationsService {
   private final NotificationOutboxService notificationOutboxService;
   private final BookingService bookingService;
   private final ApplicationEventPublisher eventPublisher;
+  private final SeatMapService seatMapService;
 
   public BackofficeOperationsService(
       FlightRepository flightRepository,
@@ -59,7 +60,8 @@ public class BackofficeOperationsService {
       ProductCatalogService productCatalogService,
       NotificationOutboxService notificationOutboxService,
       BookingService bookingService,
-      ApplicationEventPublisher eventPublisher
+      ApplicationEventPublisher eventPublisher,
+      SeatMapService seatMapService
   ) {
     this.flightRepository = flightRepository;
     this.airportRepository = airportRepository;
@@ -71,6 +73,7 @@ public class BackofficeOperationsService {
     this.notificationOutboxService = notificationOutboxService;
     this.bookingService = bookingService;
     this.eventPublisher = eventPublisher;
+    this.seatMapService = seatMapService;
   }
 
   @Transactional(readOnly = true)
@@ -114,6 +117,7 @@ public class BackofficeOperationsService {
       AuthenticatedUser actor,
       BackofficeFlightCreateRequest request
   ) {
+    var aircraft = seatMapService.requireActiveAircraft(request.aircraftId());
     UserAccountEntity actorAccount = loadActorAccount(actor);
     String normalizedCode = normalizeFlightCode(request.code());
     String normalizedOriginCode = normalizeAirportCode(request.originCode());
@@ -148,6 +152,7 @@ public class BackofficeOperationsService {
         normalizedNote,
         request.salesOpen()
     );
+    flight.assignAircraft(aircraft);
     syncFixedFareInventories(flight, request.baseFare());
 
     FlightEntity savedFlight = flightRepository.save(flight);
@@ -171,8 +176,8 @@ public class BackofficeOperationsService {
       Long flightId,
       BackofficeFlightOperationUpdateRequest request
   ) {
-    FlightEntity flight = flightRepository.findDetailedById(flightId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy chuyến bay cần cập nhật."));
+    FlightEntity flight = seatMapService.lockFlight(flightId);
+    if (flight.isHiddenFromUi()) throw new NotFoundException("Không tìm thấy chuyến bay cần cập nhật.");
     UserAccountEntity actorAccount = loadActorAccount(actor);
 
     String nextStatus = request.status().trim().toLowerCase(Locale.ROOT);
@@ -203,6 +208,14 @@ public class BackofficeOperationsService {
       nextSalesOpen = false;
     }
 
+    if (request.aircraftId() != null && (flight.getAircraft() == null
+        || !request.aircraftId().equals(flight.getAircraft().getId()))) {
+      var nextAircraft = seatMapService.requireActiveAircraft(request.aircraftId());
+      var type = nextAircraft.getAircraftType();
+      seatMapService.validateCompatibility(flightId, seatMapService.parseLayout(type.getSeatLayoutJson(), type.getTotalRows()));
+      flight.assignAircraft(nextAircraft);
+      syncFixedFareInventories(flight, nextBaseFare == null ? oldBaseFare : nextBaseFare);
+    }
     flight.updateOperations(nextStatus, nextGate, nextNote, nextSalesOpen);
     if (!"landed".equals(oldStatus) && "landed".equals(nextStatus)) {
       eventPublisher.publishEvent(new FlightLandedEvent(flight.getId()));
@@ -230,6 +243,7 @@ public class BackofficeOperationsService {
 
   @Transactional
   public BackofficeFlightOperationsResponse.FlightItem cancelFlight(AuthenticatedUser actor, Long flightId) {
+    seatMapService.lockCancellationFlights(flightId);
     FlightEntity flight = flightRepository.findDetailedIncludingHiddenById(flightId)
         .orElseThrow(() -> new NotFoundException("Không tìm thấy chuyến bay cần hủy."));
     UserAccountEntity actorAccount = loadActorAccount(actor);
@@ -399,20 +413,25 @@ public class BackofficeOperationsService {
         resolveNote(flight),
         flight.isSalesOpen(),
         baseFare,
-        buildFareSummaries(flight, baseFare)
+        buildFareSummaries(flight, baseFare),
+        flight.getAircraft() == null ? null : flight.getAircraft().getId()
     );
   }
 
   private void syncFixedFareInventories(FlightEntity flight, long baseFare) {
+    if (flight.getAircraft() == null) throw new BadRequestException("Chuyến bay chưa được cấu hình tàu bay.");
+    var type = flight.getAircraft().getAircraftType();
+    var layout = seatMapService.parseLayout(type.getSeatLayoutJson(), type.getTotalRows());
     productCatalogService.getFixedFareMetas().forEach(fareMeta -> {
       long price = productCatalogService.resolveFarePrice(fareMeta.fareFamily(), baseFare);
+      int totalSeats = seatMapService.capacity(layout, fareMeta.fareFamily());
       flight.findFareInventory(fareMeta.fareFamily())
           .ifPresentOrElse(
-              inventory -> inventory.syncConfiguration(fareMeta.totalSeats(), price),
+              inventory -> inventory.syncConfiguration(totalSeats, price),
               () -> flight.addFareInventory(FlightFareInventoryEntity.create(
                   flight,
                   fareMeta.fareFamily(),
-                  fareMeta.totalSeats(),
+                  totalSeats,
                   price
               ))
           );
@@ -436,12 +455,20 @@ public class BackofficeOperationsService {
               fareMeta.fareFamily(),
               fareMeta.title(),
               price,
-              fareMeta.totalSeats(),
-              fareMeta.rowStart(),
-              fareMeta.rowEnd()
+              flight.findFareInventory(fareMeta.fareFamily()).map(FlightFareInventoryEntity::getTotalSeats).orElse(0),
+              cabinRowBound(flight, fareMeta.fareFamily(), true),
+              cabinRowBound(flight, fareMeta.fareFamily(), false)
           );
         })
         .toList();
+  }
+
+  private int cabinRowBound(FlightEntity flight, String fareFamily, boolean first) {
+    if (flight.getAircraft() == null) return 0;
+    var type = flight.getAircraft().getAircraftType();
+    var rows = seatMapService.parseLayout(type.getSeatLayoutJson(), type.getTotalRows()).rows().stream()
+        .filter(row -> row.fareFamily().equals(fareFamily)).mapToInt(row -> row.row());
+    return first ? rows.min().orElse(0) : rows.max().orElse(0);
   }
 
   private String resolveGate(FlightEntity flight) {

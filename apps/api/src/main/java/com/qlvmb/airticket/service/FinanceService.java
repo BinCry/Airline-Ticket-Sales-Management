@@ -29,13 +29,16 @@ public class FinanceService {
 
   private final RefundRequestRepository refundRequestRepository;
   private final NotificationOutboxService notificationOutboxService;
+  private final SeatMapService seatMapService;
 
   public FinanceService(
       RefundRequestRepository refundRequestRepository,
-      NotificationOutboxService notificationOutboxService
+      NotificationOutboxService notificationOutboxService,
+      SeatMapService seatMapService
   ) {
     this.refundRequestRepository = refundRequestRepository;
     this.notificationOutboxService = notificationOutboxService;
+    this.seatMapService = seatMapService;
   }
 
   @Transactional(readOnly = true)
@@ -119,6 +122,7 @@ public class FinanceService {
   }
 
   private RefundRequestEntity lockRefundRequest(long refundRequestId) {
+    seatMapService.lockRefundFlights(refundRequestId);
     return refundRequestRepository.lockDetailedById(refundRequestId)
         .orElseThrow(() -> new NotFoundException(REFUND_NOT_FOUND_MESSAGE));
   }

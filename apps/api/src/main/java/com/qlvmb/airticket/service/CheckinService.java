@@ -10,6 +10,7 @@ import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
+import com.qlvmb.airticket.exception.ConflictException;
 import com.qlvmb.airticket.repository.BoardingPassRepository;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
@@ -43,21 +44,21 @@ public class CheckinService {
       "Ghế được chọn khi làm thủ tục không hợp lệ.";
   private static final String CHECKIN_SEAT_UNAVAILABLE_MESSAGE =
       "Ghế được chọn không còn trống cho thao tác này.";
-  private static final String SEAT_ASSIGNMENT_FAILED_MESSAGE =
-      "Không thể phân bổ ghế lên tàu bay vào lúc này.";
-  private static final char[] SEAT_COLUMNS = {'A', 'B', 'C', 'D', 'E', 'F'};
   private static final char[] GATE_ZONES = {'A', 'B', 'C', 'D', 'E', 'F'};
 
   private final BookingService bookingService;
   private final BoardingPassRepository boardingPassRepository;
+  private final SeatMapService seatMapService;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public CheckinService(
       BookingService bookingService,
-      BoardingPassRepository boardingPassRepository
+      BoardingPassRepository boardingPassRepository,
+      SeatMapService seatMapService
   ) {
     this.bookingService = bookingService;
     this.boardingPassRepository = boardingPassRepository;
+    this.seatMapService = seatMapService;
   }
 
   @Transactional
@@ -127,6 +128,9 @@ public class CheckinService {
     FlightEntity flight = representativeSegment.getInventory() == null
         ? null
         : representativeSegment.getInventory().getFlight();
+    if (flight == null || flight.getId() == null) throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
+    seatMapService.lockFlights(List.of(flight.getId()));
+    var layout = seatMapService.getSeatMapForFlight(flight.getId()).layout();
     OffsetDateTime boardingTime = representativeSegment.getDepartureAt().minusMinutes(45);
     String gate = resolveGate(flight);
     List<CheckinCompleteResponse.BoardingPassItem> boardingPasses = new ArrayList<>();
@@ -139,6 +143,17 @@ public class CheckinService {
           requestedSeatByTicketNumber,
           usedSeats
       );
+      seatMapService.validateSeat(layout, seatNumber, ticket.getSegment().getFareFamily());
+      seatMapService.requireAvailable(flight.getId(), seatNumber, ticket.getPassenger().getId(), ticket.getSegment().getId());
+      BookingSeatSelectionEntity confirmed = booking.getSeatSelections().stream()
+          .filter(selection -> isSamePassenger(selection, ticket))
+          .filter(selection -> isSeatSelectionBelongToSegment(selection, ticket.getSegment()))
+          .findFirst().orElse(null);
+      if (confirmed == null) {
+        booking.addSeatSelection(BookingSeatSelectionEntity.create(booking, ticket.getPassenger(), ticket.getSegment(), seatNumber, 0L, currentTime));
+      } else {
+        confirmed.changeSeat(seatNumber, currentTime);
+      }
       String barcode = generateBarcode(booking.getBookingCode(), ticket.getTicketNumber());
 
       BoardingPassEntity boardingPass = BoardingPassEntity.create(
@@ -188,12 +203,12 @@ public class CheckinService {
         throw new BadRequestException(CHECKIN_SEAT_INVALID_MESSAGE);
       }
 
-      String normalizedSeatNumber = normalizeSeatNumber(seatSelectionRequest.seatNumber());
+      String normalizedSeatNumber = seatMapService.normalizeSeat(seatSelectionRequest.seatNumber());
       if (requestedSeatByTicketNumber.putIfAbsent(normalizedTicketNumber, normalizedSeatNumber) != null) {
         throw new BadRequestException(CHECKIN_SEAT_INVALID_MESSAGE);
       }
       if (!normalizedSeatNumbers.add(normalizedSeatNumber)) {
-        throw new BadRequestException(CHECKIN_SEAT_UNAVAILABLE_MESSAGE);
+        throw new ConflictException(CHECKIN_SEAT_UNAVAILABLE_MESSAGE);
       }
     }
 
@@ -209,7 +224,7 @@ public class CheckinService {
     String requestedSeatNumber = requestedSeatByTicketNumber.get(ticket.getTicketNumber().trim().toUpperCase());
     if (requestedSeatNumber != null) {
       if (usedSeats.contains(requestedSeatNumber)) {
-        throw new BadRequestException(CHECKIN_SEAT_UNAVAILABLE_MESSAGE);
+        throw new ConflictException(CHECKIN_SEAT_UNAVAILABLE_MESSAGE);
       }
       return requestedSeatNumber;
     }
@@ -220,7 +235,7 @@ public class CheckinService {
         .map(BookingSeatSelectionEntity::getSeatNumber)
         .filter(seatNumber -> !usedSeats.contains(seatNumber))
         .findFirst()
-        .orElseGet(() -> generateSeatNumber(usedSeats));
+        .orElseThrow(() -> new BadRequestException("Vé chưa có ghế. Vui lòng chọn ghế từ sơ đồ trước khi làm thủ tục."));
   }
 
   private boolean isSamePassenger(BookingSeatSelectionEntity seatSelection, TicketEntity ticket) {
@@ -278,18 +293,6 @@ public class CheckinService {
     return flight.getStatus().trim().toLowerCase();
   }
 
-  private String generateSeatNumber(Set<String> usedSeats) {
-    for (int attempt = 0; attempt < 60; attempt++) {
-      String seatNumber = (secureRandom.nextInt(23) + 6)
-          + String.valueOf(SEAT_COLUMNS[secureRandom.nextInt(SEAT_COLUMNS.length)]);
-      if (!usedSeats.contains(seatNumber)) {
-        return seatNumber;
-      }
-    }
-
-    throw new IllegalStateException(SEAT_ASSIGNMENT_FAILED_MESSAGE);
-  }
-
   private String generateGate() {
     return GATE_ZONES[secureRandom.nextInt(GATE_ZONES.length)]
         + String.valueOf(secureRandom.nextInt(12) + 1);
@@ -309,11 +312,4 @@ public class CheckinService {
     return "BP-" + bookingCode + "-" + ticketNumber;
   }
 
-  private String normalizeSeatNumber(String seatNumber) {
-    String normalizedSeatNumber = seatNumber == null ? "" : seatNumber.trim().toUpperCase();
-    if (!normalizedSeatNumber.matches("^[1-9][0-9]?[A-F]$")) {
-      throw new BadRequestException(CHECKIN_SEAT_INVALID_MESSAGE);
-    }
-    return normalizedSeatNumber;
-  }
 }

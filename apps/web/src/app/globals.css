@@ -3693,6 +3693,19 @@ img {
   margin-left: 10px;
 }
 
+.seat-map-dynamic .seat-map-row {
+  display: flex;
+  min-width: max-content;
+}
+
+.seat-map-dynamic .seat-button,
+.seat-map-empty { width: 44px; flex: 0 0 44px; }
+.seat-map-dynamic .seat-row-number { width: 28px; flex: 0 0 28px; }
+.seat-map-aisle { width: 18px; flex: 0 0 18px; }
+.seat-button small { display: block; font-size: 0.7rem; }
+.seat-zone-label { font-size: 0.75rem; color: var(--muted); }
+.seat-button:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+
 .seat-button-priority {
   background: rgba(202, 164, 95, 0.16);
   border-color: rgba(202, 164, 95, 0.38);

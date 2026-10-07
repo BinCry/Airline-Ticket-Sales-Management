@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { AirportOption } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
+import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
 import { DateTimeField } from "@/components/date-time-field";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
@@ -33,12 +34,14 @@ import {
 import { layLopMauGoiGia } from "@/lib/display";
 import { formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
+import { fetchAircraft, fetchAircraftTypes, type AircraftItem, type AircraftTypeItem } from "@/lib/seat-map-api";
 
 type OperationsState = "idle" | "loading" | "success" | "error";
 
 const OPERATIONS_NAV_ITEMS = [
   { id: "operations-create-flight", label: "Tạo chuyến bay" },
   { id: "operations-flight-lookup", label: "Tra cứu vận hành" },
+  { id: "operations-aircraft", label: "Tàu bay và sơ đồ ghế" },
   { id: "operations-create-voucher", label: "Tạo voucher mới" },
   { id: "operations-voucher-lookup", label: "Tra cứu voucher" }
 ] as const;
@@ -83,9 +86,9 @@ const VOUCHER_EDITABLE_STATUS_OPTIONS = [
 ] as const;
 
 const HANG_VE_CO_DINH = [
-  { fareFamily: "pho_thong_tiet_kiem", title: "Phổ thông tiết kiệm", totalSeats: 120, rowStart: 9, rowEnd: 28, priceOffset: 0 },
-  { fareFamily: "pho_thong_linh_hoat", title: "Phổ thông linh hoạt", totalSeats: 36, rowStart: 3, rowEnd: 8, priceOffset: 5000 },
-  { fareFamily: "thuong_gia", title: "Thương gia", totalSeats: 12, rowStart: 1, rowEnd: 2, priceOffset: 10000 }
+  { fareFamily: "pho_thong_tiet_kiem", title: "Phổ thông tiết kiệm", priceOffset: 0 },
+  { fareFamily: "pho_thong_linh_hoat", title: "Phổ thông linh hoạt", priceOffset: 5000 },
+  { fareFamily: "thuong_gia", title: "Thương gia", priceOffset: 10000 }
 ] as const;
 
 function formatDateTime(value: string) {
@@ -179,7 +182,8 @@ function createEmptyFlightForm(): BackofficeOperationsFlightCreateInput {
     gate: "",
     note: "",
     salesOpen: true,
-    baseFare: 1200000
+    baseFare: 1200000,
+    aircraftId: null
   };
 }
 
@@ -201,19 +205,22 @@ function buildFlightDraft(flight: BackofficeOperationsFlightItem): BackofficeOpe
     gate: flight.gate,
     note: flight.note,
     salesOpen: flight.salesOpen,
-    baseFare: flight.baseFare
+    baseFare: flight.baseFare,
+    aircraftId: flight.aircraftId ?? null
   };
 }
 
-function taoDanhSachHangVeCoDinh(baseFare: number): BackofficeFareReadonlyItem[] {
-  return HANG_VE_CO_DINH.map((fare) => ({
+function taoDanhSachHangVeCoDinh(baseFare: number, aircraftType: AircraftTypeItem | undefined): BackofficeFareReadonlyItem[] {
+  return HANG_VE_CO_DINH.map((fare) => {
+    const rows = aircraftType?.seatLayout.rows.filter((row) => row.fareFamily === fare.fareFamily) ?? [];
+    return {
     fareFamily: fare.fareFamily,
     title: fare.title,
-    totalSeats: fare.totalSeats,
-    rowStart: fare.rowStart,
-    rowEnd: fare.rowEnd,
+    totalSeats: rows.reduce((total, row) => total + row.seats.filter((column) => !aircraftType?.seatLayout.disabledSeats.includes(`${row.row}${column}`)).length, 0),
+    rowStart: rows.length ? Math.min(...rows.map((row) => row.row)) : 0,
+    rowEnd: rows.length ? Math.max(...rows.map((row) => row.row)) : 0,
     price: baseFare + fare.priceOffset
-  }));
+  }; });
 }
 
 function capNhatSoTienHopLe(value: string, giaMacDinh: number): number {
@@ -243,6 +250,9 @@ export function BackofficeOperationsPageClient() {
   const [state, setState] = useState<OperationsState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [aircraft, setAircraft] = useState<AircraftItem[]>([]);
+  const [aircraftTypes, setAircraftTypes] = useState<AircraftTypeItem[]>([]);
+  const [aircraftError, setAircraftError] = useState<string | null>(null);
   const [flights, setFlights] = useState<BackofficeOperationsFlightItem[]>([]);
   const [drafts, setDrafts] = useState<Record<number, BackofficeOperationsUpdateInput>>({});
   const [pendingFlightAction, setPendingFlightAction] = useState<string | null>(null);
@@ -277,7 +287,19 @@ export function BackofficeOperationsPageClient() {
     }
     void loadFlightStatus("", "", accessToken);
     void loadVouchers("", "", "ALL", accessToken);
+    void loadAircraftCatalog(accessToken);
   }, [accessToken]);
+
+  async function loadAircraftCatalog(token: string) {
+    setAircraftError(null);
+    try {
+      const [types, items] = await Promise.all([fetchAircraftTypes(token), fetchAircraft(token)]);
+      setAircraftTypes(types); setAircraft(items);
+    } catch (error) {
+      setAircraftTypes([]); setAircraft([]);
+      setAircraftError(resolveApiClientErrorMessage(error, "Không thể tải danh mục tàu bay."));
+    }
+  }
 
   useEffect(() => {
     const sections = OPERATIONS_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
@@ -768,9 +790,15 @@ export function BackofficeOperationsPageClient() {
             <SectionHeading
               eyebrow="Tạo chuyến mới"
               title="Bổ sung chuyến bay vào hệ thống khai thác"
-              description="Nhập mã chuyến, sân bay đi đến, thời gian và giá gốc Phổ thông tiết kiệm. Hệ thống sẽ tự suy ra 3 hạng vé cố định."
+              description="Chọn tàu bay ACTIVE, nhập hành trình và giá gốc. Số ghế và vùng hạng vé lấy từ layout tàu bay."
             />
             <div className="field-grid compact-grid">
+              <label className="field"><span>Tàu bay cho chuyến mới</span>
+                <select value={flightForm.aircraftId ?? ""} onChange={(event) => updateFlightFormField("aircraftId", Number(event.target.value) || null)}>
+                  <option value="">Chọn tàu bay ACTIVE</option>
+                  {aircraft.filter((item) => item.status === "ACTIVE").map((item) => <option key={item.id} value={item.id}>{item.registrationCode} • {item.aircraftTypeName}</option>)}
+                </select>
+              </label>
               <label className="field">
                 <span>Mã chuyến bay</span>
                 <input
@@ -880,7 +908,7 @@ export function BackofficeOperationsPageClient() {
               </label>
 
               <div className="stack-list">
-                {taoDanhSachHangVeCoDinh(flightForm.baseFare).map((fareInventory) => (
+                {taoDanhSachHangVeCoDinh(flightForm.baseFare, aircraftTypes.find((type) => type.id === aircraft.find((item) => item.id === flightForm.aircraftId)?.aircraftTypeId)).map((fareInventory) => (
                   <article
                     key={fareInventory.fareFamily}
                     className={`surface-card admin-nested-card ${layLopMauGoiGia(fareInventory.fareFamily)}`}
@@ -891,7 +919,7 @@ export function BackofficeOperationsPageClient() {
                         <input value={fareInventory.title} disabled />
                       </label>
                       <label className="field">
-                        <span>Số ghế cố định</span>
+                        <span>Số ghế theo layout</span>
                         <input value={fareInventory.totalSeats} disabled />
                       </label>
                       <label className="field">
@@ -908,14 +936,14 @@ export function BackofficeOperationsPageClient() {
               </div>
 
               <small className="finance-muted-action operations-fare-note">
-                Giá Phổ thông tiết kiệm là giá gốc bạn nhập; Phổ thông linh hoạt cộng 5.000đ và Thương gia cộng 10.000đ. Quota và vùng ghế của 3 hạng vé được cố định để đồng bộ với giao diện đặt vé.
+                Giá Phổ thông tiết kiệm là giá gốc bạn nhập; Phổ thông linh hoạt cộng 5.000đ và Thương gia cộng 10.000đ. Quota và vùng ghế lấy từ layout đã chọn, không tăng phí chọn ghế.
               </small>
 
               <button
                 type="button"
                 className="button button-primary"
                 onClick={() => void handleCreateFlight()}
-                disabled={pendingFlightAction !== null}
+                disabled={pendingFlightAction !== null || !flightForm.aircraftId}
               >
                 {pendingFlightAction === "create-flight" ? "Đang tạo chuyến bay..." : "Tạo chuyến bay mới"}
               </button>
@@ -952,6 +980,10 @@ export function BackofficeOperationsPageClient() {
           </article>
         </div>
 
+        <div className="section-gap" />
+        {aircraftError ? <p role="alert">{aircraftError}</p> : null}
+        <OperationsAircraftPanel accessToken={accessToken} aircraftTypes={aircraftTypes} aircraft={aircraft}
+          onSaved={async () => { if (accessToken) await loadAircraftCatalog(accessToken); }} />
         <div className="section-gap" />
         <div className="stack-list">
           {flights.length > 0 ? (
@@ -1018,6 +1050,17 @@ export function BackofficeOperationsPageClient() {
                       </div>
 
                       <div className="field-grid compact-grid">
+                        <label className="field"><span>Tàu bay đang gán</span>
+                          <select value={draft?.aircraftId ?? flight.aircraftId ?? ""} disabled={isWorking}
+                            onChange={(event) => setDrafts((current) => ({ ...current, [flight.flightId]: {
+                              ...(draft ?? buildFlightDraft(flight)), aircraftId: Number(event.target.value) || null
+                            } }))}>
+                            <option value="" disabled>Chưa gán tàu bay</option>
+                            {aircraft.filter((item) => item.status === "ACTIVE" || item.id === flight.aircraftId).map((item) => (
+                              <option key={item.id} value={item.id}>{item.registrationCode} • {item.aircraftTypeName} • {item.status}</option>
+                            ))}
+                          </select>
+                        </label>
                         <label className="field">
                           <span>Trạng thái</span>
                           <select

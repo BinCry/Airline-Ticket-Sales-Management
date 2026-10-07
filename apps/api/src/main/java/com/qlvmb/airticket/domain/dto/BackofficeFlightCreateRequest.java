@@ -26,6 +26,12 @@ public record BackofficeFlightCreateRequest(
     String note,
     boolean salesOpen,
     @Min(1)
-    long baseFare
+    long baseFare,
+    @Min(1) Long aircraftId
 ) {
+  public BackofficeFlightCreateRequest(String code, String originCode, String destinationCode,
+      OffsetDateTime departureAt, OffsetDateTime arrivalAt, String gate, String note,
+      boolean salesOpen, long baseFare) {
+    this(code, originCode, destinationCode, departureAt, arrivalAt, gate, note, salesOpen, baseFare, null);
+  }
 }

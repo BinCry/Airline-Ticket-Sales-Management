@@ -3,9 +3,10 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import type { ApiBoardingPass, ApiManageBookingSegment, ApiManageBookingTicket } from "@qlvmb/shared-types";
+import type { ApiBoardingPass, ApiFlightSeatMap, ApiManageBookingSegment, ApiManageBookingTicket } from "@qlvmb/shared-types";
 
 import { SectionHeading } from "@/components/section-heading";
+import { SeatMap } from "@/components/seat-map";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import { xuatBoardingPassPdf } from "@/lib/boarding-pass-pdf";
@@ -19,6 +20,7 @@ import {
   type ManageBookingOverview
 } from "@/lib/manage-booking-api";
 import { pushToast } from "@/lib/toast";
+import { fetchFlightSeatMap } from "@/lib/seat-map-api";
 
 type LookupState = "idle" | "loading" | "error" | "success";
 
@@ -113,6 +115,10 @@ export function CheckInPageClient() {
   const [boardingPasses, setBoardingPasses] = useState<ManageBookingOverview["boardingPasses"]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [exportingTicketNumber, setExportingTicketNumber] = useState<string | null>(null);
+  const [seatMap, setSeatMap] = useState<ApiFlightSeatMap | null>(null);
+  const [seatMapError, setSeatMapError] = useState<string | null>(null);
+  const [seatChoices, setSeatChoices] = useState<Record<string, string>>({});
+  const [activeTicketNumber, setActiveTicketNumber] = useState<string | null>(null);
 
   useEffect(() => {
     setAccessToken(loadActiveAuthSession()?.accessToken);
@@ -153,6 +159,31 @@ export function CheckInPageClient() {
     () => danhSachNhomCheckin.find((group) => group.key === selectedFlightGroupKey) ?? null,
     [danhSachNhomCheckin, selectedFlightGroupKey]
   );
+
+  const activeTicket = nhomCheckinDangChon?.tickets.find((ticket) => ticket.ticketNumber === activeTicketNumber)
+    ?? nhomCheckinDangChon?.tickets[0];
+  const activeSegment = activeTicket && bookingOverview ? timPhanDoanChoVe(bookingOverview, activeTicket) : null;
+  const selectedFlightId = nhomCheckinDangChon?.segment?.flightId;
+
+  useEffect(() => {
+    let cancelled = false;
+    setSeatMap(null);
+    setSeatMapError(null);
+    if (selectedFlightId === undefined) {
+      if (nhomCheckinDangChon) setSeatMapError("Chặng bay thiếu cấu hình tàu bay hoặc mã chuyến. Vui lòng liên hệ hỗ trợ.");
+      return;
+    }
+    fetchFlightSeatMap(selectedFlightId).then((map) => {
+      if (!cancelled) setSeatMap(map);
+    }).catch((error) => {
+      if (!cancelled) setSeatMapError(resolveApiClientErrorMessage(error, "Không thể tải sơ đồ ghế check-in."));
+    });
+    return () => { cancelled = true; };
+  }, [selectedFlightId, nhomCheckinDangChon]);
+
+  useEffect(() => {
+    setSeatChoices(Object.fromEntries((bookingOverview?.tickets ?? []).map((ticket) => [ticket.ticketNumber, ticket.currentSeatNumber ?? ""])));
+  }, [bookingOverview]);
 
   async function traCuuBooking(nextBookingCode: string, nextLookupToken?: string | null) {
     setLookupState("loading");
@@ -272,6 +303,7 @@ export function CheckInPageClient() {
   function handleSelectFlightGroup(groupKey: string) {
     const selectedGroup = danhSachNhomCheckin.find((group) => group.key === groupKey);
     setSelectedFlightGroupKey(groupKey);
+    setActiveTicketNumber(null);
     setSelectedTicketNumbers(selectedGroup ? selectedGroup.tickets.map((ticket) => ticket.ticketNumber) : []);
   }
 
@@ -288,6 +320,11 @@ export function CheckInPageClient() {
       return;
     }
 
+    if (!seatMap || selectedTicketNumbers.some((ticket) => !seatChoices[ticket])) {
+      setLookupError("Hãy chọn ghế hợp lệ cho từng hành khách trước khi hoàn tất check-in.");
+      return;
+    }
+
     setIsSubmitting(true);
     setLookupError(null);
 
@@ -295,7 +332,8 @@ export function CheckInPageClient() {
       const response = await completeCheckin(
         {
           bookingCode: bookingOverview.bookingCode,
-          ticketNumbers: selectedTicketNumbers
+          ticketNumbers: selectedTicketNumbers,
+          seatSelections: selectedTicketNumbers.map((ticketNumber) => ({ ticketNumber, seatNumber: seatChoices[ticketNumber] }))
         },
         accessToken,
         accessToken ? undefined : lookupToken ?? undefined
@@ -321,6 +359,20 @@ export function CheckInPageClient() {
       });
     } catch (error) {
       setLookupError(resolveApiClientErrorMessage(error, "Không thể hoàn tất làm thủ tục trực tuyến."));
+      if (error instanceof ApiClientError && error.status === 409 && selectedFlightId !== undefined) {
+        try {
+          const map = await fetchFlightSeatMap(selectedFlightId);
+          setSeatMap(map);
+          setSeatChoices((choices) => Object.fromEntries(Object.entries(choices).map(([number, choice]) => {
+            const ticket = bookingOverview.tickets.find((item) => item.ticketNumber === number);
+            const seat = map.seats.find((item) => item.seatNumber === choice);
+            return [number, seat && !seat.disabled && (!seat.occupied || choice === ticket?.currentSeatNumber) ? choice : ""];
+          })));
+        } catch (refreshError) {
+          setSeatMap(null);
+          setSeatMapError(resolveApiClientErrorMessage(refreshError, "Không thể cập nhật sơ đồ ghế."));
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -527,6 +579,30 @@ export function CheckInPageClient() {
                   <p>Không tìm thấy vé đủ điều kiện làm thủ tục.</p>
                 )}
 
+                {nhomCheckinDangChon ? (
+                  <div className="stack-list">
+                    <h3>Chọn ghế trước khi phát boarding pass</h3>
+                    <div className="filter-chip-list">
+                      {nhomCheckinDangChon.tickets.map((ticket) => (
+                        <button type="button" key={ticket.ticketNumber} className="button button-secondary"
+                          aria-pressed={activeTicket?.ticketNumber === ticket.ticketNumber}
+                          disabled={isSubmitting} onClick={() => setActiveTicketNumber(ticket.ticketNumber)}>
+                          {ticket.passengerName} • {seatChoices[ticket.ticketNumber] || "Chưa chọn ghế"}
+                        </button>
+                      ))}
+                    </div>
+                    {seatMapError ? <p role="alert">{seatMapError}</p> : null}
+                    {seatMap && activeTicket && activeSegment ? (
+                      <SeatMap map={seatMap} label={`Sơ đồ check-in ${nhomCheckinDangChon.segment?.code}`}
+                        fareFamily={activeSegment.fareFamily} selectedSeat={seatChoices[activeTicket.ticketNumber] ?? ""}
+                        currentSeat={activeTicket.currentSeatNumber} disabled={isSubmitting}
+                        unavailableSeats={new Set(nhomCheckinDangChon.tickets.filter((ticket) => ticket.ticketNumber !== activeTicket.ticketNumber)
+                          .flatMap((ticket) => [seatChoices[ticket.ticketNumber], ticket.currentSeatNumber]).filter((seat): seat is string => Boolean(seat)))}
+                        onSelect={(seat) => setSeatChoices((choices) => ({ ...choices, [activeTicket.ticketNumber]: seat }))} />
+                    ) : !seatMapError ? <p>Đang tải sơ đồ ghế...</p> : null}
+                  </div>
+                ) : null}
+                {lookupError && lookupState === "success" ? <p role="alert">{lookupError}</p> : null}
                 <div className="booking-submit-row">
                   <div>
                     <span className="section-eyebrow">
@@ -539,7 +615,7 @@ export function CheckInPageClient() {
                   <button
                     type="button"
                     className="button button-primary"
-                    disabled={selectedTicketNumbers.length === 0 || isSubmitting}
+                    disabled={selectedTicketNumbers.length === 0 || isSubmitting || !seatMap || selectedTicketNumbers.some((ticket) => !seatChoices[ticket])}
                     onClick={handleCompleteCheckin}
                   >
                     {isSubmitting ? "Đang xử lý..." : "Hoàn tất Check-in"}

@@ -59,6 +59,10 @@ public class FlightEntity {
   @Column(name = "cancelled_at")
   private OffsetDateTime cancelledAt;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "aircraft_id")
+  private AircraftEntity aircraft;
+
   @OneToMany(mappedBy = "flight", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<FlightFareInventoryEntity> fareInventories = new ArrayList<>();
 
@@ -93,6 +97,10 @@ public class FlightEntity {
   public Long getId() {
     return id;
   }
+
+  public AircraftEntity getAircraft() { return aircraft; }
+
+  public void assignAircraft(AircraftEntity aircraft) { this.aircraft = aircraft; }
 
   public String getCode() {
     return code;

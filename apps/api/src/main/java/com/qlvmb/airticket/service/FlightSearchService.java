@@ -2,6 +2,7 @@ package com.qlvmb.airticket.service;
 
 import com.qlvmb.airticket.domain.dto.FlightBookingOptionsResponse;
 import com.qlvmb.airticket.domain.dto.FlightSearchResponse;
+import com.qlvmb.airticket.domain.dto.SeatMapResponse;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.mapper.FlightSearchMapper;
@@ -41,6 +42,7 @@ public class FlightSearchService {
   private final FlightRepository flightRepository;
   private final ProductCatalogService productCatalogService;
   private final FlightSearchMapper flightSearchMapper;
+  private final SeatMapService seatMapService;
 
   public FlightSearchService(
       AirportRepository airportRepository,
@@ -48,7 +50,8 @@ public class FlightSearchService {
       BookingSeatSelectionRepository bookingSeatSelectionRepository,
       FlightRepository flightRepository,
       ProductCatalogService productCatalogService,
-      FlightSearchMapper flightSearchMapper
+      FlightSearchMapper flightSearchMapper,
+      SeatMapService seatMapService
   ) {
     this.airportRepository = airportRepository;
     this.bookingService = bookingService;
@@ -56,6 +59,7 @@ public class FlightSearchService {
     this.flightRepository = flightRepository;
     this.productCatalogService = productCatalogService;
     this.flightSearchMapper = flightSearchMapper;
+    this.seatMapService = seatMapService;
   }
 
   @Transactional
@@ -123,15 +127,16 @@ public class FlightSearchService {
 
     OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
     reconcileExpiredHoldsForFlight(flight, currentTime);
+    // Giữ quota vừa nhả trước refresh flight có cascade tới inventory.
+    flightRepository.flush();
+    flight = seatMapService.lockFlight(flightId);
 
     if (!PublicFlightWindowPolicy.isPublicBookingOpen(flight, currentTime)) {
       throw new BadRequestException(PUBLIC_BOOKING_CLOSED_MESSAGE);
     }
 
-    List<FlightBookingOptionsResponse.FareOptionItem> fareOptions = buildBookingFareOptions(flight);
-    Set<String> occupiedSeats = new LinkedHashSet<>(
-        bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(flightId, currentTime)
-    );
+    SeatMapResponse map = seatMapService.getSeatMapForFlight(flightId);
+    List<FlightBookingOptionsResponse.FareOptionItem> fareOptions = buildBookingFareOptions(flight, map.layout());
 
     return new FlightBookingOptionsResponse(
         flight.getId(),
@@ -144,7 +149,8 @@ public class FlightSearchService {
         flight.getArrivalAt(),
         productCatalogService.resolveBaseFare(flight.getFareInventories()),
         fareOptions,
-        buildSeatItems(occupiedSeats)
+        map.seats().stream().map(seat -> new FlightBookingOptionsResponse.SeatItem(
+            seat.seatNumber(), seat.fareFamily(), seat.occupied() || seat.disabled())).toList()
     );
   }
 
@@ -225,7 +231,7 @@ public class FlightSearchService {
         .toList();
   }
 
-  private List<FlightBookingOptionsResponse.FareOptionItem> buildBookingFareOptions(FlightEntity flight) {
+  private List<FlightBookingOptionsResponse.FareOptionItem> buildBookingFareOptions(FlightEntity flight, SeatMapResponse.Layout layout) {
     return productCatalogService.getFixedFareMetas().stream()
         .map(fareMeta -> flight.findFareInventory(fareMeta.fareFamily())
             .map(inventory -> new FlightBookingOptionsResponse.FareOptionItem(
@@ -235,28 +241,11 @@ public class FlightSearchService {
                 inventory.getPrice(),
                 inventory.getAvailableSeats(),
                 inventory.getTotalSeats(),
-                fareMeta.rowStart(),
-                fareMeta.rowEnd()
+                layout.rows().stream().filter(row -> row.fareFamily().equals(fareMeta.fareFamily())).mapToInt(row -> row.row()).min().orElse(0),
+                layout.rows().stream().filter(row -> row.fareFamily().equals(fareMeta.fareFamily())).mapToInt(row -> row.row()).max().orElse(0)
             ))
             .orElse(null))
         .filter(Objects::nonNull)
-        .toList();
-  }
-
-  private List<FlightBookingOptionsResponse.SeatItem> buildSeatItems(Collection<String> occupiedSeats) {
-    Set<String> occupiedSeatSet = occupiedSeats.stream()
-        .map(String::toUpperCase)
-        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-    List<String> seatLetters = List.of("A", "B", "C", "D", "E", "F");
-
-    return java.util.stream.IntStream.rangeClosed(1, 28)
-        .boxed()
-        .flatMap(rowNumber -> seatLetters.stream().map(seatLetter -> rowNumber + seatLetter))
-        .map(seatNumber -> new FlightBookingOptionsResponse.SeatItem(
-            seatNumber,
-            productCatalogService.resolveFareFamilyBySeatNumber(seatNumber),
-            occupiedSeatSet.contains(seatNumber)
-        ))
         .toList();
   }
 

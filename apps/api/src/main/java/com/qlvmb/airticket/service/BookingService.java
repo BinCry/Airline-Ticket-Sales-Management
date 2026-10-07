@@ -17,6 +17,7 @@ import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
+import com.qlvmb.airticket.exception.ConflictException;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.BookingSeatSelectionRepository;
@@ -25,6 +26,8 @@ import com.qlvmb.airticket.repository.TicketRepository;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import com.qlvmb.airticket.security.RoleCode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -88,7 +91,9 @@ public class BookingService {
   private final ProductCatalogService productCatalogService;
   private final MemberVoucherService memberVoucherService;
   private final UserAccountRepository userAccountRepository;
+  private final SeatMapService seatMapService;
   private final SecureRandom secureRandom = new SecureRandom();
+  @PersistenceContext private EntityManager entityManager;
 
   public BookingService(
       FlightFareInventoryRepository flightFareInventoryRepository,
@@ -97,7 +102,8 @@ public class BookingService {
       TicketRepository ticketRepository,
       ProductCatalogService productCatalogService,
       MemberVoucherService memberVoucherService,
-      UserAccountRepository userAccountRepository
+      UserAccountRepository userAccountRepository,
+      SeatMapService seatMapService
   ) {
     this.flightFareInventoryRepository = flightFareInventoryRepository;
     this.bookingRepository = bookingRepository;
@@ -106,6 +112,7 @@ public class BookingService {
     this.productCatalogService = productCatalogService;
     this.memberVoucherService = memberVoucherService;
     this.userAccountRepository = userAccountRepository;
+    this.seatMapService = seatMapService;
   }
 
   @Transactional
@@ -121,6 +128,8 @@ public class BookingService {
     int passengerCount = request.passengers().size();
     OffsetDateTime currentTime = PublicFlightWindowPolicy.currentTime();
     List<Long> inventoryIds = collectReferencedInventoryIds(request);
+
+    seatMapService.lockInventoryFlights(inventoryIds, currentTime);
 
     List<FlightFareInventoryEntity> lockedInventories =
         new ArrayList<>(flightFareInventoryRepository.lockByIds(inventoryIds));
@@ -269,6 +278,8 @@ public class BookingService {
       return;
     }
 
+    seatMapService.lockInventoryFlights(inventoryIds, currentTime);
+
     List<FlightFareInventoryEntity> lockedInventories =
         new ArrayList<>(flightFareInventoryRepository.lockByIds(inventoryIds));
     reconcileExpiredHolds(currentTime, lockedInventories);
@@ -276,6 +287,7 @@ public class BookingService {
 
   @Transactional
   public BookingOverviewResponse getBookingOverview(String bookingCode) {
+    seatMapService.lockBookingFlights(normalizeBookingCode(bookingCode, BOOKING_NOT_FOUND_MESSAGE));
     BookingEntity booking = findDetailedBooking(bookingCode, BOOKING_NOT_FOUND_MESSAGE);
     reconcileBookingExpiration(booking, OffsetDateTime.now());
     return mapOverviewResponse(booking);
@@ -386,6 +398,7 @@ public class BookingService {
   @Transactional
   public BookingEntity findBookingForPayment(String bookingCode) {
     BookingEntity booking = lockDetailedBooking(bookingCode, BOOKING_EXPIRED_MESSAGE);
+    refreshLockedBookingForPayment(booking);
     reconcileBookingExpiration(booking, OffsetDateTime.now());
     if (BookingEntity.STATUS_CANCELLED.equals(booking.getStatus())
         && BookingEntity.PAYMENT_STATUS_EXPIRED.equals(booking.getPaymentStatus())) {
@@ -394,9 +407,18 @@ public class BookingService {
     return booking;
   }
 
+  public void refreshLockedBookingForPayment(BookingEntity booking) {
+    // Thay snapshot đọc trước khóa bằng dữ liệu hiện tại; giữ mutation đã có trước refresh.
+    if (entityManager != null) {
+      entityManager.flush();
+      entityManager.refresh(booking);
+    }
+  }
+
   @Transactional
   public BookingEntity lockDetailedBooking(String bookingCode, String notFoundMessage) {
     String normalizedBookingCode = normalizeBookingCode(bookingCode, notFoundMessage);
+    seatMapService.lockBookingFlights(normalizedBookingCode);
     return bookingRepository.lockDetailedByBookingCode(normalizedBookingCode)
         .orElseThrow(() -> new NotFoundException(notFoundMessage));
   }
@@ -458,7 +480,8 @@ public class BookingService {
             ticket.getTicketNumber(),
             ticket.getPassenger().getFullName(),
             mapTicketStatus(ticket.getStatus()),
-            ticket.getIssuedAt()
+            ticket.getIssuedAt(),
+            currentSeatNumber(booking, ticket)
         ))
         .toList();
 
@@ -853,25 +876,21 @@ public class BookingService {
           preparedTripSegments,
           tripSegmentByFlightId
       );
-      String seatNumber = normalizeSeatNumber(seatSelectionRequest.seatNumber());
+      String seatNumber = seatMapService.normalizeSeat(seatSelectionRequest.seatNumber());
       String passengerSegmentKey = tripSegment.segmentIndex() + ":" + passengerIndex;
       String seatSegmentKey = flightId + ":" + seatNumber;
 
       if (!passengerSegmentKeys.add(passengerSegmentKey) || !seatSegmentKeys.add(seatSegmentKey)) {
         throw new BadRequestException(SEAT_SELECTION_DUPLICATE_MESSAGE);
       }
-      if (!productCatalogService.isSeatNumberAllowed(inventory.getFareFamily(), seatNumber)) {
-        throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
-      }
+      seatMapService.validateSeat(seatMapService.getSeatMapForFlight(flightId).layout(), seatNumber, inventory.getFareFamily());
 
       Set<String> occupiedSeats = occupiedSeatsByFlightId.computeIfAbsent(
           flightId,
-          ignored -> new LinkedHashSet<>(
-              bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(flightId, currentTime)
-          )
+          ignored -> seatMapService.occupiedSeats(flightId, currentTime, null, null)
       );
       if (occupiedSeats.contains(seatNumber)) {
-        throw new BadRequestException(SEAT_SELECTION_DUPLICATE_MESSAGE);
+        throw new ConflictException("Ghế " + seatNumber + " không còn trống. Vui lòng tải lại sơ đồ.");
       }
       occupiedSeats.add(seatNumber);
       passengerCountByInventoryId.merge(seatSelectionRequest.inventoryId(), 1, Integer::sum);
@@ -1121,7 +1140,8 @@ public class BookingService {
         status,
         mapFlightStatusLabel(status),
         resolveFlightGate(flight),
-        resolveFlightNote(flight)
+        resolveFlightNote(flight),
+        flight == null ? null : flight.getId()
     );
   }
 
@@ -1310,16 +1330,12 @@ public class BookingService {
     return normalizedPassengerType;
   }
 
-  private String normalizeSeatNumber(String seatNumber) {
-    if (seatNumber == null) {
-      throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
-    }
-
-    String normalizedSeatNumber = seatNumber.trim().toUpperCase();
-    if (!normalizedSeatNumber.matches("^[1-9][0-9]?[A-F]$")) {
-      throw new BadRequestException(SEAT_SELECTION_INVALID_MESSAGE);
-    }
-    return normalizedSeatNumber;
+  private String currentSeatNumber(BookingEntity booking, TicketEntity ticket) {
+    if (ticket.getBoardingPass() != null) return ticket.getBoardingPass().getSeatNumber();
+    return booking.getSeatSelections().stream()
+        .filter(s -> Objects.equals(s.getPassenger(), ticket.getPassenger())
+            && Objects.equals(s.getSegment(), ticket.getSegment()))
+        .map(BookingSeatSelectionEntity::getSeatNumber).findFirst().orElse(null);
   }
 
   private String normalizeBookingCode(String bookingCode, String notFoundMessage) {

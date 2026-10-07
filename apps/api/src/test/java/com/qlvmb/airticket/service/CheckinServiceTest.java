@@ -35,10 +35,14 @@ class CheckinServiceTest {
   private BoardingPassRepository boardingPassRepository;
 
   private CheckinService checkinService;
+  @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
-    checkinService = new CheckinService(bookingService, boardingPassRepository);
+    SeatMapTestFixtures.stubValidation(seatMapService);
+    org.mockito.Mockito.lenient().when(seatMapService.getSeatMapForFlight(org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(a -> SeatMapTestFixtures.map(a.getArgument(0), java.util.Set.of()));
+    checkinService = new CheckinService(bookingService, boardingPassRepository, seatMapService);
   }
 
   @Test
@@ -49,7 +53,8 @@ class CheckinServiceTest {
     when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     CheckinCompleteResponse response = checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"),
+            java.util.List.of(new CheckinCompleteRequest.SeatSelectionRequest("7380000000001", "12A")))
     );
 
     assertThat(response.bookingCode()).isEqualTo("A6C2P1");
@@ -67,7 +72,8 @@ class CheckinServiceTest {
     when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     CheckinCompleteResponse response = checkinService.completeCheckin(
-        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"),
+            java.util.List.of(new CheckinCompleteRequest.SeatSelectionRequest("7380000000001", "12A")))
     );
 
     assertThat(response.ticketNumbers()).containsExactly("7380000000001");
@@ -168,6 +174,7 @@ class CheckinServiceTest {
 
     FlightEntity flight = org.mockito.Mockito.mock(FlightEntity.class);
     when(flight.getStatus()).thenReturn("scheduled");
+    when(flight.getId()).thenReturn(1L);
     when(flight.getGate()).thenReturn("G5");
 
     FlightFareInventoryEntity saverInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
@@ -323,6 +330,7 @@ class CheckinServiceTest {
     FlightEntity flight = org.mockito.Mockito.mock(FlightEntity.class);
     FlightFareInventoryEntity inventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
     org.mockito.Mockito.lenient().when(flight.getStatus()).thenReturn(flightStatus);
+    org.mockito.Mockito.lenient().when(flight.getId()).thenReturn(1L);
     org.mockito.Mockito.lenient().when(inventory.getFlight()).thenReturn(flight);
 
     booking.addSegment(BookingSegmentEntity.create(
@@ -398,6 +406,7 @@ class CheckinServiceTest {
     FlightEntity outboundFlight = org.mockito.Mockito.mock(FlightEntity.class);
     FlightFareInventoryEntity outboundInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
     org.mockito.Mockito.lenient().when(outboundFlight.getStatus()).thenReturn("scheduled");
+    org.mockito.Mockito.lenient().when(outboundFlight.getId()).thenReturn(1L);
     org.mockito.Mockito.lenient().when(outboundFlight.getGate()).thenReturn("G3");
     org.mockito.Mockito.lenient().when(outboundInventory.getId()).thenReturn(20101L);
     org.mockito.Mockito.lenient().when(outboundInventory.getFlight()).thenReturn(outboundFlight);
@@ -405,6 +414,7 @@ class CheckinServiceTest {
     FlightEntity returnFlight = org.mockito.Mockito.mock(FlightEntity.class);
     FlightFareInventoryEntity returnInventory = org.mockito.Mockito.mock(FlightFareInventoryEntity.class);
     org.mockito.Mockito.lenient().when(returnFlight.getStatus()).thenReturn("scheduled");
+    org.mockito.Mockito.lenient().when(returnFlight.getId()).thenReturn(2L);
     org.mockito.Mockito.lenient().when(returnFlight.getGate()).thenReturn("G4");
     org.mockito.Mockito.lenient().when(returnInventory.getId()).thenReturn(20102L);
     org.mockito.Mockito.lenient().when(returnInventory.getFlight()).thenReturn(returnFlight);

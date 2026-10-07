@@ -1,4 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { seatMapFixture } from "./seat-map-fixtures";
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/flights/18/seat-map", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify(seatMapFixture()) }));
+});
 
 function encodeBase64Url(value: string) {
   return Buffer.from(value).toString("base64url");

@@ -65,9 +65,15 @@ class BookingServiceTest {
   private UserAccountRepository userAccountRepository;
 
   private BookingService bookingService;
+  @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
+    SeatMapTestFixtures.stubValidation(seatMapService);
+    lenient().when(seatMapService.getSeatMapForFlight(org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(a -> SeatMapTestFixtures.map(a.getArgument(0), Set.of()));
+    lenient().when(seatMapService.occupiedSeats(org.mockito.ArgumentMatchers.anyLong(), any(), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull()))
+        .thenAnswer(a -> new java.util.LinkedHashSet<>(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(a.getArgument(0),a.getArgument(1))));
     bookingService = new BookingService(
         flightFareInventoryRepository,
         bookingRepository,
@@ -75,7 +81,8 @@ class BookingServiceTest {
         ticketRepository,
         new ProductCatalogService(),
         memberVoucherService,
-        userAccountRepository
+        userAccountRepository,
+        seatMapService
     );
   }
 
@@ -167,8 +174,8 @@ class BookingServiceTest {
         .thenReturn(List.of("9A"));
 
     assertThatThrownBy(() -> bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L))))
-        .isInstanceOf(BadRequestException.class)
-        .hasMessage("Không được chọn trùng ghế cho cùng một chặng bay.");
+        .isInstanceOf(com.qlvmb.airticket.exception.ConflictException.class)
+        .hasMessageContaining("không còn trống");
   }
 
   @Test

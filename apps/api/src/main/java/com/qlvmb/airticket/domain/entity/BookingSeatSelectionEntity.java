@@ -40,6 +40,9 @@ public class BookingSeatSelectionEntity {
   @Column(name = "created_at", nullable = false)
   private OffsetDateTime createdAt;
 
+  @Column(name = "updated_at", nullable = false)
+  private OffsetDateTime updatedAt;
+
   protected BookingSeatSelectionEntity() {
   }
 
@@ -58,11 +61,17 @@ public class BookingSeatSelectionEntity {
     seatSelection.seatNumber = seatNumber;
     seatSelection.unitPrice = unitPrice;
     seatSelection.createdAt = createdAt;
+    seatSelection.updatedAt = createdAt;
     return seatSelection;
   }
 
   public Long getId() {
     return id;
+  }
+
+  public void changeSeat(String seatNumber, OffsetDateTime updatedAt) {
+    this.seatNumber = seatNumber;
+    this.updatedAt = updatedAt;
   }
 
   public BookingEntity getBooking() {

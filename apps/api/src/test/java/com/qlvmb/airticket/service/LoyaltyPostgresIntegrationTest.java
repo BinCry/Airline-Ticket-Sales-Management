@@ -49,7 +49,7 @@ class LoyaltyPostgresIntegrationTest {
   @EnableJpaRepositories(basePackageClasses = BookingRepository.class)
   @Import({LoyaltyEngineService.class, LoyaltyReconciliationService.class, MemberLoyaltyService.class,
       NotificationOutboxService.class, BookingService.class, MemberVoucherService.class,
-      ProductCatalogService.class, BackofficeOperationsService.class})
+      ProductCatalogService.class, BackofficeOperationsService.class, SeatMapService.class})
   static class TestConfiguration {
   }
 
