@@ -23,12 +23,19 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class NotificationOutboxService {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(NotificationOutboxService.class);
 
   private static final String TICKET_EMAIL_SUBJECT_PREFIX = "Vé điện tử cho mã đặt chỗ ";
   private static final String TICKET_EMAIL_SUBJECT_SUFFIX = " | Vietnam Airlines";
@@ -51,17 +58,32 @@ public class NotificationOutboxService {
   private final @Nullable JavaMailSender mailSender;
   private final boolean mailEnabled;
   private final String fromEmail;
+  private final TransactionTemplate deliveryTransaction;
 
   public NotificationOutboxService(
       NotificationOutboxRepository notificationOutboxRepository,
       @Nullable JavaMailSender mailSender,
       @Value("${app.mail.enabled}") boolean mailEnabled,
-      @Value("${app.mail.from-email:}") String fromEmail
+      @Value("${app.mail.from-email:}") String fromEmail,
+      PlatformTransactionManager transactionManager
   ) {
     this.notificationOutboxRepository = notificationOutboxRepository;
     this.mailSender = mailSender;
     this.mailEnabled = mailEnabled;
     this.fromEmail = fromEmail;
+    deliveryTransaction = new TransactionTemplate(transactionManager);
+    deliveryTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+  }
+
+  @Transactional
+  public NotificationOutboxResponse createAndSendLoyaltyTierUpgradeEmail(
+      String memberEmail, String bookingCode, String tierChange
+  ) {
+    NotificationOutboxEntity outbox = NotificationOutboxEntity.createLoyaltyTierUpgradeEmail(
+        bookingCode, memberEmail, tierChange, OffsetDateTime.now(ZoneOffset.UTC));
+    notificationOutboxRepository.save(outbox);
+    dispatchDelivery(outbox);
+    return toResponse(outbox);
   }
 
   @Transactional
@@ -187,13 +209,18 @@ public class NotificationOutboxService {
       return;
     }
 
-    notificationOutboxRepository.findById(outboxId).ifPresent(outbox -> {
-      if (NotificationOutboxEntity.STATUS_SENT.equals(outbox.getStatus())) {
-        return;
-      }
-      send(outbox);
-      notificationOutboxRepository.save(outbox);
-    });
+    try {
+      // Thay cập nhật sau commit bằng transaction mới để lưu trạng thái gửi thư.
+      deliveryTransaction.executeWithoutResult(status ->
+          notificationOutboxRepository.findById(outboxId).ifPresent(outbox -> {
+            if (!NotificationOutboxEntity.STATUS_SENT.equals(outbox.getStatus())) {
+              send(outbox);
+              notificationOutboxRepository.save(outbox);
+            }
+          }));
+    } catch (RuntimeException exception) {
+      LOGGER.error("Chưa gửi được thông báo {}; dữ liệu đã commit được giữ nguyên.", outboxId, exception);
+    }
   }
 
   private String buildTicketEmailBody(BookingEntity booking) {

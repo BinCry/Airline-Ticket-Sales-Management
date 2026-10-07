@@ -993,6 +993,44 @@ class ControllerSecurityTest {
   }
 
   @Test
+  void createBookingHold_shouldRejectInvalidOrExpiredToken() throws Exception {
+    String expiredToken = "Bearer " + Jwts.builder()
+        .issuer(JWT_ISSUER).subject("151")
+        .expiration(java.util.Date.from(OffsetDateTime.now().minusMinutes(1).toInstant()))
+        .claim("type", "access")
+        .signWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8))).compact();
+    for (String token : List.of("Bearer token-khong-hop-le", "Bearer ", expiredToken)) {
+      mockMvc.perform(post("/api/bookings/holds")
+              .header(HttpHeaders.AUTHORIZATION, token)
+              .contentType(APPLICATION_JSON).content(loyaltyHoldRequest()))
+          .andExpect(status().isUnauthorized());
+    }
+    org.mockito.Mockito.verifyNoInteractions(bookingService);
+  }
+
+  @Test
+  void createBookingHold_shouldForwardAuthenticatedMemberNotSubmittedId() throws Exception {
+    mockMvc.perform(post("/api/bookings/holds")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("member"), List.of("member.loyalty")))
+            .contentType(APPLICATION_JSON).content(loyaltyHoldRequest()))
+        .andExpect(status().isOk());
+    org.mockito.Mockito.verify(bookingService).createHold(ArgumentMatchers.any(),
+        ArgumentMatchers.argThat(user -> user != null && user.userId().equals(151L)));
+  }
+
+  private String loyaltyHoldRequest() {
+    return """
+        {
+          "tripType": "one_way", "memberUserId": 301,
+          "contact": {"fullName": "Hội viên", "email": "contact@example.com", "phone": "0912345678"},
+          "passengers": [{"fullName": "Hành khách", "passengerType": "adult", "dateOfBirth": "1995-05-12",
+            "documentType": "CCCD", "documentNumber": "079123456789"}],
+          "segments": [{"inventoryId": 20101}], "ancillaries": []
+        }
+        """;
+  }
+
+  @Test
   void paymentCallback_shouldRejectPublicAccess() throws Exception {
     mockMvc.perform(post("/api/payments/callback")
             .contentType(APPLICATION_JSON)

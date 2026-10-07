@@ -5,6 +5,7 @@ import com.qlvmb.airticket.domain.dto.MyLoyaltyResponse;
 import com.qlvmb.airticket.domain.dto.MyVoucherResponse;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
 import com.qlvmb.airticket.domain.entity.MemberLoyaltyAccountEntity;
+import com.qlvmb.airticket.domain.entity.LoyaltyTierRuleEntity;
 import com.qlvmb.airticket.domain.entity.MemberLoyaltyLedgerEntity;
 import com.qlvmb.airticket.domain.entity.MemberVoucherEntity;
 import com.qlvmb.airticket.domain.entity.RoleEntity;
@@ -12,6 +13,7 @@ import com.qlvmb.airticket.domain.entity.UserAccountEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.AuditLogRepository;
+import com.qlvmb.airticket.repository.LoyaltyTierRuleRepository;
 import com.qlvmb.airticket.repository.MemberLoyaltyAccountRepository;
 import com.qlvmb.airticket.repository.MemberLoyaltyLedgerRepository;
 import com.qlvmb.airticket.repository.MemberVoucherRepository;
@@ -33,19 +35,22 @@ public class MemberLoyaltyService {
   private final MemberLoyaltyLedgerRepository memberLoyaltyLedgerRepository;
   private final MemberVoucherRepository memberVoucherRepository;
   private final AuditLogRepository auditLogRepository;
+  private final LoyaltyTierRuleRepository loyaltyTierRuleRepository;
 
   public MemberLoyaltyService(
       UserAccountRepository userAccountRepository,
       MemberLoyaltyAccountRepository memberLoyaltyAccountRepository,
       MemberLoyaltyLedgerRepository memberLoyaltyLedgerRepository,
       MemberVoucherRepository memberVoucherRepository,
-      AuditLogRepository auditLogRepository
+      AuditLogRepository auditLogRepository,
+      LoyaltyTierRuleRepository loyaltyTierRuleRepository
   ) {
     this.userAccountRepository = userAccountRepository;
     this.memberLoyaltyAccountRepository = memberLoyaltyAccountRepository;
     this.memberLoyaltyLedgerRepository = memberLoyaltyLedgerRepository;
     this.memberVoucherRepository = memberVoucherRepository;
     this.auditLogRepository = auditLogRepository;
+    this.loyaltyTierRuleRepository = loyaltyTierRuleRepository;
   }
 
   @Transactional(readOnly = true)
@@ -54,24 +59,38 @@ public class MemberLoyaltyService {
     MemberLoyaltyAccountEntity loyaltyAccount = memberLoyaltyAccountRepository.findByUserId(userAccount.getId())
         .orElse(null);
 
-    if (loyaltyAccount == null) {
-      return new MyLoyaltyResponse("Hội viên", 0, 0, 0, List.of());
-    }
+    var rules = loyaltyTierRuleRepository.findAllByOrderBySortOrderAsc();
+    String currentTier = loyaltyAccount == null
+        ? rules.stream().filter(LoyaltyTierRuleEntity::isActive)
+            .filter(rule -> rule.getMinLifetimePoints() == 0)
+            .map(LoyaltyTierRuleEntity::getTierName).findFirst().orElse("Hội viên")
+        : loyaltyAccount.getMembershipTier();
+    int lifetimePoints = loyaltyAccount == null ? 0 : loyaltyAccount.getLifetimePoints();
+    int currentOrder = rules.stream().filter(rule -> rule.getTierName().equals(currentTier))
+        .mapToInt(LoyaltyTierRuleEntity::getSortOrder).findFirst().orElse(Integer.MAX_VALUE);
+    LoyaltyTierRuleEntity nextTier = rules.stream().filter(LoyaltyTierRuleEntity::isActive)
+        .filter(rule -> rule.getSortOrder() > currentOrder).findFirst().orElse(null);
+    double progress = nextTier == null || nextTier.getMinLifetimePoints() == 0 ? 100.0
+        : Math.max(0.0, Math.min(100.0, lifetimePoints * 100.0 / nextTier.getMinLifetimePoints()));
 
-    List<MyLoyaltyLedgerItemResponse> recentEntries = memberLoyaltyLedgerRepository
+    List<MyLoyaltyLedgerItemResponse> recentEntries = loyaltyAccount == null ? List.of() : memberLoyaltyLedgerRepository
         .findTop5ByLoyaltyAccountIdOrderByCreatedAtDesc(loyaltyAccount.getId()).stream()
         .map(this::toLedgerItemResponse)
         .toList();
 
     return new MyLoyaltyResponse(
-        loyaltyAccount.getMembershipTier(),
-        loyaltyAccount.getPointBalance(),
-        loyaltyAccount.getLifetimePoints(),
+        currentTier,
+        loyaltyAccount == null ? 0 : loyaltyAccount.getPointBalance(),
+        lifetimePoints,
         (int) memberVoucherRepository.countByUserIdAndStatus(
             userAccount.getId(),
             MemberVoucherEntity.STATUS_AVAILABLE
         ),
-        recentEntries
+        recentEntries,
+        nextTier == null ? null : nextTier.getTierName(),
+        nextTier == null ? null : nextTier.getMinLifetimePoints(),
+        nextTier == null ? 0 : Math.max(0, nextTier.getMinLifetimePoints() - lifetimePoints),
+        progress
     );
   }
 

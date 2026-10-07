@@ -165,6 +165,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-check-flight-search.ps1
     - `GET /api/me/loyalty`
     - `GET /api/me/vouchers`
 
+### Tích điểm và nâng hạng tự động
+- Chỉ mã đặt chỗ mới gắn với tài khoản hội viên đã xác thực mới được tích điểm; không suy đoán bằng email hoặc cộng hồi tố mã cũ.
+- Khi chuyến bay chuyển sang `landed`, hệ thống cộng `floor(giá vé mỗi hành khách × số vé chưa hủy của chặng / 1000)` cho mã đã thanh toán, xuất vé và tài khoản còn vai trò hội viên. Không tính dịch vụ bổ sung hay phân bổ voucher.
+- Điểm khả dụng, tổng điểm tích lũy và lịch sử được lưu trong cùng giao dịch, khóa theo tài khoản và có ràng buộc duy nhất để không cộng trùng.
+- Ngưỡng hạng lấy từ `loyalty_tier_rule`: Hội viên `0`, Bạc `10000`, Vàng `20000`, Bạch Kim `40000`. Chỉ nâng hạng, không tự hạ hạng.
+- Tích điểm chạy sau khi cập nhật chuyến bay đã lưu thành công; lỗi tích điểm không hoàn tác trạng thái chuyến. Tác vụ đối soát chạy mỗi phút để thử lại chặng còn thiếu điểm.
+- Trang `/account` hiển thị hạng, số dư, tổng điểm tích lũy, tiến độ lên hạng và lịch sử gần đây. Thông báo nâng hạng dùng cấu hình thư hiện có; không cần biến môi trường production mới.
+
 ## Production trên Azure + Coolify
 
 ### Thành phần chính
@@ -216,6 +224,17 @@ npm run validate:production:config
 cd apps/api
 .\mvnw.cmd test
 ```
+
+- Kiểm thử tích hợp tích điểm cần cơ sở dữ liệu PostgreSQL **riêng cho kiểm thử**, tài khoản có quyền tạo lược đồ; bài kiểm thử chạy toàn bộ di trú trong một lược đồ mới. Không trỏ đến dữ liệu production.
+- Khai báo các biến chỉ dành cho kiểm thử rồi chạy lại lệnh backend phía trên:
+
+```powershell
+$env:LOYALTY_TEST_DB_URL="jdbc:postgresql://localhost:5432/airticket_loyalty_test"
+$env:LOYALTY_TEST_DB_USER="postgres"
+$env:LOYALTY_TEST_DB_PASSWORD="mat-khau-database-kiem-thu"
+```
+
+- Khi không có `LOYALTY_TEST_DB_URL`, chỉ bộ kiểm thử PostgreSQL này không chạy; các kiểm thử backend còn lại vẫn chạy như hiện tại. Hai biến tài khoản mặc định là `loyalty_test` và mật khẩu rỗng, nên cần ghi đè theo cơ sở dữ liệu kiểm thử của bạn. Không cần cấu hình các biến này trong Coolify; pipeline hiện có giữ nguyên. Khi chạy bộ kiểm thử này trên CI, cấu hình chúng ở môi trường kiểm thử của job, mật khẩu dùng secret.
 
 - Web:
 

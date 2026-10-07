@@ -11,6 +11,7 @@ import com.qlvmb.airticket.domain.entity.MemberVoucherEntity;
 import com.qlvmb.airticket.domain.entity.RoleEntity;
 import com.qlvmb.airticket.domain.entity.UserAccountEntity;
 import com.qlvmb.airticket.repository.AuditLogRepository;
+import com.qlvmb.airticket.repository.LoyaltyTierRuleRepository;
 import com.qlvmb.airticket.repository.MemberLoyaltyAccountRepository;
 import com.qlvmb.airticket.repository.MemberLoyaltyLedgerRepository;
 import com.qlvmb.airticket.repository.MemberVoucherRepository;
@@ -48,6 +49,9 @@ class MemberLoyaltyServiceTest {
   @Mock
   private AuditLogRepository auditLogRepository;
 
+  @Mock
+  private LoyaltyTierRuleRepository loyaltyTierRuleRepository;
+
   private MemberLoyaltyService memberLoyaltyService;
 
   @BeforeEach
@@ -57,7 +61,8 @@ class MemberLoyaltyServiceTest {
         memberLoyaltyAccountRepository,
         memberLoyaltyLedgerRepository,
         memberVoucherRepository,
-        auditLogRepository
+        auditLogRepository,
+        loyaltyTierRuleRepository
     );
   }
 

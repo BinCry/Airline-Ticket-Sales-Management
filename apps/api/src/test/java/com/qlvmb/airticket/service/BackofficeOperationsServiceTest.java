@@ -38,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,6 +68,9 @@ class BackofficeOperationsServiceTest {
   @Mock
   private BookingService bookingService;
 
+  @Mock
+  private ApplicationEventPublisher eventPublisher;
+
   private BackofficeOperationsService backofficeOperationsService;
 
   @BeforeEach
@@ -80,7 +84,8 @@ class BackofficeOperationsServiceTest {
         auditLogRepository,
         new ProductCatalogService(),
         notificationOutboxService,
-        bookingService
+        bookingService,
+        eventPublisher
     );
   }
 
@@ -114,6 +119,19 @@ class BackofficeOperationsServiceTest {
     assertThat(item.note()).isEqualTo("Tre do dieu phoi tau bay.");
     assertThat(item.salesOpen()).isFalse();
     verify(auditLogRepository).save(any(AuditLogEntity.class));
+  }
+
+  @Test
+  void updateFlight_shouldPublishOnlyOnActualLandedTransition() {
+    FlightEntity flight = createFlight(18L, "VN5201", "SGN", "TP Hồ Chí Minh", "HAN", "Hà Nội",
+        OffsetDateTime.parse("2026-05-23T01:30:00Z"));
+    when(flightRepository.findDetailedById(18L)).thenReturn(Optional.of(flight));
+    when(userAccountRepository.findOneWithRolesById(301L))
+        .thenReturn(Optional.of(BeanUtils.instantiateClass(UserAccountEntity.class)));
+    var request = new BackofficeFlightOperationUpdateRequest("landed", "G1", null, false, null);
+    backofficeOperationsService.updateFlight(actor(), 18L, request);
+    backofficeOperationsService.updateFlight(actor(), 18L, request);
+    verify(eventPublisher).publishEvent(new FlightLandedEvent(18L));
   }
 
   @Test

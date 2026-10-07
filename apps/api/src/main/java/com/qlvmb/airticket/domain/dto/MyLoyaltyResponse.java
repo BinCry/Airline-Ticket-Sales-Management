@@ -7,6 +7,10 @@ public record MyLoyaltyResponse(
     int pointBalance,
     int lifetimePoints,
     int availableVoucherCount,
-    List<MyLoyaltyLedgerItemResponse> recentEntries
+    List<MyLoyaltyLedgerItemResponse> recentEntries,
+    String nextTier,
+    Integer nextTierMinPoints,
+    int pointsToNextTier,
+    double progressPercent
 ) {
 }

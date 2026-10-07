@@ -254,6 +254,34 @@ describe("my-account-api", () => {
     });
   });
 
+  it.each([
+    { nextTier: "Hội viên Vàng", nextTierMinPoints: 20000, pointsToNextTier: 500, progressPercent: 97.5 },
+    { nextTier: null, nextTierMinPoints: null, pointsToNextTier: 0, progressPercent: 100 }
+  ])("đọc tiến độ hạng tiếp theo và hạng cao nhất: $nextTier", async (progress) => {
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      membershipTier: "Hội viên Bạc", pointBalance: 19500, lifetimePoints: 19500,
+      availableVoucherCount: 0, recentEntries: [], ...progress
+    }), { status: 200 })) as typeof fetch;
+
+    await expect(fetchMyLoyalty("token-member")).resolves.toMatchObject(progress);
+  });
+
+  it.each([
+    { progressPercent: 101 },
+    { pointsToNextTier: -1 },
+    { nextTier: null, nextTierMinPoints: 20000 },
+    { nextTierMinPoints: "20000" },
+    { progressPercent: null }
+  ])("từ chối dữ liệu tiến độ không hợp lệ: %j", async (invalid) => {
+    global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      membershipTier: "Hội viên Bạc", pointBalance: 19500, lifetimePoints: 19500,
+      availableVoucherCount: 0, recentEntries: [], nextTier: "Hội viên Vàng",
+      nextTierMinPoints: 20000, pointsToNextTier: 500, progressPercent: 97.5, ...invalid
+    }), { status: 200 })) as typeof fetch;
+
+    await expect(fetchMyLoyalty("token-member")).rejects.toMatchObject({ status: 500 });
+  });
+
   it("tai danh sach voucher cua member tu backend", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

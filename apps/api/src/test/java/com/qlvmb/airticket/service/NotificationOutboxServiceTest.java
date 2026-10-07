@@ -31,6 +31,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +43,9 @@ class NotificationOutboxServiceTest {
   @Mock
   private JavaMailSender mailSender;
 
+  @Mock
+  private PlatformTransactionManager transactionManager;
+
   private NotificationOutboxService notificationOutboxService;
 
   @BeforeEach
@@ -50,7 +54,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         false,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
   }
 
@@ -77,7 +81,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         true,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
     when(notificationOutboxRepository.save(any(NotificationOutboxEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -104,7 +108,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         true,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
     when(notificationOutboxRepository.save(any(NotificationOutboxEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -133,7 +137,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         true,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
     when(notificationOutboxRepository.save(any(NotificationOutboxEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -179,7 +183,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         true,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
 
     when(notificationOutboxRepository.findById(9L)).thenReturn(Optional.of(outbox));
@@ -209,7 +213,7 @@ class NotificationOutboxServiceTest {
         notificationOutboxRepository,
         mailSender,
         true,
-        "support@airplane.id.vn"
+        "support@airplane.id.vn", transactionManager
     );
 
     when(notificationOutboxRepository.save(any(NotificationOutboxEntity.class)))

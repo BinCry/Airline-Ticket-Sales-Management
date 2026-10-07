@@ -12,12 +12,18 @@ import java.time.OffsetDateTime;
 @Table(name = "member_loyalty_ledger")
 public class MemberLoyaltyLedgerEntity {
 
+  public static final String FLIGHT_EARN = "FLIGHT_EARN";
+  public static final String TIER_UPGRADE = "TIER_UPGRADE";
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @Column(name = "loyalty_account_id", nullable = false)
   private Long loyaltyAccountId;
+
+  @Column(name = "booking_segment_id")
+  private Long bookingSegmentId;
 
   @Column(name = "entry_type", nullable = false, length = 32)
   private String entryType;
@@ -39,6 +45,24 @@ public class MemberLoyaltyLedgerEntity {
 
   protected MemberLoyaltyLedgerEntity() {
   }
+
+  public static MemberLoyaltyLedgerEntity create(
+      Long accountId, Long segmentId, String entryType, int points,
+      int balanceAfter, String bookingCode, String description, OffsetDateTime now
+  ) {
+    MemberLoyaltyLedgerEntity entry = new MemberLoyaltyLedgerEntity();
+    entry.loyaltyAccountId = accountId;
+    entry.bookingSegmentId = segmentId;
+    entry.entryType = entryType;
+    entry.pointsDelta = points;
+    entry.balanceAfter = balanceAfter;
+    entry.bookingCode = bookingCode;
+    entry.description = description;
+    entry.createdAt = now;
+    return entry;
+  }
+
+  public Long getBookingSegmentId() { return bookingSegmentId; }
 
   public Long getId() {
     return id;

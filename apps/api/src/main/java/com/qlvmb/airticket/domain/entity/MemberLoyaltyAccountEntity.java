@@ -64,4 +64,20 @@ public class MemberLoyaltyAccountEntity {
   public OffsetDateTime getUpdatedAt() {
     return updatedAt;
   }
+
+  public void earnPoints(int points, OffsetDateTime now) {
+    if (points < 0) {
+      throw new IllegalArgumentException("Điểm cộng không được âm.");
+    }
+    int nextBalance = Math.addExact(pointBalance, points);
+    int nextLifetime = Math.addExact(lifetimePoints, points);
+    pointBalance = nextBalance;
+    lifetimePoints = nextLifetime;
+    updatedAt = now;
+  }
+
+  public void upgradeTier(String tierName, OffsetDateTime now) {
+    membershipTier = tierName;
+    updatedAt = now;
+  }
 }

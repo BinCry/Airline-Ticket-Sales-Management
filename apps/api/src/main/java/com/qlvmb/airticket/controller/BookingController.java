@@ -12,11 +12,13 @@ import com.qlvmb.airticket.domain.dto.PaymentSessionResponse;
 import com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.security.AuthenticatedUser;
+import com.qlvmb.airticket.security.JwtAuthenticationFilter;
 import com.qlvmb.airticket.security.PermissionCode;
 import com.qlvmb.airticket.service.BookingLookupSessionService;
 import com.qlvmb.airticket.service.BookingService;
 import com.qlvmb.airticket.service.PaymentService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,8 +51,18 @@ public class BookingController {
   }
 
   @PostMapping("/holds")
-  public BookingHoldResponse createHold(@Valid @RequestBody BookingHoldRequest request) {
-    return bookingService.createHold(request);
+  public BookingHoldResponse createHold(
+      Authentication authentication, HttpServletRequest httpRequest, @Valid @RequestBody BookingHoldRequest request
+  ) {
+    // Không đổi phiên JWT lỗi thành khách vãng lai khi gắn hội viên cho booking.
+    Object jwtError = httpRequest.getAttribute(JwtAuthenticationFilter.JWT_AUTH_ERROR_ATTRIBUTE);
+    if (jwtError instanceof String message) {
+      throw new UnauthorizedException(message);
+    }
+    AuthenticatedUser user = authentication != null
+        && authentication.getPrincipal() instanceof AuthenticatedUser authenticatedUser
+        ? authenticatedUser : null;
+    return bookingService.createHold(request, user);
   }
 
   @PostMapping("/lookup/request-otp")

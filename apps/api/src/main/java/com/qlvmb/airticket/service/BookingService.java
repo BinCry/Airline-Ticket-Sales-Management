@@ -22,7 +22,9 @@ import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.BookingSeatSelectionRepository;
 import com.qlvmb.airticket.repository.FlightFareInventoryRepository;
 import com.qlvmb.airticket.repository.TicketRepository;
+import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
+import com.qlvmb.airticket.security.RoleCode;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -85,6 +87,7 @@ public class BookingService {
   private final TicketRepository ticketRepository;
   private final ProductCatalogService productCatalogService;
   private final MemberVoucherService memberVoucherService;
+  private final UserAccountRepository userAccountRepository;
   private final SecureRandom secureRandom = new SecureRandom();
 
   public BookingService(
@@ -93,7 +96,8 @@ public class BookingService {
       BookingSeatSelectionRepository bookingSeatSelectionRepository,
       TicketRepository ticketRepository,
       ProductCatalogService productCatalogService,
-      MemberVoucherService memberVoucherService
+      MemberVoucherService memberVoucherService,
+      UserAccountRepository userAccountRepository
   ) {
     this.flightFareInventoryRepository = flightFareInventoryRepository;
     this.bookingRepository = bookingRepository;
@@ -101,10 +105,16 @@ public class BookingService {
     this.ticketRepository = ticketRepository;
     this.productCatalogService = productCatalogService;
     this.memberVoucherService = memberVoucherService;
+    this.userAccountRepository = userAccountRepository;
   }
 
   @Transactional
   public BookingHoldResponse createHold(BookingHoldRequest request) {
+    return createHold(request, null);
+  }
+
+  @Transactional
+  public BookingHoldResponse createHold(BookingHoldRequest request, AuthenticatedUser authenticatedUser) {
     String tripType = normalizeTripType(request.tripType());
     validateRequestShape(tripType, request);
 
@@ -159,6 +169,13 @@ public class BookingService {
         currentTime,
         expiresAt
     );
+
+    if (authenticatedUser != null) {
+      userAccountRepository.findOneWithRolesById(authenticatedUser.userId())
+          .filter(user -> user.getRoles().stream()
+              .anyMatch(role -> RoleCode.MEMBER.equalsIgnoreCase(role.getCode())))
+          .ifPresent(user -> booking.assignMember(user.getId()));
+    }
 
     booking.assignContact(
         BookingContactEntity.create(

@@ -51,6 +51,10 @@ export interface MyLoyalty {
   lifetimePoints: number;
   availableVoucherCount: number;
   recentEntries: MyLoyaltyLedgerItem[];
+  nextTier?: string | null;
+  nextTierMinPoints?: number | null;
+  pointsToNextTier?: number;
+  progressPercent?: number;
 }
 
 export interface MyVoucher {
@@ -179,6 +183,19 @@ function isMyLoyalty(value: unknown): value is MyLoyalty {
   }
 
   const loyalty = value as Partial<MyLoyalty>;
+  const hasProgress = [loyalty.nextTier, loyalty.nextTierMinPoints,
+    loyalty.pointsToNextTier, loyalty.progressPercent].some((field) => field !== undefined);
+  const validProgress = !hasProgress || (
+    (loyalty.nextTier === null || (typeof loyalty.nextTier === "string" && loyalty.nextTier.trim().length > 0)) &&
+    (loyalty.nextTierMinPoints === null ||
+      (Number.isSafeInteger(loyalty.nextTierMinPoints) && loyalty.nextTierMinPoints! > 0)) &&
+    Number.isSafeInteger(loyalty.pointsToNextTier) && loyalty.pointsToNextTier! >= 0 &&
+    typeof loyalty.progressPercent === "number" && Number.isFinite(loyalty.progressPercent) &&
+    loyalty.progressPercent >= 0 && loyalty.progressPercent <= 100 &&
+    (loyalty.nextTier === null
+      ? loyalty.nextTierMinPoints === null && loyalty.pointsToNextTier === 0 && loyalty.progressPercent === 100
+      : loyalty.nextTierMinPoints !== null)
+  );
 
   return (
     typeof loyalty.membershipTier === "string" &&
@@ -186,7 +203,8 @@ function isMyLoyalty(value: unknown): value is MyLoyalty {
     typeof loyalty.lifetimePoints === "number" &&
     typeof loyalty.availableVoucherCount === "number" &&
     Array.isArray(loyalty.recentEntries) &&
-    loyalty.recentEntries.every((item) => isMyLoyaltyLedgerItem(item))
+    loyalty.recentEntries.every((item) => isMyLoyaltyLedgerItem(item)) &&
+    validProgress
   );
 }
 

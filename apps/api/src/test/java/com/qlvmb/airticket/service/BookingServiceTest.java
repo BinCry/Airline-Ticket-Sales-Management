@@ -23,16 +23,20 @@ import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
+import com.qlvmb.airticket.domain.entity.UserAccountEntity;
+import com.qlvmb.airticket.domain.entity.RoleEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.BookingSeatSelectionRepository;
 import com.qlvmb.airticket.repository.FlightFareInventoryRepository;
 import com.qlvmb.airticket.repository.TicketRepository;
+import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +61,9 @@ class BookingServiceTest {
   @Mock
   private MemberVoucherService memberVoucherService;
 
+  @Mock
+  private UserAccountRepository userAccountRepository;
+
   private BookingService bookingService;
 
   @BeforeEach
@@ -67,7 +74,8 @@ class BookingServiceTest {
         bookingSeatSelectionRepository,
         ticketRepository,
         new ProductCatalogService(),
-        memberVoucherService
+        memberVoucherService,
+        userAccountRepository
     );
   }
 
@@ -87,6 +95,33 @@ class BookingServiceTest {
     assertThat(response.selectedSegments()).hasSize(1);
     assertThat(response.priceSummary().totalAmount()).isEqualTo(1490000L);
     verify(inventory).reserveSeats(1);
+    verify(bookingRepository).save(argThat(booking -> booking.getMemberUserId() == null));
+  }
+
+  @Test
+  void createHold_shouldBindCurrentMemberFromAuthenticatedIdDespiteDifferentContactEmail() {
+    createAuthenticatedHold("member", "customer");
+    verify(bookingRepository).save(argThat(booking -> Long.valueOf(151).equals(booking.getMemberUserId())));
+  }
+
+  @Test
+  void createHold_shouldNotBindRemovedMemberFromStaleClaims() {
+    createAuthenticatedHold("customer", "member");
+    verify(bookingRepository).save(argThat(booking -> booking.getMemberUserId() == null));
+  }
+
+  private void createAuthenticatedHold(String currentRole, String claimedRole) {
+    FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
+    when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
+    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    UserAccountEntity member = mock(UserAccountEntity.class);
+    RoleEntity role = mock(RoleEntity.class);
+    when(role.getCode()).thenReturn(currentRole);
+    when(member.getRoles()).thenReturn(Set.of(role));
+    if ("member".equals(currentRole)) { when(member.getId()).thenReturn(151L); }
+    when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(member));
+    bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)),
+        new AuthenticatedUser(151L, "member@example.com", "Hội viên", List.of(claimedRole), List.of()));
   }
 
   @Test

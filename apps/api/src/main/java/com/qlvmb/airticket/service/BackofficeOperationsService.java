@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -46,6 +47,7 @@ public class BackofficeOperationsService {
   private final ProductCatalogService productCatalogService;
   private final NotificationOutboxService notificationOutboxService;
   private final BookingService bookingService;
+  private final ApplicationEventPublisher eventPublisher;
 
   public BackofficeOperationsService(
       FlightRepository flightRepository,
@@ -56,7 +58,8 @@ public class BackofficeOperationsService {
       AuditLogRepository auditLogRepository,
       ProductCatalogService productCatalogService,
       NotificationOutboxService notificationOutboxService,
-      BookingService bookingService
+      BookingService bookingService,
+      ApplicationEventPublisher eventPublisher
   ) {
     this.flightRepository = flightRepository;
     this.airportRepository = airportRepository;
@@ -67,6 +70,7 @@ public class BackofficeOperationsService {
     this.productCatalogService = productCatalogService;
     this.notificationOutboxService = notificationOutboxService;
     this.bookingService = bookingService;
+    this.eventPublisher = eventPublisher;
   }
 
   @Transactional(readOnly = true)
@@ -200,6 +204,9 @@ public class BackofficeOperationsService {
     }
 
     flight.updateOperations(nextStatus, nextGate, nextNote, nextSalesOpen);
+    if (!"landed".equals(oldStatus) && "landed".equals(nextStatus)) {
+      eventPublisher.publishEvent(new FlightLandedEvent(flight.getId()));
+    }
     if (nextBaseFare != null) {
       syncFixedFareInventories(flight, nextBaseFare);
     }

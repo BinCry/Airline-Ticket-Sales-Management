@@ -15,6 +15,7 @@ public class NotificationOutboxEntity {
   public static final String TYPE_TICKET_EMAIL = "TICKET_EMAIL";
   public static final String TYPE_FLIGHT_CANCELLATION_EMAIL = "FLIGHT_CANCELLATION_EMAIL";
   public static final String TYPE_REFUND_STATUS_EMAIL = "REFUND_STATUS_EMAIL";
+  public static final String TYPE_LOYALTY_TIER_UPGRADE = "LOYALTY_TIER_UPGRADE";
   public static final String STATUS_PENDING = "PENDING";
   public static final String STATUS_SENT = "SENT";
   public static final String STATUS_FAILED = "FAILED";
@@ -121,6 +122,16 @@ public class NotificationOutboxEntity {
 
   public Long getId() {
     return id;
+  }
+
+  public static NotificationOutboxEntity createLoyaltyTierUpgradeEmail(
+      String bookingCode, String recipientEmail, String tierChange, OffsetDateTime now
+  ) {
+    NotificationOutboxEntity outbox = createTicketEmail(bookingCode, recipientEmail,
+        "Chúc mừng nâng hạng hội viên | Vietnam Airlines",
+        "Chúc mừng bạn đã được nâng hạng: " + tierChange + ".", now);
+    outbox.type = TYPE_LOYALTY_TIER_UPGRADE;
+    return outbox;
   }
 
   public String getType() {

@@ -36,6 +36,9 @@ public class BookingEntity {
   @Column(name = "booking_code", nullable = false, unique = true, length = 6)
   private String bookingCode;
 
+  @Column(name = "member_user_id")
+  private Long memberUserId;
+
   @Column(nullable = false, length = 16)
   private String status;
 
@@ -143,6 +146,14 @@ public class BookingEntity {
 
   public String getBookingCode() {
     return bookingCode;
+  }
+
+  public Long getMemberUserId() {
+    return memberUserId;
+  }
+
+  public void assignMember(Long memberUserId) {
+    this.memberUserId = memberUserId;
   }
 
   public String getStatus() {

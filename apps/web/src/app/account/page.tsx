@@ -1689,6 +1689,29 @@ export default function AccountPage() {
                     </article>
                   ))}
                 </div>
+                {memberLoyalty ? (
+                  <article className="surface-card">
+                    <h3>Tổng điểm tích lũy: {formatPoints(memberLoyalty.lifetimePoints)} điểm</h3>
+                    {memberLoyalty.progressPercent !== undefined ? (
+                      memberLoyalty.nextTier ? (
+                        <>
+                          <p>Hạng tiếp theo: {memberLoyalty.nextTier} · {formatPoints(memberLoyalty.nextTierMinPoints!)} điểm</p>
+                          <progress
+                            aria-label={`Tiến độ tới ${memberLoyalty.nextTier}`}
+                            max={100}
+                            value={memberLoyalty.progressPercent}
+                            style={{ width: "100%", accentColor: "var(--primary)" }}
+                          />
+                          <p>
+                            {formatPoints(memberLoyalty.lifetimePoints)} / {formatPoints(memberLoyalty.nextTierMinPoints!)} điểm
+                            {` · Còn ${formatPoints(memberLoyalty.pointsToNextTier!)} điểm`}
+                          </p>
+                        </>
+                      ) : <p>Bạn đã đạt hạng hội viên cao nhất.</p>
+                    ) : null}
+                    <small>Điểm tự động được cộng sau khi chuyến bay hoàn tất.</small>
+                  </article>
+                ) : null}
                 <div className="section-gap" />
                 <article className="surface-card">
                   <div className="auth-note-head">
@@ -1699,14 +1722,16 @@ export default function AccountPage() {
                   </div>
                   <div className="stack-list">
                     {memberLoyalty?.recentEntries.length ? (
-                      memberLoyalty.recentEntries.map((entry) => (
-                        <div key={`${entry.entryType}-${entry.createdAt}`} className="support-compact-item">
+                      memberLoyalty.recentEntries.map((entry, index) => (
+                        <div key={`${entry.entryType}-${entry.bookingCode}-${entry.createdAt}-${index}`} className="support-compact-item">
                           <strong>
-                            {entry.pointsDelta > 0 ? "+" : ""}
-                            {formatPoints(entry.pointsDelta)} điểm
+                            {entry.entryType === "TIER_UPGRADE"
+                              ? "Nâng hạng hội viên"
+                              : `${entry.pointsDelta > 0 ? "+" : ""}${formatPoints(entry.pointsDelta)} điểm`}
                           </strong>
                           <p>{entry.description}</p>
                           <small>
+                            {entry.bookingCode ? `Mã đặt chỗ ${entry.bookingCode} • ` : ""}
                             Số dư sau cập nhật: {formatPoints(entry.balanceAfter)} điểm • {formatDateTime(entry.createdAt)}
                           </small>
                         </div>
