@@ -790,10 +790,12 @@ export function BookingPageClient() {
                       {seatMaps[segmentIndex] ? (
                         <SeatMap map={seatMaps[segmentIndex]} label={`Sơ đồ chỗ ngồi cho ${segmentOptions.code}`}
                           fareFamily={activeChoice.fareFamily} selectedSeat={activeChoice.seatNumber}
+                          summary={activePassenger
+                            ? `${activePassenger.fullName || `Hành khách ${activePassengerIndex + 1}`} đang chọn ${activeChoice.fareTitle || "chưa chọn hạng vé"}${activeChoice.seatNumber ? ` • Ghế ${activeChoice.seatNumber}` : " • chưa chọn ghế"}`
+                            : "Hãy chọn hành khách để gán ghế cho chặng này."}
                           unavailableSeats={localTakenSeats} disabled={pendingSubmitAction !== null}
                           onSelect={(seat) => chonGheChoHanhKhach(segmentIndex, activePassengerIndex, seat)} />
                       ) : <p role="alert">Chưa có sơ đồ ghế từ tàu bay.</p>}
-                      <p>{activePassenger?.fullName || `Hành khách ${activePassengerIndex + 1}`} • {activeChoice.fareTitle}</p>
                     </div>
                   );
                 })}

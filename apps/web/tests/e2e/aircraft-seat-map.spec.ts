@@ -43,9 +43,14 @@ test("khứ hồi dùng hai layout riêng, mỗi hành khách không chọn trù
   const inbound = page.getByRole("group", { name: "Sơ đồ chỗ ngồi cho VN19" });
   await expect(outbound.getByRole("button")).toHaveCount(2);
   await expect(inbound.getByRole("button")).toHaveCount(4);
+  await expect(outbound.locator(".seat-map-legend")).toContainText("Vùng ghế của hạng đã chọn");
+  await expect(outbound.locator(".seat-map-legend .seat-legend-dot")).toHaveCount(3);
+  await expect(outbound).not.toContainText("Dùng Tab");
+  await expect(outbound.locator(".seat-map-summary")).toHaveText("Hành khách 1 đang chọn Phổ thông tiết kiệm • chưa chọn ghế");
   const seat = outbound.getByRole("button", { name: /^Ghế 9A,/ });
   await seat.focus(); await page.keyboard.press("Enter");
   await expect(seat).toHaveAttribute("aria-pressed", "true");
+  await expect(outbound.locator(".seat-map-summary")).toContainText("• Ghế 9A");
   await page.getByRole("button", { name: /^Hành khách 2 • Người lớn/ }).first().click();
   await expect(outbound.getByRole("button", { name: /^Ghế 9A,/ })).toBeDisabled();
   await inbound.getByRole("button", { name: /^Ghế 20A,/ }).click();
@@ -75,13 +80,16 @@ test("sơ đồ cabin đọc được trên điện thoại, không tràn chiề
 
 test("xung đột giữ ghế cập nhật map và yêu cầu chọn ghế mới", async ({ page }) => {
   await mockBookingOptions(page);
-  let mapReads = 0;
+  let holdConflict = false;
   await page.route("**/api/flights/18/seat-map", (route) => {
     const map = seatMapFixture(18, 9, ["A", "B"]);
-    if (mapReads++ > 0) map.seats[0].occupied = true;
+    if (holdConflict) map.seats[0].occupied = true;
     return route.fulfill(jsonResponse(map));
   });
-  await page.route("**/api/bookings/holds", (route) => route.fulfill(jsonResponse({ message: "Ghế 9A vừa được giữ bởi người khác." }, 409)));
+  await page.route("**/api/bookings/holds", (route) => {
+    holdConflict = true;
+    return route.fulfill(jsonResponse({ message: "Ghế 9A vừa được giữ bởi người khác." }, 409));
+  });
   await page.goto(bookingUrl());
   await page.getByLabel("Họ và tên").first().fill("Khách thử");
   await page.getByLabel("Email", { exact: true }).fill("guest@example.com");
@@ -92,7 +100,7 @@ test("xung đột giữ ghế cập nhật map và yêu cầu chọn ghế mới
   await page.getByRole("button", { name: /^Ghế 9A,/ }).click();
   await page.getByRole("button", { name: "Tiếp tục / Giữ chỗ" }).click();
   await expect(page.getByRole("button", { name: /^Ghế 9A,/ })).toBeDisabled();
-  await expect(page.locator(".seat-map-summary")).toContainText("Chưa chọn ghế");
+  await expect(page.locator(".seat-map-summary")).toContainText("chưa chọn ghế");
   await page.getByRole("button", { name: /^Ghế 9B,/ }).click();
   await expect(page.locator(".seat-map-summary")).toContainText("9B");
 });
@@ -144,14 +152,17 @@ test("Operations chỉ gán ACTIVE và hiển thị xung đột layout", async (
 });
 
 test("check-in gặp 409 tải lại ghế, không phát boarding pass hoặc giữ lựa chọn đã bị chiếm", async ({ page }) => {
-  let reads = 0;
+  let checkinConflict = false;
   await page.route("**/api/bookings/manage/SEAT01", (route) => route.fulfill(jsonResponse(overview(null))));
   await page.route("**/api/flights/18/seat-map", (route) => {
     const map = seatMapFixture(18, 9, ["A", "B"]);
-    if (reads++ > 0) map.seats[0].occupied = true;
+    if (checkinConflict) map.seats[0].occupied = true;
     return route.fulfill(jsonResponse(map));
   });
-  await page.route("**/api/check-in/complete", (route) => route.fulfill(jsonResponse({ message: "Ghế 9A không còn trống." }, 409)));
+  await page.route("**/api/check-in/complete", (route) => {
+    checkinConflict = true;
+    return route.fulfill(jsonResponse({ message: "Ghế 9A không còn trống." }, 409));
+  });
   await page.goto("/check-in?bookingCode=SEAT01&lookupToken=read-only-test-token");
   const seat = page.getByRole("button", { name: /^Ghế 9A,/ });
   await seat.click();

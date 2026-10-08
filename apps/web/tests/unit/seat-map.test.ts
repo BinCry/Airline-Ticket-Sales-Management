@@ -31,7 +31,13 @@ describe("SeatMap dùng layout API", () => {
     expect(html).toContain("Ghế 12A, Phổ thông tiết kiệm, Đã có người giữ");
     expect(html).toContain("Ghế 12C, Phổ thông tiết kiệm, Vô hiệu hóa");
     expect(html).toContain('aria-pressed="true"');
-    expect(html).toContain("✓");
+    expect(html).toContain('class="seat-legend-dot seat-legend-priority"');
+    expect(html).toContain('class="seat-legend-dot seat-legend-selected"');
+    expect(html).toContain('class="seat-legend-dot seat-legend-unavailable"');
+    expect(html).toContain("Vùng ghế của hạng đã chọn");
+    expect(html).toContain("Ghế đang chọn");
+    expect(html).toContain("Ghế không chọn được");
+    expect(html).not.toContain("Dùng Tab");
   });
   it("chỉ ghế hiện tại của hành khách được mở lại, ghế hành khách khác vẫn khóa", () => {
     const html = renderToStaticMarkup(createElement(SeatMap, { map, label: "Sơ đồ", fareFamily: "pho_thong_tiet_kiem", selectedSeat: "12A", currentSeat: "12A", unavailableSeats: new Set(["12B"]), onSelect: () => {} }));
