@@ -67,6 +67,20 @@ class SeatMapMigrationPostgresTest {
     assertThatThrownBy(this::migrate).hasStackTraceContaining("Cabin cũ có hàng nhiều hạng");
   }
 
+  // V33: hạng vé không còn hàng ghế nào trong cabin LEGACY phải về 0, hạng còn lại giữ nguyên.
+  @Test void zeroesInventoryOfFareFamiliesMissingFromLegacyCabin() {
+    booking("pho_thong_linh_hoat","1A",false); booking("pho_thong_linh_hoat","2A",false);
+    migrate();
+    assertThat(inventory("thuong_gia")).containsExactly(0,0);
+    assertThat(inventory("pho_thong_linh_hoat").getFirst()).isPositive();
+    assertThat(inventory("pho_thong_tiet_kiem").getFirst()).isPositive();
+  }
+
+  private java.util.List<Integer> inventory(String fare) {
+    return jdbc.query("select total_seats,available_seats from flight_fare_inventory where flight_id=? and fare_family=?",
+        (rs,n) -> java.util.List.of(rs.getInt(1),rs.getInt(2)),flightId,fare).getFirst();
+  }
+
   private void migrate() { Flyway.configure().dataSource(datasource).schemas(schema).load().migrate(); }
 
   private Fixture booking(String fare,String seat,boolean ticketed) {
