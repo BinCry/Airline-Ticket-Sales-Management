@@ -409,6 +409,15 @@ public class PaymentService {
     if (booking.isHold() && !booking.isExpired(currentTime)) return false;
     if (booking.isTicketed() && BookingEntity.PAYMENT_STATUS_PAID.equals(booking.getPaymentStatus())) return false;
     if (BookingEntity.PAYMENT_STATUS_EXPIRED.equals(booking.getPaymentStatus())) transaction.markExpired(currentTime);
+    // Tiền đã về nhưng không xuất vé: ghi cảnh báo để tài chính đối soát và hoàn tiền.
+    LOGGER.warn(
+        "Nhận thanh toán {} cho booking {} không còn hiệu lực (trạng thái {}, thanh toán {}). "
+            + "Không xuất vé; cần đối soát và hoàn tiền cho khách.",
+        transaction.getOrderCode(),
+        booking.getBookingCode(),
+        booking.getStatus(),
+        booking.getPaymentStatus()
+    );
     return true;
   }
 

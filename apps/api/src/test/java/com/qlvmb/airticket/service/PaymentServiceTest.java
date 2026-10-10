@@ -30,8 +30,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class PaymentServiceTest {
 
   @Mock
@@ -419,6 +421,39 @@ class PaymentServiceTest {
     assertThat(booking.isHold()).isTrue();
     assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionEntity.STATUS_PENDING);
     assertThat(booking.getTickets()).isEmpty();
+  }
+
+  // Tiền về sau khi giữ chỗ hết hạn: không xuất vé nhưng phải để lại cảnh báo cần hoàn tiền.
+  @Test
+  void handleSePayWebhook_shouldWarnForRefundWhenPaymentArrivesAfterHoldExpired(CapturedOutput output) {
+    BookingEntity booking = heldBooking("A6C2W5");
+    booking.markExpired(OffsetDateTime.now());
+    PaymentTransactionEntity transaction = pendingTransaction(booking, "SEPAY-777788889999");
+    SePayWebhookRequest request = new SePayWebhookRequest(
+        123460L,
+        "MBBank",
+        "2026-05-22 01:25:00",
+        "0985512831",
+        null,
+        null,
+        "SEPAY777788889999",
+        "in",
+        null,
+        booking.getTotalAmount(),
+        0L,
+        "FT123456783"
+    );
+
+    when(paymentTransactionRepository.findByOrderCodeIgnoreCase("SEPAY-777788889999"))
+        .thenReturn(Optional.of(transaction));
+    when(bookingService.lockDetailedBooking(eq("A6C2W5"), any())).thenReturn(booking);
+
+    paymentService.handleSePayWebhook(request, null);
+
+    assertThat(booking.isTicketed()).isFalse();
+    assertThat(booking.getTickets()).isEmpty();
+    assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionEntity.STATUS_EXPIRED);
+    assertThat(output).contains("SEPAY-777788889999", "A6C2W5", "hoàn tiền");
   }
 
   @Test
