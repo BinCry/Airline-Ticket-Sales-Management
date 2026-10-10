@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 
 type OverlayProps = {
   children: ReactNode;
@@ -8,6 +8,7 @@ type OverlayProps = {
   labelId: string;
   onClose: () => void;
   open: boolean;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
 function ModalSurface({
@@ -16,6 +17,7 @@ function ModalSurface({
   labelId,
   onClose,
   open,
+  returnFocusRef,
   variant
 }: OverlayProps & { variant: "dialog" | "drawer" }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -25,8 +27,12 @@ function ModalSurface({
     if (!dialog) return;
 
     if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
+    if (!open && dialog.open) {
+      dialog.close();
+      // Safari không focus nút khi bấm nên dialog không tự trả focus; trả về nút mở sau khi đóng.
+      returnFocusRef?.current?.focus();
+    }
+  }, [open, returnFocusRef]);
 
   return (
     <dialog
