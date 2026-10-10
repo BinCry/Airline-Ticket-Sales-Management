@@ -18,11 +18,14 @@ public class AircraftOperationsService {
   private final SeatMapService seats;
   private final JdbcTemplate jdbc;
   private final EntityManager em;
+  private final BookingService bookingService;
 
   public AircraftOperationsService(AircraftTypeRepository types, AircraftRepository aircraft,
-      FlightRepository flights, SeatMapService seats, JdbcTemplate jdbc, EntityManager em) {
+      FlightRepository flights, SeatMapService seats, JdbcTemplate jdbc, EntityManager em,
+      BookingService bookingService) {
     this.types = types; this.aircraft = aircraft; this.flights = flights;
     this.seats = seats; this.jdbc = jdbc; this.em = em;
+    this.bookingService = bookingService;
   }
 
   @Transactional(readOnly = true)
@@ -98,10 +101,15 @@ public class AircraftOperationsService {
   public void syncInventory(long flightId, SeatMapResponse.Layout layout) {
     FlightEntity flight = flights.findById(flightId).orElseThrow();
     em.refresh(flight);
-    flight.getFareInventories().forEach(inventory -> {
-      em.refresh(inventory);
-      inventory.syncConfiguration(seats.capacity(layout, inventory.getFareFamily()), inventory.getPrice());
-    });
+    flight.getFareInventories().forEach(inventory -> em.refresh(inventory));
+    // Giữ chỗ hết hạn chưa dọn vẫn đang bị tính là chỗ đã giữ. Phải giải phóng trước khi đổi
+    // dung lượng; nếu không, sau khi thu nhỏ cabin các giữ chỗ này được dọn sẽ cộng ngược số ghế còn bán.
+    bookingService.reconcileExpiredHoldsForInventories(
+        flight.getFareInventories().stream().map(FlightFareInventoryEntity::getId).toList(),
+        PublicFlightWindowPolicy.currentTime()
+    );
+    flight.getFareInventories().forEach(inventory ->
+        inventory.syncConfiguration(seats.capacity(layout, inventory.getFareFamily()), inventory.getPrice()));
   }
 
   private AircraftTypeResponse typeResponse(AircraftTypeEntity type) {

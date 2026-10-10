@@ -214,6 +214,11 @@ public class BackofficeOperationsService {
       var type = nextAircraft.getAircraftType();
       seatMapService.validateCompatibility(flightId, seatMapService.parseLayout(type.getSeatLayoutJson(), type.getTotalRows()));
       flight.assignAircraft(nextAircraft);
+      // Dọn giữ chỗ hết hạn trước khi đổi dung lượng để không tính nhầm số chỗ đã giữ.
+      bookingService.reconcileExpiredHoldsForInventories(
+          flight.getFareInventories().stream().map(FlightFareInventoryEntity::getId).toList(),
+          PublicFlightWindowPolicy.currentTime()
+      );
       syncFixedFareInventories(flight, nextBaseFare == null ? oldBaseFare : nextBaseFare);
     }
     flight.updateOperations(nextStatus, nextGate, nextNote, nextSalesOpen);

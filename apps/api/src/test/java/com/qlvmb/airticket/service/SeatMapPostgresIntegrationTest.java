@@ -342,6 +342,40 @@ class SeatMapPostgresIntegrationTest {
         () -> bookings.createHold(request(List.of(second,first),List.of(List.of("12A"),List.of("12A")),ProductCatalogService.FARE_SAVER)));
   }
 
+  // Hồi quy: thu nhỏ cabin khi còn giữ chỗ hết hạn chưa được dọn phải ra đúng số ghế còn bán.
+  @Test void shrinkingCabinReleasesExpiredHoldsBeforeResizingInventory() {
+    var threeSeats = plane(layout(List.of(new SeatMapResponse.Row(12,ProductCatalogService.FARE_SAVER,List.of("A","B","C"))),List.of()));
+    long flight = flight(threeSeats.id()); setSaverInventory(flight,3);
+    String expired = hold(flight,"12A","12B"); hold(flight,"12C");
+    jdbc.update("update booking set expires_at=now()-interval '1 minute' where booking_code=?",expired);
+    var type = aircraft.getTypes().stream().filter(t -> t.id()==threeSeats.aircraftTypeId()).findFirst().orElseThrow();
+    aircraft.saveType(type.id(),new AircraftTypeRequest(type.code(),type.name(),1,
+        mapper.valueToTree(layout(List.of(new SeatMapResponse.Row(12,ProductCatalogService.FARE_SAVER,List.of("C"))),List.of()))));
+    assertThat(saverInventory(flight)).containsExactly(1,0);
+    assertThat(occupied(flight,"12C")).isTrue();
+  }
+
+  // Hồi quy: đổi sang tàu nhỏ hơn qua màn hình vận hành cũng phải dọn giữ chỗ hết hạn trước.
+  @Test void switchingToSmallerAircraftReleasesExpiredHoldsBeforeResizingInventory() {
+    var threeSeats = plane(layout(List.of(new SeatMapResponse.Row(12,ProductCatalogService.FARE_SAVER,List.of("A","B","C"))),List.of()));
+    var oneSeat = plane(layout(List.of(new SeatMapResponse.Row(12,ProductCatalogService.FARE_SAVER,List.of("C"))),List.of()));
+    long flight = flight(threeSeats.id()); setSaverInventory(flight,3);
+    String expired = hold(flight,"12A","12B"); hold(flight,"12C");
+    jdbc.update("update booking set expires_at=now()-interval '1 minute' where booking_code=?",expired);
+    switchAircraft(flight,oneSeat.id());
+    assertThat(saverInventory(flight)).containsExactly(1,0);
+    assertThat(occupied(flight,"12C")).isTrue();
+  }
+
+  private void setSaverInventory(long flight,int total) {
+    jdbc.update("update flight_fare_inventory set total_seats=?,available_seats=? where flight_id=? and fare_family=?",
+        total,total,flight,ProductCatalogService.FARE_SAVER);
+  }
+  private List<Integer> saverInventory(long flight) {
+    return jdbc.query("select total_seats,available_seats from flight_fare_inventory where flight_id=? and fare_family=?",
+        (rs,n) -> List.of(rs.getInt(1),rs.getInt(2)),flight,ProductCatalogService.FARE_SAVER).getFirst();
+  }
+
   private long flight(Long aircraftId) {
     if (aircraftId==null) aircraftId=jdbc.queryForObject("select id from aircraft where registration_code='VN-DEMO-A321'",Long.class);
     String code = "ST"+UUID.randomUUID().toString().replace("-","").substring(0,12).toUpperCase();
