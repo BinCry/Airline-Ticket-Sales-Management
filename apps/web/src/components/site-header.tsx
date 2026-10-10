@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { logoutAuthSession } from "@/lib/auth-api";
 import {
@@ -50,6 +50,7 @@ export function SiteHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setIsMobileOpen(false);
@@ -357,6 +358,7 @@ export function SiteHeader() {
             </Link>
           ) : null}
           <button
+            ref={menuButtonRef}
             type="button"
             className="mobile-menu-button"
             onClick={() => setIsMobileOpen((value) => !value)}
@@ -374,6 +376,7 @@ export function SiteHeader() {
         open={isMobileOpen}
         onClose={() => setIsMobileOpen(false)}
         labelId="site-mobile-menu-title"
+        returnFocusRef={menuButtonRef}
       >
         <div id="site-mobile-drawer" className="mobile-drawer-shell">
           <div className="mobile-drawer-heading">
