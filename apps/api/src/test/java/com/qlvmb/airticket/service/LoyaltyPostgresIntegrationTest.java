@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.qlvmb.airticket.config.NotificationDeliveryConfig;
 import com.qlvmb.airticket.domain.dto.BackofficeFlightOperationUpdateRequest;
 import com.qlvmb.airticket.domain.dto.MyLoyaltyResponse;
 import com.qlvmb.airticket.domain.entity.*;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -48,7 +50,7 @@ class LoyaltyPostgresIntegrationTest {
   @EntityScan(basePackageClasses = BookingEntity.class)
   @EnableJpaRepositories(basePackageClasses = BookingRepository.class)
   @Import({LoyaltyEngineService.class, LoyaltyReconciliationService.class, MemberLoyaltyService.class,
-      NotificationOutboxService.class, BookingService.class, MemberVoucherService.class,
+      NotificationOutboxService.class, NotificationDeliveryConfig.class, BookingService.class, MemberVoucherService.class,
       ProductCatalogService.class, BackofficeOperationsService.class, SeatMapService.class})
   static class TestConfiguration {
   }
@@ -71,8 +73,11 @@ class LoyaltyPostgresIntegrationTest {
   @Autowired BookingSegmentRepository segments;
   @Autowired EntityManager em;
   @Autowired JdbcTemplate jdbc;
+  @Autowired BaggageTrackingRepository baggageRepository;
   @Autowired PlatformTransactionManager transactionManager;
   @MockitoBean JavaMailSender mailSender;
+  @MockitoBean RealtimeFlightStreamService realtimeFlightStreamService;
+  @MockitoBean BaggageTrackingService baggageTrackingService;
   private TransactionTemplate transaction;
 
   @BeforeEach
@@ -148,9 +153,11 @@ class LoyaltyPostgresIntegrationTest {
   }
 
   @Test
-  void tierUpgradeIsCommittedBeforeMailAndProgressUsesDatabaseRules() {
+  void tierUpgradeIsCommittedBeforeMailAndProgressUsesDatabaseRules() throws InterruptedException {
     Fixture fixture = fixture(null, 20_500_000, 1, 0, "departed");
+    CountDownLatch sentEmails = new CountDownLatch(2);
     doAnswer(invocation -> {
+      sentEmails.countDown();
       SimpleMailMessage message = invocation.getArgument(0);
       assertThat(message.getTo()).containsExactly(fixture.email());
       assertThat(jdbc.queryForObject("select lifetime_points from member_loyalty_account where user_id=?",
@@ -158,7 +165,17 @@ class LoyaltyPostgresIntegrationTest {
       return null;
     }).when(mailSender).send(any(SimpleMailMessage.class));
     land(fixture);
-    verify(mailSender).send(any(SimpleMailMessage.class));
+    assertThat(sentEmails.await(10, TimeUnit.SECONDS)).isTrue();
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (!"SENT".equals(jdbc.queryForObject(
+        "select status from notification_outbox where booking_code=? and type='LOYALTY_TIER_UPGRADE'",
+        String.class, fixture.code())) && System.nanoTime() < deadline) {
+      Thread.sleep(25);
+    }
+    ArgumentCaptor<SimpleMailMessage> sentMessages = ArgumentCaptor.forClass(SimpleMailMessage.class);
+    verify(mailSender, times(2)).send(sentMessages.capture());
+    assertThat(sentMessages.getAllValues()).extracting(SimpleMailMessage::getSubject)
+        .contains("\u0043h\u00FA\u0063 m\u1EEBng n\u00E2ng h\u1EA1ng h\u1ED9i vi\u00EAn | Vietnam Airlines");
     MyLoyaltyResponse response = loyalty.getMyLoyalty(auth(fixture));
     assertThat(response.membershipTier()).isEqualTo("Hội viên Vàng");
     assertThat(response.nextTier()).isEqualTo("Hội viên Bạch Kim");
@@ -169,7 +186,7 @@ class LoyaltyPostgresIntegrationTest {
     assertThat(jdbc.queryForObject("select count(*) from audit_log where action='member.loyalty.tier_upgrade' and target_id=?",
         Long.class, jdbc.queryForObject("select id::text from member_loyalty_account where user_id=?", String.class,
             fixture.userId()))).isEqualTo(1L);
-    assertThat(jdbc.queryForObject("select status from notification_outbox where booking_code=?",
+    assertThat(jdbc.queryForObject("select status from notification_outbox where booking_code=? and type='LOYALTY_TIER_UPGRADE'",
         String.class, fixture.code())).isEqualTo("SENT");
   }
 
@@ -228,6 +245,8 @@ class LoyaltyPostgresIntegrationTest {
         .isEqualTo("departed");
     assertThat(jdbc.queryForObject("select count(*) from member_loyalty_account where user_id=?",
         Long.class, fixture.userId())).isZero();
+    assertThat(jdbc.queryForObject("select count(*) from notification_outbox where booking_code=? and type='FLIGHT_UPDATE'",
+        Long.class, fixture.code())).isZero();
     assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
       notifications.createAndSendLoyaltyTierUpgradeEmail(fixture.email(), fixture.code(), "Bạc → Vàng");
       verifyNoInteractions(mailSender);
@@ -259,6 +278,60 @@ class LoyaltyPostgresIntegrationTest {
       assertThat(loyalty.getMyLoyalty(auth(fixture)).membershipTier()).isEqualTo("Hội viên Bạc");
     } finally {
       jdbc.update("update loyalty_tier_rule set min_lifetime_points=10000 where tier_name='Hội viên Bạc'");
+    }
+  }
+
+  @Test
+  void baggageStatusLockSerializesConcurrentUpdates() throws Exception {
+    Fixture fixture = fixture(null, 1_000_000, 1, 0, "scheduled");
+    Long ticketId = jdbc.queryForObject("select id from ticket where booking_id=?", Long.class, fixture.bookingId());
+    Long passengerId = jdbc.queryForObject(
+        "select booking_passenger_id from ticket where id=?", Long.class, ticketId);
+    Long ancillaryId = jdbc.queryForObject("""
+        insert into booking_ancillary
+            (booking_id, booking_passenger_id, booking_segment_id, kind, code, name, description,
+             unit_price, quantity, subtotal_amount, created_at)
+        values (?, ?, ?, 'BAGGAGE', 'BAG_23', 'HÃ nh lÃ½', 'HÃ nh lÃ½ 23 kg', 100000, 1, 100000, now())
+        returning id
+        """, Long.class, fixture.bookingId(), passengerId, fixture.segmentId());
+    Long baggageId = jdbc.queryForObject("""
+        insert into baggage_tracking
+            (ticket_id, booking_ancillary_id, piece_no, tag_code, status, purchased_weight_kg, created_at, updated_at)
+        values (?, ?, 1, ?, 'REGISTERED', 23, now(), now()) returning id
+        """, Long.class, ticketId, ancillaryId, "BG" + UUID.randomUUID().toString().replace("-", "").substring(0, 8));
+
+    CountDownLatch firstLocked = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+    CountDownLatch secondAttempting = new CountDownLatch(1);
+    CountDownLatch secondLocked = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var first = executor.submit(() -> transaction.executeWithoutResult(status -> {
+        baggageRepository.lockById(baggageId).orElseThrow();
+        firstLocked.countDown();
+        try {
+          if (!releaseFirst.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("KhÃ´ng thá»ƒ giáº£i phÃ³ng khÃ³a test");
+          }
+        } catch (InterruptedException exception) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(exception);
+        }
+      }));
+      assertThat(firstLocked.await(5, TimeUnit.SECONDS)).isTrue();
+      var second = executor.submit(() -> transaction.executeWithoutResult(status -> {
+        secondAttempting.countDown();
+        baggageRepository.lockById(baggageId).orElseThrow();
+        secondLocked.countDown();
+      }));
+
+      assertThat(secondAttempting.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(secondLocked.await(300, TimeUnit.MILLISECONDS)).isFalse();
+      releaseFirst.countDown();
+      first.get(10, TimeUnit.SECONDS);
+      second.get(10, TimeUnit.SECONDS);
+      assertThat(secondLocked.getCount()).isZero();
+    } finally {
+      releaseFirst.countDown();
     }
   }
 

@@ -6,6 +6,7 @@ import type { AirportOption } from "@qlvmb/shared-types";
 
 import { DateField } from "@/components/date-field";
 import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
+import {BackofficeBaggagePanel} from "@/components/backoffice-baggage-panel";
 import { DateTimeField } from "@/components/date-time-field";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
@@ -42,6 +43,7 @@ const OPERATIONS_NAV_ITEMS = [
   { id: "operations-create-flight", label: "Tạo chuyến bay" },
   { id: "operations-flight-lookup", label: "Tra cứu vận hành" },
   { id: "operations-aircraft", label: "Tàu bay và sơ đồ ghế" },
+  { id: "operations-baggage", label: "Hành lý ký gửi" },
   { id: "operations-create-voucher", label: "Tạo voucher mới" },
   { id: "operations-voucher-lookup", label: "Tra cứu voucher" }
 ] as const;
@@ -202,6 +204,8 @@ function createEmptyVoucherForm(): BackofficeVoucherCreateInput {
 function buildFlightDraft(flight: BackofficeOperationsFlightItem): BackofficeOperationsUpdateInput {
   return {
     status: flight.status,
+    departureAt:toDateTimeLocalValue(flight.departureAt),
+    arrivalAt:toDateTimeLocalValue(flight.arrivalAt),
     gate: flight.gate,
     note: flight.note,
     salesOpen: flight.salesOpen,
@@ -1084,6 +1088,16 @@ export function BackofficeOperationsPageClient() {
                           </select>
                         </label>
 
+                        <label className="field"><span>Giờ khởi hành</span>
+                         <DateTimeField value={draft?.departureAt??toDateTimeLocalValue(flight.departureAt)}
+                          onChange={value=>setDrafts(current=>({...current,[flight.flightId]:{
+                            ...(draft??buildFlightDraft(flight)),departureAt:value}}))}/>
+                        </label>
+                        <label className="field"><span>Giờ đến</span>
+                         <DateTimeField value={draft?.arrivalAt??toDateTimeLocalValue(flight.arrivalAt)}
+                          onChange={value=>setDrafts(current=>({...current,[flight.flightId]:{
+                            ...(draft??buildFlightDraft(flight)),arrivalAt:value}}))}/>
+                        </label>
                         <label className="field">
                           <span>Cửa ra tàu</span>
                           <input
@@ -1240,6 +1254,8 @@ export function BackofficeOperationsPageClient() {
           )}
         </div>
 
+        <div className="section-gap" />
+        <BackofficeBaggagePanel />
         <div className="section-gap" />
         <SectionHeading
           eyebrow="Voucher vận hành"

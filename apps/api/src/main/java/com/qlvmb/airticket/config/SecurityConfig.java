@@ -76,6 +76,8 @@ public class SecurityConfig {
                 "/api/flights/*/booking-options",
                 "/api/flights/*/seat-map",
                 "/api/flights/status",
+                "/api/flights/*/stream",
+                "/api/baggage/options",
                 "/api/airports",
                 "/api/cms/homepage",
                 "/api/bookings/manage/*"

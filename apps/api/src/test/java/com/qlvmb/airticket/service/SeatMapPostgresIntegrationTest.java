@@ -62,6 +62,8 @@ class SeatMapPostgresIntegrationTest {
   @Autowired PlatformTransactionManager txManager;
   @MockitoBean MemberVoucherService vouchers;
   @MockitoBean NotificationOutboxService notifications;
+  @MockitoBean BaggageTrackingService baggageTrackingService;
+  @MockitoBean RealtimeFlightStreamService realtimeFlightStreamService;
   private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
   // Kịch bản 1, 15, 18: cabin thật, bảo mật dữ liệu khách và lỗi cấu hình.

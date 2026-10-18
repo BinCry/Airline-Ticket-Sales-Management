@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ApiFlightStatusResponse } from "@qlvmb/shared-types";
 
 import { FlightStatusLookupForm } from "@/components/flight-status-lookup-form";
+import {FlightStatusStreamRefresh} from "@/components/flight-status-stream-refresh";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusChip } from "@/components/status-chip";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
@@ -81,6 +82,7 @@ export default async function FlightStatusPage({ searchParams }: FlightStatusPag
 
         <div className="section-gap" />
         <FlightStatusLookupForm code={code} date={date} ngayHienTai={ngayHienTai} />
+        <FlightStatusStreamRefresh codes={flights.map(flight=>flight.code)} />
 
         <div className="section-gap" />
         <SectionHeading

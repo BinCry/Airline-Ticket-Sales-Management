@@ -25,6 +25,7 @@ import {
   type ManageBookingOverview
 } from "@/lib/manage-booking-api";
 import { pushToast } from "@/lib/toast";
+import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
 type LookupState = "idle" | "loading" | "error" | "success";
 
@@ -180,6 +181,13 @@ export function ManageBookingPageClient() {
   const [refundReason, setRefundReason] = useState("Không thể tiếp tục hành trình.");
   const [selectedRefundScopeKey, setSelectedRefundScopeKey] = useState<string>(KHOA_HOAN_TOAN_BO);
   const [isRefunding, setIsRefunding] = useState(false);
+  useEffect(()=>{
+    if(!accessToken||!bookingOverview)return;
+    const code=bookingOverview.bookingCode;
+    const refresh=()=>{void fetchManageBooking(code,accessToken).then(setBookingOverview).catch(()=>{});};
+    window.addEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+    return ()=>window.removeEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+  },[accessToken,bookingOverview?.bookingCode]);
   const isHoldingBooking =
     bookingOverview?.status === "held" && bookingOverview.paymentStatus === "pending";
 
@@ -701,7 +709,18 @@ export function ManageBookingPageClient() {
                   description="Mỗi ticket gắn với đúng một chặng bay, nhờ vậy bạn có thể làm thủ tục và hoàn vé tách biệt theo từng chiều."
                 />
                 <div className="stack-list">
-                  {bookingOverview.tickets.length > 0 ? (
+                  {(bookingOverview.baggage?.length ?? 0)>0 && <article className="surface-card">
+                  <h3>Hành lý ký gửi đã mua</h3>
+                  <div className="stack-list">{bookingOverview.baggage!.map(item=><div key={item.id} className="support-compact-item">
+                    <strong>{item.tagCode} • {item.passengerName} • {item.flightCode}</strong>
+                    <p>{item.purchasedWeightKg} kg • {item.status} {item.weightKg!=null?` • thực tế ${item.weightKg} kg`:""}</p>
+                    <small>{item.acceptedAt?`Nhận: ${formatDateTime(item.acceptedAt)} `:""}
+                     {item.loadedAt?`Bốc xếp: ${formatDateTime(item.loadedAt)} `:""}
+                     {item.deliveredAt?`Trả: ${formatDateTime(item.deliveredAt)}`:""}</small>
+                    {item.status==="RETURN_PENDING"&&<p>Vui lòng liên hệ quầy hành lý để nhận lại kiện.</p>}
+                  </div>)}</div>
+                </article>}
+                {bookingOverview.tickets.length > 0 ? (
                     bookingOverview.tickets.map((ticket) => {
                       const segment = timPhanDoanChoVe(bookingOverview, ticket);
                       return (

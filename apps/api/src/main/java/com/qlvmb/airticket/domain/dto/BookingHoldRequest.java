@@ -52,8 +52,11 @@ public record BookingHoldRequest(
 
   public record AncillaryRequest(
       @NotBlank String code,
-      Integer quantity
+      Integer quantity,
+      Integer passengerIndex,
+      Integer segmentIndex
   ) {
+    public AncillaryRequest(String code,Integer quantity){this(code,quantity,null,null);}
   }
 
   public record SeatSelectionRequest(

@@ -16,6 +16,7 @@ import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.RefundRequestRepository;
+import com.qlvmb.airticket.repository.BaggageTrackingRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -35,12 +36,15 @@ class FinanceServiceTest {
   @Mock
   private NotificationOutboxService notificationOutboxService;
 
+  @Mock
+  private BaggageTrackingRepository baggageRepository;
+
   private FinanceService financeService;
   @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
-    financeService = new FinanceService(refundRequestRepository, notificationOutboxService, seatMapService);
+    financeService = new FinanceService(refundRequestRepository, notificationOutboxService, seatMapService, baggageRepository);
   }
 
   @Test

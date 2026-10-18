@@ -11,4 +11,7 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
   List<NotificationOutboxEntity> findAllByOrderByCreatedAtDesc();
 
   List<NotificationOutboxEntity> findTop5ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(String recipientEmail);
+  List<NotificationOutboxEntity> findTop20ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(String recipientEmail);
+  java.util.Optional<NotificationOutboxEntity> findByIdAndRecipientEmailIgnoreCase(Long id,String recipientEmail);
+  boolean existsByDedupKey(String dedupKey);
 }

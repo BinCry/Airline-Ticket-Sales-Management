@@ -30,15 +30,24 @@ public class FinanceService {
   private final RefundRequestRepository refundRequestRepository;
   private final NotificationOutboxService notificationOutboxService;
   private final SeatMapService seatMapService;
+  private final com.qlvmb.airticket.repository.BaggageTrackingRepository baggageRepository;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public FinanceService(
       RefundRequestRepository refundRequestRepository,
       NotificationOutboxService notificationOutboxService,
-      SeatMapService seatMapService
+      SeatMapService seatMapService,
+      com.qlvmb.airticket.repository.BaggageTrackingRepository baggageRepository
   ) {
     this.refundRequestRepository = refundRequestRepository;
     this.notificationOutboxService = notificationOutboxService;
     this.seatMapService = seatMapService;
+    this.baggageRepository = baggageRepository;
+  }
+
+  // Retains the constructor used by existing unit tests.
+  public FinanceService(RefundRequestRepository refunds, NotificationOutboxService notifications, SeatMapService seatMaps) {
+    this(refunds, notifications, seatMaps, null);
   }
 
   @Transactional(readOnly = true)
@@ -63,6 +72,13 @@ public class FinanceService {
         : refundRequest.getRequestedTickets().stream().toList();
     Map<Long, Integer> releaseCountByInventoryId = new LinkedHashMap<>();
 
+    if(!booking.isCancelled()){
+      var ticketIds=requestedTickets.stream().map(TicketEntity::getId).collect(java.util.stream.Collectors.toSet());
+      boolean awaitingReturn=baggageRepository.findByBookingId(booking.getId()).stream()
+        .anyMatch(b->ticketIds.contains(b.getTicket().getId()) &&
+          ("ACCEPTED".equals(b.getStatus())||"LOADED".equals(b.getStatus())));
+      if(awaitingReturn)throw new BadRequestException("Cần trả hành lý tại quầy trước khi duyệt hoàn.");
+    }
     refundRequest.markApproved(currentTime);
     requestedTickets.forEach(ticket -> {
       if (!TicketEntity.STATUS_CANCELLED.equals(ticket.getStatus())) {

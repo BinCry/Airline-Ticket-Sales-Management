@@ -29,6 +29,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.concurrent.Executor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -55,24 +57,37 @@ public class NotificationOutboxService {
   private static final String REFUND_STATUS_SUBJECT_SUFFIX = " | Vietnam Airlines";
 
   private final NotificationOutboxRepository notificationOutboxRepository;
+  private final RealtimeFlightStreamService streamService;
+  private final Executor deliveryExecutor;
   private final @Nullable JavaMailSender mailSender;
   private final boolean mailEnabled;
   private final String fromEmail;
   private final TransactionTemplate deliveryTransaction;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public NotificationOutboxService(
       NotificationOutboxRepository notificationOutboxRepository,
+      RealtimeFlightStreamService streamService,
+      @Qualifier("notificationDeliveryExecutor") Executor deliveryExecutor,
       @Nullable JavaMailSender mailSender,
       @Value("${app.mail.enabled}") boolean mailEnabled,
       @Value("${app.mail.from-email:}") String fromEmail,
       PlatformTransactionManager transactionManager
   ) {
     this.notificationOutboxRepository = notificationOutboxRepository;
+    this.streamService=streamService;
+    this.deliveryExecutor=deliveryExecutor;
     this.mailSender = mailSender;
     this.mailEnabled = mailEnabled;
     this.fromEmail = fromEmail;
     deliveryTransaction = new TransactionTemplate(transactionManager);
     deliveryTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+  }
+
+  // Backward-compatible constructor for the preexisting unit tests.
+  public NotificationOutboxService(NotificationOutboxRepository repository, JavaMailSender mailSender,
+      boolean mailEnabled, String fromEmail, PlatformTransactionManager transactionManager) {
+    this(repository, null, Runnable::run, mailSender, mailEnabled, fromEmail, transactionManager);
   }
 
   @Transactional
@@ -83,6 +98,14 @@ public class NotificationOutboxService {
         bookingCode, memberEmail, tierChange, OffsetDateTime.now(ZoneOffset.UTC));
     notificationOutboxRepository.save(outbox);
     dispatchDelivery(outbox);
+    // Notify the member only after the loyalty transaction is committed.
+    if (streamService != null && TransactionSynchronizationManager.isActualTransactionActive()
+        && TransactionSynchronizationManager.isSynchronizationActive()) {
+      Long id = outbox.getId();
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override public void afterCommit() { streamService.pushPrivate(memberEmail, id); }
+      });
+    }
     return toResponse(outbox);
   }
 
@@ -119,6 +142,12 @@ public class NotificationOutboxService {
     );
     notificationOutboxRepository.save(outbox);
     dispatchDelivery(outbox);
+    if(TransactionSynchronizationManager.isActualTransactionActive()&&TransactionSynchronizationManager.isSynchronizationActive()){
+      Long id=outbox.getId();String email=outbox.getRecipientEmail();
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){
+       @Override public void afterCommit(){streamService.pushPrivate(email,id);}
+      });
+    }
     return toResponse(outbox);
   }
 
@@ -195,7 +224,8 @@ public class NotificationOutboxService {
       TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
         @Override
         public void afterCommit() {
-          deliverPersistedOutbox(outboxId);
+          try { deliveryExecutor.execute(() -> deliverPersistedOutbox(outboxId)); }
+          catch (RuntimeException ex) { LOGGER.error("Email queued but executor rejected outbox {}",outboxId,ex); }
         }
       });
       return;
@@ -380,7 +410,7 @@ public class NotificationOutboxService {
   @Transactional(readOnly = true)
   public List<MyNotificationResponse> getMyNotifications(AuthenticatedUser authenticatedUser) {
     return notificationOutboxRepository
-        .findTop5ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(authenticatedUser.email())
+        .findTop20ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc(authenticatedUser.email())
         .stream()
         .map(this::toMyNotificationResponse)
         .toList();
@@ -395,7 +425,29 @@ public class NotificationOutboxService {
         outbox.getBody(),
         outbox.getStatus(),
         outbox.getCreatedAt(),
-        outbox.getSentAt()
+        outbox.getSentAt(),
+        outbox.getFlightCode(),
+        outbox.getReadAt()
     );
+  }
+  @Transactional
+  public MyNotificationResponse markRead(AuthenticatedUser user,Long id){
+    var n=notificationOutboxRepository.findByIdAndRecipientEmailIgnoreCase(id,user.email())
+      .orElseThrow(()->new NotFoundException("Không tìm thấy thông báo."));
+    n.markRead(OffsetDateTime.now());return toMyNotificationResponse(n);
+  }
+  @Transactional
+  public void createFlightUpdate(BookingEntity booking,FlightEntity flight,String key,String subject,String body){
+    if(notificationOutboxRepository.existsByDedupKey(key))return;
+    var outbox=NotificationOutboxEntity.createFlightUpdate(booking.getBookingCode(),
+      booking.getContact().getEmail(),flight.getCode(),key,subject,body,OffsetDateTime.now());
+    notificationOutboxRepository.save(outbox);
+    dispatchDelivery(outbox);
+    if(TransactionSynchronizationManager.isActualTransactionActive()&&TransactionSynchronizationManager.isSynchronizationActive()){
+      Long id=outbox.getId();String email=outbox.getRecipientEmail();
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){
+        @Override public void afterCommit(){streamService.pushPrivate(email,id);}
+      });
+    }
   }
 }

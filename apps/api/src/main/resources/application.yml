@@ -75,6 +75,8 @@ app:
       order-duration-seconds: ${APP_PAYMENT_SEPAY_ORDER_DURATION_SECONDS:${SEPAY_ORDER_DURATION_SECONDS:900}}
       api-base-url: ${APP_PAYMENT_SEPAY_API_BASE_URL:${SEPAY_API_BASE_URL:https://userapi.sepay.vn/v2}}
       qr-base-url: ${APP_PAYMENT_SEPAY_QR_BASE_URL:${SEPAY_QR_BASE_URL:https://qr.sepay.vn/img}}
+  baggage:
+    accept-cutoff-minutes: ${APP_BAGGAGE_ACCEPT_CUTOFF_MINUTES:60}
   upload:
     avatar-dir: ${APP_UPLOAD_AVATAR_DIR:uploads/avatars}
 

@@ -1,6 +1,7 @@
 package com.qlvmb.airticket.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -14,6 +15,7 @@ import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.NotificationOutboxEntity;
+import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.NotificationOutboxRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 
@@ -259,7 +261,7 @@ class NotificationOutboxServiceTest {
     ReflectionTestUtils.setField(outbox, "id", 7L);
     outbox.markSent(currentTime.plusMinutes(1));
 
-    when(notificationOutboxRepository.findTop5ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc("khach@example.com"))
+    when(notificationOutboxRepository.findTop20ByRecipientEmailIgnoreCaseOrderByCreatedAtDesc("khach@example.com"))
         .thenReturn(List.of(outbox));
 
     var authenticatedUser = new AuthenticatedUser(
@@ -277,6 +279,19 @@ class NotificationOutboxServiceTest {
     assertThat(responses.get(0).bookingCode()).isEqualTo("QC5004");
     assertThat(responses.get(0).subject()).isEqualTo("Thông báo vé điện tử");
     assertThat(responses.get(0).body()).isEqualTo("Nội dung thông báo");
+  }
+
+  @Test
+  void markReadCannotAccessAnotherRecipientsNotification() {
+    AuthenticatedUser authenticatedUser = new AuthenticatedUser(
+        102L, "other@example.com", "Other", List.of("customer"), List.of("customer.self_service"));
+    when(notificationOutboxRepository.findByIdAndRecipientEmailIgnoreCase(7L, "other@example.com"))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> notificationOutboxService.markRead(authenticatedUser, 7L))
+        .isInstanceOf(NotFoundException.class);
+
+    verify(notificationOutboxRepository).findByIdAndRecipientEmailIgnoreCase(7L, "other@example.com");
   }
 
   private BookingEntity createBooking(String bookingCode, String email) {

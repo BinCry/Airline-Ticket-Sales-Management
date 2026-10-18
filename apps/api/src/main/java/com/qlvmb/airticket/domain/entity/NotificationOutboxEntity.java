@@ -27,6 +27,10 @@ public class NotificationOutboxEntity {
   @Column(nullable = false, length = 80)
   private String type;
 
+  @Column(name="flight_code",length=16) private String flightCode;
+  @Column(name="dedup_key",length=190) private String dedupKey;
+  @Column(name="read_at") private OffsetDateTime readAt;
+
   @Column(name = "booking_code", length = 6)
   private String bookingCode;
 
@@ -131,6 +135,16 @@ public class NotificationOutboxEntity {
         "Chúc mừng nâng hạng hội viên | Vietnam Airlines",
         "Chúc mừng bạn đã được nâng hạng: " + tierChange + ".", now);
     outbox.type = TYPE_LOYALTY_TIER_UPGRADE;
+    return outbox;
+  }
+
+  public String getFlightCode(){return flightCode;}
+  public OffsetDateTime getReadAt(){return readAt;}
+  public void markRead(OffsetDateTime now){if(readAt==null)readAt=now;}
+  public static NotificationOutboxEntity createFlightUpdate(String bookingCode,String email,String flightCode,
+    String dedupKey,String subject,String body,OffsetDateTime now){
+    var outbox=createTicketEmail(bookingCode,email,subject,body,now);
+    outbox.type="FLIGHT_UPDATE";outbox.flightCode=flightCode;outbox.dedupKey=dedupKey;
     return outbox;
   }
 

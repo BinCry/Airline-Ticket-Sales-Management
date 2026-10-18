@@ -180,6 +180,11 @@ public class FlightEntity {
     this.salesOpen = salesOpen;
   }
 
+  public void reschedule(OffsetDateTime departureAt, OffsetDateTime arrivalAt){
+    if(departureAt==null||arrivalAt==null||!arrivalAt.isAfter(departureAt))
+      throw new IllegalArgumentException("Giờ hạ cánh phải sau giờ cất cánh.");
+    this.departureAt=departureAt;this.arrivalAt=arrivalAt;
+  }
   public void markCancelled(String operationsNote, OffsetDateTime cancelledAt) {
     status = "cancelled";
     this.operationsNote = operationsNote;

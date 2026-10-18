@@ -24,6 +24,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,6 +94,19 @@ public class MemberLoyaltyService {
         nextTier == null ? 0 : Math.max(0, nextTier.getMinLifetimePoints() - lifetimePoints),
         progress
     );
+  }
+
+  @Transactional(readOnly = true)
+  public Page<MyLoyaltyLedgerItemResponse> getMyLoyaltyLedger(AuthenticatedUser authenticatedUser,
+      int page, int size) {
+    UserAccountEntity userAccount = loadMemberAccount(authenticatedUser);
+    var account = memberLoyaltyAccountRepository.findByUserId(userAccount.getId());
+    if (account.isEmpty()) {
+      return Page.empty(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(50, size))));
+    }
+    return memberLoyaltyLedgerRepository.findByLoyaltyAccountIdOrderByCreatedAtDescIdDesc(
+        account.get().getId(), PageRequest.of(Math.max(0, page), Math.max(1, Math.min(50, size))))
+        .map(this::toLedgerItemResponse);
   }
 
   @Transactional(readOnly = true)

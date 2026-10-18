@@ -26,6 +26,7 @@ import {
   deleteMyPassenger,
   fetchMyLoyalty,
   fetchMyNotifications,
+  markMyNotificationRead,
   fetchMyPassengers,
   fetchMyProfile,
   fetchMyVouchers,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/my-account-api";
 import { formatDate, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
+import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
 const EMPTY_PROFILE_FORM: UpdateMyProfilePayload = {
   displayName: "",
@@ -286,6 +288,12 @@ export default function AccountPage() {
   const [memberLoyalty, setMemberLoyalty] = useState<MyLoyalty | null>(null);
   const [memberVouchers, setMemberVouchers] = useState<MyVoucher[]>([]);
   const [myNotifications, setMyNotifications] = useState<MyNotification[]>([]);
+  useEffect(()=>{
+    const refresh=()=>{const token=loadActiveAuthSession()?.accessToken;
+      if(token)void fetchMyNotifications(token).then(setMyNotifications).catch(()=>{});};
+    window.addEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+    return ()=>window.removeEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+  },[]);
   const [profileForm, setProfileForm] = useState<UpdateMyProfilePayload>(EMPTY_PROFILE_FORM);
   const [passengers, setPassengers] = useState<MyPassenger[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -969,10 +977,16 @@ export default function AccountPage() {
         ) : myNotifications.length > 0 ? (
           myNotifications.map((notification) => (
             <article key={notification.id} className="surface-card notification-card">
-              <span className="pill">{formatNotificationStatus(notification.status)}</span>
+              <span className="pill">{notification.readAt ? "Đã đọc" : "Chưa đọc"} • {formatNotificationStatus(notification.status)}</span>
               <h3>{notification.subject}</h3>
               <p>{notification.body}</p>
               <small>{formatNotificationMeta(notification)}</small>
+              {!notification.readAt && <button type="button" className="button button-secondary"
+                onClick={()=>{
+                  if(!authSession?.accessToken)return;
+                  void markMyNotificationRead(authSession.accessToken,notification.id)
+                    .then(updated=>setMyNotifications(rows=>rows.map(row=>row.id===updated.id?updated:row)));
+                }}>Đánh dấu đã đọc</button>}
             </article>
           ))
         ) : (
