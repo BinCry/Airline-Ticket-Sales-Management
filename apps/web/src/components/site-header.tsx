@@ -260,7 +260,7 @@ export function SiteHeader() {
                     Thông tin cá nhân
                   </Link>
                   <Link href="/account#thong-bao" role="menuitem">
-                    🔔 Thông báo chuyến bay
+                    Thông báo chuyến bay
                   </Link>
                 </div>
                 <div className="account-menu-group">

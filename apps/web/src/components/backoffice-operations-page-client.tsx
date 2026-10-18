@@ -984,11 +984,6 @@ export function BackofficeOperationsPageClient() {
           </article>
         </div>
 
-        <div className="section-gap" />
-        {aircraftError ? <p role="alert">{aircraftError}</p> : null}
-        <OperationsAircraftPanel accessToken={accessToken} aircraftTypes={aircraftTypes} aircraft={aircraft}
-          onSaved={async () => { if (accessToken) await loadAircraftCatalog(accessToken); }} />
-        <div className="section-gap" />
         <div className="stack-list">
           {flights.length > 0 ? (
             flights.map((flight) => {
@@ -1254,6 +1249,10 @@ export function BackofficeOperationsPageClient() {
           )}
         </div>
 
+        <div className="section-gap" />
+        {aircraftError ? <p role="alert">{aircraftError}</p> : null}
+        <OperationsAircraftPanel accessToken={accessToken} aircraftTypes={aircraftTypes} aircraft={aircraft}
+          onSaved={async () => { if (accessToken) await loadAircraftCatalog(accessToken); }} />
         <div className="section-gap" />
         <BackofficeBaggagePanel />
         <div className="section-gap" />

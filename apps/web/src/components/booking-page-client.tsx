@@ -820,7 +820,7 @@ export function BookingPageClient() {
                           unavailableSeats={localTakenSeats} disabled={pendingSubmitAction !== null}
                           onSelect={(seat) => chonGheChoHanhKhach(segmentIndex, activePassengerIndex, seat)} />
                       ) : <p role="alert">Chưa có sơ đồ ghế từ tàu bay.</p>}
-                      {activePassenger && <div className="surface-card">
+                      {activePassenger && <div className="surface-card booking-baggage-card">
                         <h4>Hành lý ký gửi mua thêm</h4>
                         {activePassenger.passengerType === "infant" ? <p>Em bé không mua thêm hành lý.</p> : <>
                           <label className="field"><span>Gói cân</span><select value={activeChoice.baggageCode}
@@ -833,8 +833,10 @@ export function BookingPageClient() {
                              onChange={event=>chooseBaggage(segmentIndex,activePassengerIndex,activeChoice.baggageCode,Number(event.target.value))}>
                             {[1,2,3].map(n=><option key={n} value={n}>{n} kiện</option>)}
                           </select></label>}
-                          <button type="button" className="button button-secondary"
-                            onClick={()=>applyBaggageToAll(segmentIndex,activePassengerIndex)}>Áp dụng cho tất cả hành khách</button>
+                          <div className="booking-baggage-actions">
+                            <button type="button" className="button button-secondary"
+                              onClick={()=>applyBaggageToAll(segmentIndex,activePassengerIndex)}>Áp dụng cho tất cả hành khách</button>
+                          </div>
                         </>}
                       </div>}
                     </div>

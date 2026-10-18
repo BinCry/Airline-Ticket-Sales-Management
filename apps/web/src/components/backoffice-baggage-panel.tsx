@@ -35,18 +35,28 @@ export function BackofficeBaggagePanel(){
  }
  return <article id="operations-baggage" className="surface-card backoffice-operations-anchor">
   <h2>Quản lý hành lý ký gửi</h2><p>Tìm theo mã đặt chỗ, mã kiện, mã chuyến hoặc trạng thái.</p>
-  <div className="field-grid compact-grid">
+  <section className="baggage-search-section">
+   <h3>Tìm kiếm hành lý</h3>
+   <div className="field-grid compact-grid baggage-filter-grid">
    <label className="field"><span>PNR</span><input value={bookingCode} onChange={e=>setBookingCode(e.target.value)}/></label>
    <label className="field"><span>Mã kiện</span><input value={tagCode} onChange={e=>setTagCode(e.target.value)}/></label>
    <label className="field"><span>Mã chuyến</span><input value={flightCode} onChange={e=>setFlightCode(e.target.value)}/></label>
    <label className="field"><span>Trạng thái</span><select value={status} onChange={e=>setStatus(e.target.value)}>
     <option value="">Tất cả</option>{["REGISTERED","ACCEPTED","LOADED","DELIVERED","CANCELLED","RETURN_PENDING"].map(s=><option key={s}>{s}</option>)}
    </select></label>
-  </div>
-  <div className="auth-action-row"><button className="button button-primary" type="button" onClick={()=>void reload()} disabled={busy}>Tìm kiếm</button>
-   <input aria-label="ID chuyến bay" placeholder="Flight ID để bốc xếp cả chuyến" value={flightId} onChange={e=>setFlightId(e.target.value)}/>
-   <button type="button" className="button button-secondary" onClick={()=>void loadFlight()}>Bốc xếp cả chuyến</button>
-  </div>
+   </div>
+   <div className="baggage-search-actions">
+    <button className="button button-primary" type="button" onClick={()=>void reload()} disabled={busy}>Tìm kiếm</button>
+   </div>
+  </section>
+  <section className="baggage-bulk-load-section">
+   <h3>Bốc xếp cả chuyến</h3>
+   <p>Nhập ID chuyến bay để bốc xếp các kiện đã được nhận.</p>
+   <div className="baggage-bulk-load-controls">
+    <label className="field"><span>ID chuyến bay</span><input aria-label="ID chuyến bay" placeholder="Ví dụ: 123" value={flightId} onChange={e=>setFlightId(e.target.value)}/></label>
+    <button type="button" className="button button-secondary" onClick={()=>void loadFlight()}>Bốc xếp cả chuyến</button>
+   </div>
+  </section>
   {error&&<p role="alert">{error}</p>}
   <div className="stack-list">{pieces.map(piece=><div key={piece.id} className="surface-card">
    <strong>{piece.tagCode} • {piece.passengerName}</strong>

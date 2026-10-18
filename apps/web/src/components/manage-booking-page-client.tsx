@@ -439,7 +439,7 @@ export function ManageBookingPageClient() {
 
         <div className="section-gap" />
         <form className="lookup-card" onSubmit={handleLookup}>
-          <div className="field-grid compact-grid">
+          <div className="field-grid compact-grid manage-booking-lookup-grid">
             <label className="field">
               <span>Mã đặt chỗ</span>
               <input
@@ -490,7 +490,7 @@ export function ManageBookingPageClient() {
             ) : null}
             <div className="field field-inline">
               <span>Trạng thái tra cứu</span>
-              <div className="surface-card">
+              <div className="surface-card manage-booking-status-card">
                 <strong>
                   {lookupState === "loading"
                     ? "Đang tải..."
@@ -514,20 +514,25 @@ export function ManageBookingPageClient() {
             {!accessToken ? (
               <button
                 type="button"
-                className="button button-secondary"
+                className="button button-secondary manage-booking-lookup-button"
                 onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
                 disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
               >
                 {isVerifyingLookupOtp ? "Đang xác minh..." : "Xác minh OTP"}
               </button>
             ) : null}
-            <button
-              type="submit"
-              className="button button-primary"
-              disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
-            >
-              {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
-            </button>
+            <div className="field manage-booking-lookup-action">
+              <span className="manage-booking-lookup-label-spacer" aria-hidden="true">
+                {"\u00a0"}
+              </span>
+              <button
+                type="submit"
+                className="button button-primary manage-booking-lookup-button"
+                disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
+              >
+                {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
+              </button>
+            </div>
           </div>
         </form>
 
