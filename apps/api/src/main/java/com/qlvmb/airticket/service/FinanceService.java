@@ -26,28 +26,28 @@ public class FinanceService {
       "Yêu cầu hoàn vé này không còn ở trạng thái có thể từ chối.";
   private static final String REFUND_HIDE_INVALID_MESSAGE =
       "Yêu cầu hoàn vé đang chờ duyệt, chưa thể xóa khỏi danh sách.";
+  private static final String REFUND_STATE_CHANGED_MESSAGE =
+      "Dữ liệu vé hoặc hành lý đã thay đổi kể từ khi tạo yêu cầu; vui lòng từ chối yêu cầu này.";
 
   private final RefundRequestRepository refundRequestRepository;
   private final NotificationOutboxService notificationOutboxService;
   private final SeatMapService seatMapService;
   private final com.qlvmb.airticket.repository.BaggageTrackingRepository baggageRepository;
+  private final BookingService bookingService;
 
   @org.springframework.beans.factory.annotation.Autowired
   public FinanceService(
       RefundRequestRepository refundRequestRepository,
       NotificationOutboxService notificationOutboxService,
       SeatMapService seatMapService,
-      com.qlvmb.airticket.repository.BaggageTrackingRepository baggageRepository
+      com.qlvmb.airticket.repository.BaggageTrackingRepository baggageRepository,
+      BookingService bookingService
   ) {
     this.refundRequestRepository = refundRequestRepository;
     this.notificationOutboxService = notificationOutboxService;
     this.seatMapService = seatMapService;
     this.baggageRepository = baggageRepository;
-  }
-
-  // Retains the constructor used by existing unit tests.
-  public FinanceService(RefundRequestRepository refunds, NotificationOutboxService notifications, SeatMapService seatMaps) {
-    this(refunds, notifications, seatMaps, null);
+    this.bookingService = bookingService;
   }
 
   @Transactional(readOnly = true)
@@ -72,12 +72,13 @@ public class FinanceService {
         : refundRequest.getRequestedTickets().stream().toList();
     Map<Long, Integer> releaseCountByInventoryId = new LinkedHashMap<>();
 
-    if(!booking.isCancelled()){
-      var ticketIds=requestedTickets.stream().map(TicketEntity::getId).collect(java.util.stream.Collectors.toSet());
-      boolean awaitingReturn=baggageRepository.findByBookingId(booking.getId()).stream()
-        .anyMatch(b->ticketIds.contains(b.getTicket().getId()) &&
-          ("ACCEPTED".equals(b.getStatus())||"LOADED".equals(b.getStatus())));
-      if(awaitingReturn)throw new BadRequestException("Cần trả hành lý tại quầy trước khi duyệt hoàn.");
+    var ticketIds=requestedTickets.stream().map(TicketEntity::getId).collect(java.util.stream.Collectors.toSet());
+    boolean awaitingReturn=baggageRepository.findByBookingId(booking.getId()).stream()
+      .anyMatch(b->ticketIds.contains(b.getTicket().getId()) &&
+        ("ACCEPTED".equals(b.getStatus())||"LOADED".equals(b.getStatus())||"RETURN_PENDING".equals(b.getStatus())));
+    if(awaitingReturn)throw new BadRequestException("Cần trả hành lý tại quầy trước khi duyệt hoàn.");
+    if (!bookingService.isRefundRequestCurrent(refundRequest)) {
+      throw new BadRequestException(REFUND_STATE_CHANGED_MESSAGE);
     }
     refundRequest.markApproved(currentTime);
     requestedTickets.forEach(ticket -> {

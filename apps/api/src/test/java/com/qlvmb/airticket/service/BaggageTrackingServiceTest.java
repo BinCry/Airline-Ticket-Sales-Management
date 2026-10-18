@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import com.qlvmb.airticket.domain.entity.BaggageTrackingEntity;
+import com.qlvmb.airticket.domain.entity.BookingAncillaryEntity;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
@@ -30,6 +31,63 @@ class BaggageTrackingServiceTest {
   private final AuditLogRepository audits = mock(AuditLogRepository.class);
   private final UserAccountRepository users = mock(UserAccountRepository.class);
   private final BaggageTrackingService service = new BaggageTrackingService(repository, audits, users, 60);
+
+  @Test
+  void refundableAmount_excludesBaggageDeliveredAtDestination() {
+    var ancillary = mock(BookingAncillaryEntity.class);
+    var piece = mock(BaggageTrackingEntity.class);
+    when(ancillary.getId()).thenReturn(41L);
+    when(ancillary.getSubtotalAmount()).thenReturn(100_000L);
+    when(ancillary.getUnitPrice()).thenReturn(100_000L);
+    when(repository.findByAncillaryId(41L)).thenReturn(List.of(piece));
+    when(piece.getStatus()).thenReturn("DELIVERED");
+    when(piece.getTagCode()).thenReturn("BG12345678");
+    when(audits.existsByTargetTypeAndTargetIdAndActionAndDetail(
+        "baggage", "BG12345678", "operations.baggage.deliver", "RETURN_PENDING -> DELIVERED"))
+        .thenReturn(false);
+
+    assertThat(service.refundableAmount(ancillary)).isZero();
+  }
+
+  @Test
+  void refundableAmount_includesBaggageReturnedAtOrigin() {
+    var ancillary = mock(BookingAncillaryEntity.class);
+    var piece = mock(BaggageTrackingEntity.class);
+    when(ancillary.getId()).thenReturn(42L);
+    when(ancillary.getSubtotalAmount()).thenReturn(100_000L);
+    when(ancillary.getUnitPrice()).thenReturn(100_000L);
+    when(repository.findByAncillaryId(42L)).thenReturn(List.of(piece));
+    when(piece.getStatus()).thenReturn("DELIVERED");
+    when(piece.getTagCode()).thenReturn("BG87654321");
+    when(audits.existsByTargetTypeAndTargetIdAndActionAndDetail(
+        "baggage", "BG87654321", "operations.baggage.deliver", "RETURN_PENDING -> DELIVERED"))
+        .thenReturn(true);
+
+    assertThat(service.refundableAmount(ancillary)).isEqualTo(100_000L);
+  }
+
+  @Test
+  void refundableAmount_refundsOnlyPiecesNotDeliveredAtDestination() {
+    var ancillary = mock(BookingAncillaryEntity.class);
+    var deliveredPiece = mock(BaggageTrackingEntity.class);
+    var returnedPiece = mock(BaggageTrackingEntity.class);
+    when(ancillary.getId()).thenReturn(43L);
+    when(ancillary.getSubtotalAmount()).thenReturn(200_000L);
+    when(ancillary.getUnitPrice()).thenReturn(100_000L);
+    when(repository.findByAncillaryId(43L)).thenReturn(List.of(deliveredPiece, returnedPiece));
+    when(deliveredPiece.getStatus()).thenReturn("DELIVERED");
+    when(deliveredPiece.getTagCode()).thenReturn("BG11111111");
+    when(returnedPiece.getStatus()).thenReturn("DELIVERED");
+    when(returnedPiece.getTagCode()).thenReturn("BG22222222");
+    when(audits.existsByTargetTypeAndTargetIdAndActionAndDetail(
+        "baggage", "BG11111111", "operations.baggage.deliver", "RETURN_PENDING -> DELIVERED"))
+        .thenReturn(false);
+    when(audits.existsByTargetTypeAndTargetIdAndActionAndDetail(
+        "baggage", "BG22222222", "operations.baggage.deliver", "RETURN_PENDING -> DELIVERED"))
+        .thenReturn(true);
+
+    assertThat(service.refundableAmount(ancillary)).isEqualTo(100_000L);
+  }
 
   @Test
   void searchPassesTagAndBookingFiltersInRepositoryOrder() {

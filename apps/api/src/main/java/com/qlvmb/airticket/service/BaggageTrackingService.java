@@ -35,6 +35,18 @@ public class BaggageTrackingService {
         ticket.addBaggage(BaggageTrackingEntity.create(ticket,ancillary,n,uniqueTag(),kg,now));
     }
   }
+
+  public long refundableAmount(BookingAncillaryEntity ancillary){
+    var pieces=repository.findByAncillaryId(ancillary.getId());
+    if(pieces.isEmpty())return ancillary.getSubtotalAmount();
+    long deliveredAtDestination=pieces.stream().filter(piece->"DELIVERED".equals(piece.getStatus()))
+      .filter(piece->!auditLogRepository.existsByTargetTypeAndTargetIdAndActionAndDetail(
+        "baggage",piece.getTagCode(),"operations.baggage.deliver","RETURN_PENDING -> DELIVERED"))
+      .count();
+    long notRefundable=Math.min(ancillary.getSubtotalAmount(),deliveredAtDestination*ancillary.getUnitPrice());
+    return Math.max(0L,ancillary.getSubtotalAmount()-notRefundable);
+  }
+
   private String uniqueTag(){
     for(int retry=0;retry<30;retry++){
       var code=new StringBuilder("BG");

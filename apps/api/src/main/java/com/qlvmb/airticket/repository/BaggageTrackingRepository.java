@@ -14,6 +14,8 @@ public interface BaggageTrackingRepository extends JpaRepository<BaggageTracking
  Optional<BaggageTrackingEntity> lockById(@Param("id") Long id);
  @Query("select b from BaggageTrackingEntity b join fetch b.ticket t join fetch t.segment s join fetch s.inventory i join fetch i.flight where t.booking.id=:bookingId order by b.id")
  List<BaggageTrackingEntity> findByBookingId(@Param("bookingId") Long bookingId);
+ @Query("select b from BaggageTrackingEntity b where b.ancillary.id=:ancillaryId order by b.pieceNo")
+ List<BaggageTrackingEntity> findByAncillaryId(@Param("ancillaryId") Long ancillaryId);
  @Query("select b from BaggageTrackingEntity b join fetch b.ticket t join fetch t.segment s join fetch s.inventory i join fetch i.flight f where (:tag is null or upper(b.tagCode)=upper(:tag)) and (:code is null or upper(t.booking.bookingCode)=upper(:code)) and (:flight is null or upper(f.code)=upper(:flight)) and (:state is null or b.status=:state) order by b.id desc")
  List<BaggageTrackingEntity> search(@Param("tag") String tag,@Param("code") String code,@Param("flight") String flight,@Param("state") String state);
  @Query("select b from BaggageTrackingEntity b join fetch b.ticket t join fetch t.segment s join fetch s.inventory i where i.flight.id=:flightId and b.status='ACCEPTED'")

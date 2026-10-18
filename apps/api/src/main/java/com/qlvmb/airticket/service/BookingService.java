@@ -1092,22 +1092,41 @@ public class BookingService {
     return selectedTickets;
   }
 
-  private long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+  long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+    var ticketScopes=requestedTickets.stream().map(t->t.getPassenger().getId()+":"+t.getSegment().getId())
+        .collect(Collectors.toSet());
+    var scopedBaggage=booking.getAncillaries().stream().filter(a->"BAGGAGE".equals(a.getKind())
+        &&a.getPassenger()!=null&&a.getSegment()!=null
+        &&ticketScopes.contains(a.getPassenger().getId()+":"+a.getSegment().getId()))
+        .toList();
+    long baggageRefund=scopedBaggage.stream().mapToLong(this::resolveRefundableBaggageAmount).sum();
     if (!booking.getTickets().isEmpty() && requestedTickets.size() == booking.getTickets().size()) {
-      return booking.getTotalAmount();
+      long baggageAmount=scopedBaggage.stream().mapToLong(BookingAncillaryEntity::getSubtotalAmount).sum();
+      return Math.max(0L,booking.getTotalAmount()-baggageAmount+baggageRefund);
     }
 
     long requestedBaseAmount = requestedTickets.stream()
         .mapToLong(this::resolveTicketBaseAmount)
         .sum();
     long requestedDiscountAmount = resolveRequestedTicketDiscountAmount(booking, requestedTickets);
-    var ticketScopes=requestedTickets.stream().map(t->t.getPassenger().getId()+":"+t.getSegment().getId())
-      .collect(Collectors.toSet());
-    long baggageRefund=booking.getAncillaries().stream().filter(a->"BAGGAGE".equals(a.getKind())
-       &&a.getPassenger()!=null&&a.getSegment()!=null
-       &&ticketScopes.contains(a.getPassenger().getId()+":"+a.getSegment().getId()))
-      .mapToLong(BookingAncillaryEntity::getSubtotalAmount).sum();
     return Math.max(0L, requestedBaseAmount + baggageRefund - requestedDiscountAmount);
+  }
+
+  boolean isRefundRequestCurrent(RefundRequestEntity refundRequest) {
+    BookingEntity booking = refundRequest.getBooking();
+    List<TicketEntity> requestedTickets = refundRequest.getRequestedTickets().isEmpty()
+        ? booking.getTickets().stream().toList()
+        : refundRequest.getRequestedTickets().stream().toList();
+    if (!booking.isCancelled() && requestedTickets.stream()
+        .anyMatch(ticket -> TicketEntity.STATUS_CHECKED_IN.equals(ticket.getStatus()))) {
+      return false;
+    }
+    return refundRequest.getRefundAmount() == resolveRefundAmount(booking, requestedTickets);
+  }
+
+  private long resolveRefundableBaggageAmount(BookingAncillaryEntity ancillary) {
+    return baggageTrackingService == null ? ancillary.getSubtotalAmount()
+        : baggageTrackingService.refundableAmount(ancillary);
   }
 
   private long resolveRequestedTicketDiscountAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
