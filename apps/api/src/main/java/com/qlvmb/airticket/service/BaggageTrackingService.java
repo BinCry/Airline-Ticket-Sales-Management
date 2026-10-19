@@ -65,9 +65,9 @@ public class BaggageTrackingService {
       b.getPurchasedWeightKg(),b.getWeightKg(),b.getNote(),b.getAcceptedAt(),b.getLoadedAt(),b.getDeliveredAt());
   }
   @Transactional(readOnly=true)
-  public List<BaggageItem> search(String code,String tag,String flight,String state){
-    return repository.search(blank(tag),blank(code),blank(flight),blank(state)).stream().limit(200).map(this::toDto).toList();
-  }
+public List<BaggageItem> search(String code,String tag,String flight,String state){
+  return repository.search(filterValue(tag),filterValue(code),filterValue(flight),filterValue(state)).stream().limit(200).map(this::toDto).toList();
+}
   @Transactional(readOnly=true)
   public List<BaggageItem> forBooking(Long bookingId){return repository.findByBookingId(bookingId).stream().map(this::toDto).toList();}
   @Transactional
@@ -112,4 +112,5 @@ public class BaggageTrackingService {
     return ids.size();
   }
   private String blank(String s){return s==null||s.isBlank()?null:s.trim();}
+  private String filterValue(String value){return value==null||value.isBlank()?"":value.trim();}
 }
