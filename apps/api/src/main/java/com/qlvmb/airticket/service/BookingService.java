@@ -247,19 +247,45 @@ public class BookingService {
       bookingSegments.add(bookingSegment);
     });
 
+    bookingRepository.saveAndFlush(booking);
+
     Map<String,BookingSegmentEntity> scopedSegments=new LinkedHashMap<>();
     for(var seat:preparedSeatSelections){
       scopedSegments.put(seat.passengerIndex()+":"+seat.segmentIndex(),
         bookingSegments.stream().filter(bs->bs.getInventory().getId().equals(seat.inventoryId())).findFirst().orElseThrow());
     }
     preparedAncillaries.forEach(ancillary -> {
-      var item=BookingAncillaryEntity.create(booking,ancillary.code(),ancillary.name(),ancillary.description(),
-          ancillary.unitPrice(),ancillary.quantity(),ancillary.subtotalAmount(),currentTime);
-      if(ancillary.passengerIndex()!=null)item.attachBaggageScope(
-        bookingPassengers.get(ancillary.passengerIndex()),
-        scopedSegments.get(ancillary.passengerIndex()+":"+ancillary.segmentIndex()));
-      booking.addAncillary(item);
-    });
+    BookingAncillaryEntity item = BookingAncillaryEntity.create(
+        booking,
+        ancillary.code(),
+        ancillary.name(),
+        ancillary.description(),
+        ancillary.unitPrice(),
+        ancillary.quantity(),
+        ancillary.subtotalAmount(),
+        currentTime
+    );
+
+    if (ancillary.passengerIndex() != null) {
+        String scopeKey =
+            ancillary.passengerIndex() + ":" + ancillary.segmentIndex();
+
+        BookingSegmentEntity scopedSegment = scopedSegments.get(scopeKey);
+
+        if (scopedSegment == null) {
+            throw new BadRequestException(
+                "Không tìm thấy chặng bay tương ứng với hành lý đã chọn."
+            );
+        }
+
+        item.attachBaggageScope(
+            bookingPassengers.get(ancillary.passengerIndex()),
+            scopedSegment
+        );
+    }
+
+    booking.addAncillary(item);
+});
 
     Map<Long, BookingSegmentEntity> segmentByInventoryId = bookingSegments.stream()
         .collect(Collectors.toMap(
@@ -280,7 +306,7 @@ public class BookingService {
         )
     ));
 
-    BookingEntity savedBooking = bookingRepository.save(booking);
+    BookingEntity savedBooking = bookingRepository.saveAndFlush(booking);
     return mapHoldResponse(savedBooking);
   }
 
