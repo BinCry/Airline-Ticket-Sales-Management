@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qlvmb.airticket.domain.dto.ApiErrorResponse;
 import com.qlvmb.airticket.security.JwtAuthenticationFilter;
 import com.qlvmb.airticket.security.PermissionCode;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -30,9 +31,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
   private static final String ACCESS_DENIED_MESSAGE =
-      "B\u1ea1n kh\u00f4ng c\u00f3 quy\u1ec1n th\u1ef1c hi\u1ec7n thao t\u00e1c n\u00e0y.";
+      "Bạn không có quyền thực hiện thao tác này.";
   private static final String UNAUTHORIZED_MESSAGE =
-      "B\u1ea1n c\u1ea7n \u0111\u0103ng nh\u1eadp \u0111\u1ec3 ti\u1ebfp t\u1ee5c.";
+      "Bạn cần đăng nhập để tiếp tục.";
 
   @Bean
   public SecurityFilterChain securityFilterChain(
@@ -65,6 +66,9 @@ public class SecurityConfig {
             )
         )
         .authorizeHttpRequests(authorize -> authorize
+            // SSE/Servlet async and error redispatches are internal; the original
+            // REQUEST is still authenticated and authorized by the rules below.
+            .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers("/error").permitAll()
             .requestMatchers(HttpMethod.GET, "/uploads/avatars/**").permitAll()
