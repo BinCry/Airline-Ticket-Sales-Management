@@ -63,6 +63,11 @@ public class BoardingPassEntity {
     return boardingPass;
   }
 
+  public void syncFlight(String gate,java.time.Duration offset,OffsetDateTime now){
+    if(gate!=null)this.gate=gate;
+    if(offset!=null)this.boardingTime=this.boardingTime.plus(offset);
+    this.updatedAt=now;
+  }
   public Long getId() {
     return id;
   }

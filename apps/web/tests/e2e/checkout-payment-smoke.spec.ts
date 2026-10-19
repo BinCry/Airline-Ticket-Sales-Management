@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 
 import { jsonResponse, taoThoiDiemTuongLai } from "./e2e-helpers";
 
+test.beforeEach(async ({ page }) => {
+  await page.route("https://qr.sepay.vn/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'
+    });
+  });
+});
+
 test("checkout hien thi dung phien thanh toan live cua SePay", async ({ page }) => {
   const liveSession = {
     bookingCode: "A6C2P1",

@@ -92,9 +92,11 @@ public class BookingService {
   private final MemberVoucherService memberVoucherService;
   private final UserAccountRepository userAccountRepository;
   private final SeatMapService seatMapService;
+  private final BaggageTrackingService baggageTrackingService;
   private final SecureRandom secureRandom = new SecureRandom();
   @PersistenceContext private EntityManager entityManager;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public BookingService(
       FlightFareInventoryRepository flightFareInventoryRepository,
       BookingRepository bookingRepository,
@@ -103,7 +105,8 @@ public class BookingService {
       ProductCatalogService productCatalogService,
       MemberVoucherService memberVoucherService,
       UserAccountRepository userAccountRepository,
-      SeatMapService seatMapService
+      SeatMapService seatMapService,
+      BaggageTrackingService baggageTrackingService
   ) {
     this.flightFareInventoryRepository = flightFareInventoryRepository;
     this.bookingRepository = bookingRepository;
@@ -113,6 +116,12 @@ public class BookingService {
     this.memberVoucherService = memberVoucherService;
     this.userAccountRepository = userAccountRepository;
     this.seatMapService = seatMapService;
+    this.baggageTrackingService = baggageTrackingService;
+  }
+
+  // Retains the constructor used by existing unit tests.
+  public BookingService(FlightFareInventoryRepository inventories, BookingRepository bookings, BookingSeatSelectionRepository seats, TicketRepository tickets, ProductCatalogService catalogue, MemberVoucherService vouchers, UserAccountRepository users, SeatMapService seatMaps) {
+    this(inventories, bookings, seats, tickets, catalogue, vouchers, users, seatMaps, null);
   }
 
   @Transactional
@@ -144,8 +153,13 @@ public class BookingService {
     validatePassengerAges(request.passengers(), preparedTripSegments);
 
     List<PreparedAncillary> preparedAncillaries = request.ancillaries().stream()
-        .map(this::buildPreparedAncillary)
+        .map(item -> buildPreparedAncillary(item,request.passengers(),request.segments().size()))
         .toList();
+    Set<String> uniqueBaggageScope=new LinkedHashSet<>();
+    for(var item:preparedAncillaries)if(item.passengerIndex()!=null){
+      if(!uniqueBaggageScope.add(item.passengerIndex()+":"+item.segmentIndex()))
+        throw new BadRequestException("Mỗi người/chặng chỉ được một gói hành lý.");
+    }
     PreparedSeatSelectionContext preparedSeatSelectionContext = buildPreparedSeatSelections(
         request.seatSelections(),
         inventoryById,
@@ -233,18 +247,19 @@ public class BookingService {
       bookingSegments.add(bookingSegment);
     });
 
-    preparedAncillaries.forEach(ancillary -> booking.addAncillary(
-        BookingAncillaryEntity.create(
-            booking,
-            ancillary.code(),
-            ancillary.name(),
-            ancillary.description(),
-            ancillary.unitPrice(),
-            ancillary.quantity(),
-            ancillary.subtotalAmount(),
-            currentTime
-        )
-    ));
+    Map<String,BookingSegmentEntity> scopedSegments=new LinkedHashMap<>();
+    for(var seat:preparedSeatSelections){
+      scopedSegments.put(seat.passengerIndex()+":"+seat.segmentIndex(),
+        bookingSegments.stream().filter(bs->bs.getInventory().getId().equals(seat.inventoryId())).findFirst().orElseThrow());
+    }
+    preparedAncillaries.forEach(ancillary -> {
+      var item=BookingAncillaryEntity.create(booking,ancillary.code(),ancillary.name(),ancillary.description(),
+          ancillary.unitPrice(),ancillary.quantity(),ancillary.subtotalAmount(),currentTime);
+      if(ancillary.passengerIndex()!=null)item.attachBaggageScope(
+        bookingPassengers.get(ancillary.passengerIndex()),
+        scopedSegments.get(ancillary.passengerIndex()+":"+ancillary.segmentIndex()));
+      booking.addAncillary(item);
+    });
 
     Map<Long, BookingSegmentEntity> segmentByInventoryId = bookingSegments.stream()
         .collect(Collectors.toMap(
@@ -528,7 +543,8 @@ public class BookingService {
             booking.getTotalAmount(),
             booking.getCurrency(),
             booking.getAppliedVoucherCode()
-        )
+        ),
+        booking.getId()==null || baggageTrackingService==null?List.of():baggageTrackingService.forBooking(booking.getId())
     );
   }
 
@@ -813,11 +829,23 @@ public class BookingService {
     );
   }
 
-  private PreparedAncillary buildPreparedAncillary(BookingHoldRequest.AncillaryRequest ancillaryRequest) {
+  private PreparedAncillary buildPreparedAncillary(BookingHoldRequest.AncillaryRequest ancillaryRequest,
+    List<BookingHoldRequest.PassengerRequest> passengers,int segmentCount) {
     ProductCatalogService.AncillaryMeta ancillaryMeta = productCatalogService.requireAncillary(ancillaryRequest.code());
     int quantity = ancillaryRequest.quantity() == null ? 1 : ancillaryRequest.quantity();
 
-    if (quantity < 1 || quantity > 9) {
+    boolean baggage=productCatalogService.isBaggage(ancillaryMeta.code());
+    Integer passengerIndex=ancillaryRequest.passengerIndex();
+    Integer segmentIndex=ancillaryRequest.segmentIndex();
+    if(baggage){
+      if(passengerIndex==null||passengerIndex<0||passengerIndex>=passengers.size()||
+        segmentIndex==null||segmentIndex<0||segmentIndex>=segmentCount)
+        throw new BadRequestException("Cần chỉ rõ hành khách và chặng bay cho hành lý.");
+      if("infant".equalsIgnoreCase(passengers.get(passengerIndex).passengerType()))
+        throw new BadRequestException("Em bé không được mua thêm hành lý.");
+    }else if(passengerIndex!=null||segmentIndex!=null)
+      throw new BadRequestException("Dịch vụ này chưa hỗ trợ mua riêng theo hành khách/chặng.");
+    if (quantity < 1 || quantity > (baggage?3:9)) {
       throw new BadRequestException("S\u1ed1 l\u01b0\u1ee3ng d\u1ecbch v\u1ee5 b\u1ed5 tr\u1ee3 kh\u00f4ng h\u1ee3p l\u1ec7.");
     }
 
@@ -827,7 +855,9 @@ public class BookingService {
         ancillaryMeta.description(),
         ancillaryMeta.price(),
         quantity,
-        ancillaryMeta.price() * quantity
+        ancillaryMeta.price() * quantity,
+        passengerIndex,
+        segmentIndex
     );
   }
 
@@ -1062,16 +1092,41 @@ public class BookingService {
     return selectedTickets;
   }
 
-  private long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+  long resolveRefundAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
+    var ticketScopes=requestedTickets.stream().map(t->t.getPassenger().getId()+":"+t.getSegment().getId())
+        .collect(Collectors.toSet());
+    var scopedBaggage=booking.getAncillaries().stream().filter(a->"BAGGAGE".equals(a.getKind())
+        &&a.getPassenger()!=null&&a.getSegment()!=null
+        &&ticketScopes.contains(a.getPassenger().getId()+":"+a.getSegment().getId()))
+        .toList();
+    long baggageRefund=scopedBaggage.stream().mapToLong(this::resolveRefundableBaggageAmount).sum();
     if (!booking.getTickets().isEmpty() && requestedTickets.size() == booking.getTickets().size()) {
-      return booking.getTotalAmount();
+      long baggageAmount=scopedBaggage.stream().mapToLong(BookingAncillaryEntity::getSubtotalAmount).sum();
+      return Math.max(0L,booking.getTotalAmount()-baggageAmount+baggageRefund);
     }
 
     long requestedBaseAmount = requestedTickets.stream()
         .mapToLong(this::resolveTicketBaseAmount)
         .sum();
     long requestedDiscountAmount = resolveRequestedTicketDiscountAmount(booking, requestedTickets);
-    return Math.max(0L, requestedBaseAmount - requestedDiscountAmount);
+    return Math.max(0L, requestedBaseAmount + baggageRefund - requestedDiscountAmount);
+  }
+
+  boolean isRefundRequestCurrent(RefundRequestEntity refundRequest) {
+    BookingEntity booking = refundRequest.getBooking();
+    List<TicketEntity> requestedTickets = refundRequest.getRequestedTickets().isEmpty()
+        ? booking.getTickets().stream().toList()
+        : refundRequest.getRequestedTickets().stream().toList();
+    if (!booking.isCancelled() && requestedTickets.stream()
+        .anyMatch(ticket -> TicketEntity.STATUS_CHECKED_IN.equals(ticket.getStatus()))) {
+      return false;
+    }
+    return refundRequest.getRefundAmount() == resolveRefundAmount(booking, requestedTickets);
+  }
+
+  private long resolveRefundableBaggageAmount(BookingAncillaryEntity ancillary) {
+    return baggageTrackingService == null ? ancillary.getSubtotalAmount()
+        : baggageTrackingService.refundableAmount(ancillary);
   }
 
   private long resolveRequestedTicketDiscountAmount(BookingEntity booking, List<TicketEntity> requestedTickets) {
@@ -1153,7 +1208,7 @@ public class BookingService {
       return flight.getGate().trim().toUpperCase();
     }
     long flightId = flight.getId() == null ? 1L : flight.getId();
-    return "G" + ((flightId % 8) + 1);
+    return "Chưa xác định";
   }
 
   private String resolveFlightNote(FlightEntity flight) {
@@ -1394,7 +1449,9 @@ public class BookingService {
       String description,
       long unitPrice,
       int quantity,
-      long subtotalAmount
+      long subtotalAmount,
+      Integer passengerIndex,
+      Integer segmentIndex
   ) {
   }
 
@@ -1426,7 +1483,3 @@ public class BookingService {
   ) {
   }
 }
-
-
-
-

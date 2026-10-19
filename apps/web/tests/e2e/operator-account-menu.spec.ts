@@ -22,7 +22,8 @@ for (const staffCase of staffCases) {
     await seedAuthSession(page, {
       displayName: staffCase.displayName,
       permissions: staffCase.permissions,
-      roles: [staffCase.role]
+      roles: [staffCase.role],
+      mockMyNotifications: true
     });
 
     await page.goto("/");
@@ -40,11 +41,12 @@ for (const staffCase of staffCases) {
   });
 }
 
-test("khách hàng không thấy hành khách, thông báo và điểm thưởng trong menu tài khoản", async ({ page }) => {
+test("khách hàng thấy thông báo chuyến bay nhưng không thấy các mục nội bộ", async ({ page }) => {
   await seedAuthSession(page, {
     displayName: "Đinh Thị Quỳnh Hương",
     permissions: [],
-    roles: ["customer"]
+    roles: ["customer"],
+    mockMyNotifications: true
   });
 
   await page.goto("/");
@@ -56,6 +58,6 @@ test("khách hàng không thấy hành khách, thông báo và điểm thưởng
   await expect(menu.getByRole("menuitem", { name: "Làm thủ tục" })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "Trạng thái chuyến bay" })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: "Hành khách" })).toHaveCount(0);
-  await expect(menu.getByRole("menuitem", { name: "Thông báo" })).toHaveCount(0);
+  await expect(menu.getByRole("menuitem", { name: /Thông báo chuyến bay/ })).toHaveAttribute("href", "/account#thong-bao");
   await expect(menu.getByRole("menuitem", { name: "Voucher / Điểm thưởng" })).toHaveCount(0);
 });

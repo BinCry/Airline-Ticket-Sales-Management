@@ -105,6 +105,9 @@ public class BookingSegmentEntity {
     return segment;
   }
 
+  public void reschedule(OffsetDateTime departureAt,OffsetDateTime arrivalAt){
+    this.departureAt=departureAt;this.arrivalAt=arrivalAt;
+  }
   public Long getId() {
     return id;
   }

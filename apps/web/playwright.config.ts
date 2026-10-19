@@ -3,6 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 const playwrightPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "3100", 10);
 const playwrightBaseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${playwrightPort}`;
 const skipPlaywrightWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
+const playwrightHost = new URL(playwrightBaseURL).hostname;
+
+if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(playwrightHost)) {
+  throw new Error("Playwright E2E chỉ được chạy với địa chỉ local.");
+}
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -24,6 +29,7 @@ export default defineConfig({
         cwd: __dirname,
         env: {
           NEXT_DIST_DIR: ".next-e2e",
+          NEXT_PUBLIC_API_BASE_URL: "http://127.0.0.1:8080",
           PORT: String(playwrightPort)
         },
         url: playwrightBaseURL,

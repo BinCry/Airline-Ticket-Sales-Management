@@ -23,6 +23,11 @@ import com.qlvmb.airticket.repository.MemberVoucherRepository;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import java.time.LocalDate;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.UUID;
+import com.qlvmb.airticket.domain.entity.FlightChangeEventEntity;
+import com.qlvmb.airticket.repository.FlightChangeEventRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -49,7 +54,10 @@ public class BackofficeOperationsService {
   private final BookingService bookingService;
   private final ApplicationEventPublisher eventPublisher;
   private final SeatMapService seatMapService;
+  private final FlightChangeEventRepository flightChangeEventRepository;
+  private final RealtimeFlightStreamService realtimeFlightStreamService;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public BackofficeOperationsService(
       FlightRepository flightRepository,
       AirportRepository airportRepository,
@@ -61,7 +69,9 @@ public class BackofficeOperationsService {
       NotificationOutboxService notificationOutboxService,
       BookingService bookingService,
       ApplicationEventPublisher eventPublisher,
-      SeatMapService seatMapService
+      SeatMapService seatMapService,
+      FlightChangeEventRepository flightChangeEventRepository,
+      RealtimeFlightStreamService realtimeFlightStreamService
   ) {
     this.flightRepository = flightRepository;
     this.airportRepository = airportRepository;
@@ -74,6 +84,13 @@ public class BackofficeOperationsService {
     this.bookingService = bookingService;
     this.eventPublisher = eventPublisher;
     this.seatMapService = seatMapService;
+    this.flightChangeEventRepository=flightChangeEventRepository;
+    this.realtimeFlightStreamService=realtimeFlightStreamService;
+  }
+
+  // Retains the constructor used by existing unit tests.
+  public BackofficeOperationsService(FlightRepository flights, AirportRepository airports, BookingRepository bookings, MemberVoucherRepository vouchers, UserAccountRepository users, AuditLogRepository audits, ProductCatalogService catalogue, NotificationOutboxService notifications, BookingService bookingService, ApplicationEventPublisher publisher, SeatMapService seatMaps) {
+    this(flights, airports, bookings, vouchers, users, audits, catalogue, notifications, bookingService, publisher, seatMaps, null, null);
   }
 
   @Transactional(readOnly = true)
@@ -185,6 +202,8 @@ public class BackofficeOperationsService {
     String nextNote = normalizeOptional(request.note());
     boolean nextSalesOpen = request.salesOpen();
     Long nextBaseFare = request.baseFare();
+    var oldDeparture=flight.getDepartureAt();
+    var oldArrival=flight.getArrivalAt();
     String oldStatus = flight.getStatus();
     String oldGate = flight.getGate();
     String oldNote = flight.getOperationsNote();
@@ -221,7 +240,46 @@ public class BackofficeOperationsService {
       );
       syncFixedFareInventories(flight, nextBaseFare == null ? oldBaseFare : nextBaseFare);
     }
+    var newDeparture=request.departureAt()==null?oldDeparture:request.departureAt();
+    var newArrival=request.arrivalAt()==null?oldArrival:request.arrivalAt();
+    if(!newArrival.isAfter(newDeparture))throw new BadRequestException("Giờ hạ cánh phải sau giờ cất cánh.");
+    boolean timeChanged=!oldDeparture.isEqual(newDeparture)||!oldArrival.isEqual(newArrival);
+    boolean gateChanged=!Objects.equals(oldGate,nextGate);
+    boolean statusChanged=!Objects.equals(oldStatus,nextStatus);
+    if(flight.isCancelled()&&timeChanged)throw new BadRequestException("Không thể đổi giờ chuyến đã hủy.");
+    if(timeChanged)flight.reschedule(newDeparture,newArrival);
     flight.updateOperations(nextStatus, nextGate, nextNote, nextSalesOpen);
+    if(timeChanged||gateChanged||statusChanged){
+      OffsetDateTime now=OffsetDateTime.now();
+      var changed=new java.util.ArrayList<String>();
+      if(timeChanged){
+        flightChangeEventRepository.save(FlightChangeEventEntity.of(flight,"departure_at",oldDeparture.toString(),newDeparture.toString(),actor.userId(),now));
+        flightChangeEventRepository.save(FlightChangeEventEntity.of(flight,"arrival_at",oldArrival.toString(),newArrival.toString(),actor.userId(),now));
+        changed.add("thời gian");
+      }
+      if(gateChanged){flightChangeEventRepository.save(FlightChangeEventEntity.of(flight,"gate",oldGate,nextGate,actor.userId(),now));changed.add("cửa ra tàu");}
+      if(statusChanged){flightChangeEventRepository.save(FlightChangeEventEntity.of(flight,"status",oldStatus,nextStatus,actor.userId(),now));changed.add("trạng thái");}
+      var affected=bookingRepository.findAllDetailedByFlightId(flightId);
+      for(var booking:affected){
+        for(var segment:booking.getSegments())if(segment.getInventory().getFlight().getId().equals(flightId)&&timeChanged)
+          segment.reschedule(newDeparture,newArrival);
+        for(var ticket:booking.getTickets())if(belongsToCancelledFlight(ticket,flight)&&ticket.getBoardingPass()!=null)
+          ticket.getBoardingPass().syncFlight(gateChanged?(nextGate==null?"Chưa xác định":nextGate):null,
+            timeChanged?Duration.between(oldDeparture,newDeparture):null,now);
+        if(!(booking.isTicketed()||booking.isRefundPending())||booking.getContact()==null)continue;
+        boolean valid=booking.getTickets().stream().anyMatch(t->belongsToCancelledFlight(t,flight)
+          &&(TicketEntity.STATUS_ISSUED.equals(t.getStatus())||TicketEntity.STATUS_CHECKED_IN.equals(t.getStatus())));
+        if(!valid)continue;
+        String eventId=UUID.randomUUID().toString();
+        notificationOutboxService.createFlightUpdate(booking,flight,"flight:"+eventId+":"+booking.getBookingCode(),
+          "Cập nhật chuyến bay "+flight.getCode(),"Chuyến bay "+flight.getCode()+" thay đổi: "+String.join(", ",changed)+". Hãy kiểm tra lại hành trình.");
+      }
+      String publicPayload="{\"flightCode\":\""+flight.getCode()+"\"}";
+      org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+        new org.springframework.transaction.support.TransactionSynchronization(){
+          @Override public void afterCommit(){realtimeFlightStreamService.pushFlight(flight.getCode(),publicPayload);}
+        });
+    }
     if (!"landed".equals(oldStatus) && "landed".equals(nextStatus)) {
       eventPublisher.publishEvent(new FlightLandedEvent(flight.getId()));
     }
@@ -273,6 +331,11 @@ public class BackofficeOperationsService {
       cancelAffectedBooking(booking, flight, currentTime, cancellationNote);
     }
 
+    org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+      new org.springframework.transaction.support.TransactionSynchronization(){
+        @Override public void afterCommit(){realtimeFlightStreamService.pushFlight(flight.getCode(),
+          "{\"flightCode\":\""+flight.getCode()+"\"}");}
+      });
     auditLogRepository.save(AuditLogEntity.create(
         actorAccount,
         "operations.flight.cancel",
@@ -482,7 +545,7 @@ public class BackofficeOperationsService {
       return gate.toUpperCase(Locale.ROOT);
     }
     long flightId = flight.getId() == null ? 1L : flight.getId();
-    return "G" + ((flightId % 8) + 1);
+    return "Chưa xác định";
   }
 
   private String resolveNote(FlightEntity flight) {

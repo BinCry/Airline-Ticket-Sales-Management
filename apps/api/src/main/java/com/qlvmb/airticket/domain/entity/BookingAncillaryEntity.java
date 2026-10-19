@@ -23,6 +23,12 @@ public class BookingAncillaryEntity {
   @JoinColumn(name = "booking_id", nullable = false)
   private BookingEntity booking;
 
+  @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="booking_passenger_id")
+  private BookingPassengerEntity passenger;
+  @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="booking_segment_id")
+  private BookingSegmentEntity segment;
+  @Column(length=16) private String kind;
+
   @Column(nullable = false, length = 32)
   private String code;
 
@@ -67,6 +73,13 @@ public class BookingAncillaryEntity {
     ancillary.subtotalAmount = subtotalAmount;
     ancillary.createdAt = createdAt;
     return ancillary;
+  }
+
+  public BookingPassengerEntity getPassenger(){return passenger;}
+  public BookingSegmentEntity getSegment(){return segment;}
+  public String getKind(){return kind;}
+  public void attachBaggageScope(BookingPassengerEntity passenger,BookingSegmentEntity segment){
+    this.passenger=passenger;this.segment=segment;this.kind="BAGGAGE";
   }
 
   public Long getId() {

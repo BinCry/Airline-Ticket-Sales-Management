@@ -24,6 +24,7 @@ import com.qlvmb.airticket.repository.AirportRepository;
 import com.qlvmb.airticket.repository.AuditLogRepository;
 import com.qlvmb.airticket.repository.BookingRepository;
 import com.qlvmb.airticket.repository.FlightRepository;
+import com.qlvmb.airticket.repository.FlightChangeEventRepository;
 import com.qlvmb.airticket.repository.MemberVoucherRepository;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
@@ -32,6 +33,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +42,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class BackofficeOperationsServiceTest {
@@ -71,11 +74,19 @@ class BackofficeOperationsServiceTest {
   @Mock
   private ApplicationEventPublisher eventPublisher;
 
+  @Mock
+  private FlightChangeEventRepository flightChangeEventRepository;
+
+  @Mock
+  private RealtimeFlightStreamService realtimeFlightStreamService;
+
   private BackofficeOperationsService backofficeOperationsService;
   @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
+    TransactionSynchronizationManager.initSynchronization();
+    TransactionSynchronizationManager.setActualTransactionActive(true);
     SeatMapTestFixtures.stubValidation(seatMapService);
     org.mockito.Mockito.lenient().when(seatMapService.lockFlight(org.mockito.ArgumentMatchers.anyLong()))
         .thenAnswer(a -> flightRepository.findDetailedById(a.getArgument(0)).orElseThrow());
@@ -91,8 +102,15 @@ class BackofficeOperationsServiceTest {
         notificationOutboxService,
         bookingService,
         eventPublisher,
-        seatMapService
+        seatMapService,
+        flightChangeEventRepository,
+        realtimeFlightStreamService
     );
+  }
+
+  @AfterEach
+  void clearTransactionSynchronization() {
+    TransactionSynchronizationManager.clear();
   }
 
   @Test

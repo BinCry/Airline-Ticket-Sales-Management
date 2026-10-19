@@ -21,8 +21,22 @@ public record BookingOverviewResponse(
     List<BoardingPassItem> boardingPasses,
     RefundRequestItem refundRequest,
     List<String> paymentMethods,
-    PriceSummaryItem priceSummary
+    PriceSummaryItem priceSummary,
+    List<com.qlvmb.airticket.service.BaggageTrackingService.BaggageItem> baggage
 ) {
+
+  // Compatibility with callers that construct the pre-baggage overview record.
+  public BookingOverviewResponse(
+      String bookingCode, String status, String paymentStatus, OffsetDateTime holdExpiresAt,
+      OffsetDateTime ticketedAt, String tripType, List<String> steps, List<SegmentItem> segments,
+      ContactItem contact, List<PassengerItem> passengers, List<AncillaryItem> ancillaries,
+      List<SeatSelectionItem> seatSelections, List<TicketItem> tickets,
+      List<BoardingPassItem> boardingPasses, RefundRequestItem refundRequest,
+      List<String> paymentMethods, PriceSummaryItem priceSummary) {
+    this(bookingCode, status, paymentStatus, holdExpiresAt, ticketedAt, tripType,
+        steps, segments, contact, passengers, ancillaries, seatSelections, tickets,
+        boardingPasses, refundRequest, paymentMethods, priceSummary, List.of());
+  }
 
   public BookingOverviewResponse(
       String bookingCode,
@@ -49,7 +63,8 @@ public record BookingOverviewResponse(
         List.of(),
         null,
         paymentMethods,
-        new PriceSummaryItem(0L, 0L, 0L, 0L, "VND", null)
+        new PriceSummaryItem(0L, 0L, 0L, 0L, "VND", null),
+        List.of()
     );
   }
 

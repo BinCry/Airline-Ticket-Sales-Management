@@ -8,6 +8,7 @@ import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
 import com.qlvmb.airticket.domain.entity.BookingSeatSelectionEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
+import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.ConflictException;
@@ -34,6 +35,8 @@ public class CheckinService {
       "Không tìm thấy vé phù hợp với mã đặt chỗ đã nhập.";
   private static final String CHECKIN_TICKET_USED_MESSAGE =
       "Vé đã được làm thủ tục trực tuyến trước đó hoặc không còn hợp lệ.";
+  private static final String CHECKIN_REFUND_PENDING_MESSAGE =
+      "Vé đang có yêu cầu hoàn tiền chờ duyệt, chưa thể làm thủ tục trực tuyến.";
   private static final String CHECKIN_MULTI_FLIGHT_MESSAGE =
       "Mỗi lần làm thủ tục chỉ áp dụng cho một chiều bay.";
   private static final String CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE =
@@ -68,7 +71,7 @@ public class CheckinService {
         bookingService.getBookingNotFoundMessage()
     );
 
-    if (!booking.isTicketed() || booking.getSegments().isEmpty()) {
+    if ((!booking.isTicketed() && !booking.isRefundPending()) || booking.getSegments().isEmpty()) {
       throw new BadRequestException(CHECKIN_STATUS_MESSAGE);
     }
 
@@ -96,6 +99,15 @@ public class CheckinService {
         throw new BadRequestException(CHECKIN_TICKET_USED_MESSAGE);
       }
       selectedTickets.add(ticket);
+    }
+
+    boolean hasPendingRefund = booking.getRefundRequests().stream()
+        .filter(RefundRequestEntity::isPending)
+        .anyMatch(refund -> refund.getRequestedTickets().isEmpty()
+            ? booking.getTickets().stream().anyMatch(ticket -> isSelectedTicket(ticket, selectedTickets))
+            : refund.getRequestedTickets().stream().anyMatch(ticket -> isSelectedTicket(ticket, selectedTickets)));
+    if (hasPendingRefund) {
+      throw new BadRequestException(CHECKIN_REFUND_PENDING_MESSAGE);
     }
 
     if (selectedTickets.stream().map(this::resolveFlightScopeKey).distinct().count() > 1) {
@@ -278,6 +290,11 @@ public class CheckinService {
         + "|" + segment.getOriginCode()
         + "|" + segment.getDestinationCode()
         + "|" + segment.getDepartureAt();
+  }
+
+  private boolean isSelectedTicket(TicketEntity candidate, List<TicketEntity> selectedTickets) {
+    return selectedTickets.stream().anyMatch(selected -> selected == candidate
+        || (selected.getId() != null && selected.getId().equals(candidate.getId())));
   }
 
   private String resolveFlightStatus(BookingSegmentEntity segment) {

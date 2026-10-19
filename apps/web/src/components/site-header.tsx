@@ -16,6 +16,8 @@ import { hasAnyBackofficeAccess, ROLE_LABELS } from "@/lib/access-control";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { buildMainNavigation, isMainNavigationLinkActive } from "@/lib/site-navigation";
 import { Drawer } from "@/components/ui/overlays";
+import {fetchMyNotifications} from "@/lib/my-account-api";
+import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
 const DEFAULT_AVATAR_URL = "/images/default-avatar.svg";
 
@@ -50,6 +52,15 @@ export function SiteHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
+  const [unreadCount,setUnreadCount]=useState(0);
+  useEffect(()=>{
+    const sync=()=>{
+      if(!authSession?.accessToken){setUnreadCount(0);return;}
+      void fetchMyNotifications(authSession.accessToken).then(items=>setUnreadCount(items.filter(n=>!n.readAt).length)).catch(()=>{});
+    };
+    sync();window.addEventListener(FLIGHT_NOTIFICATION_EVENT,sync);
+    return ()=>window.removeEventListener(FLIGHT_NOTIFICATION_EVENT,sync);
+  },[authSession?.accessToken]);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -248,6 +259,9 @@ export function SiteHeader() {
                   <Link href="/account" prefetch={false} role="menuitem">
                     Thông tin cá nhân
                   </Link>
+                  <Link href="/account#thong-bao" role="menuitem">
+                    Thông báo chuyến bay
+                  </Link>
                 </div>
                 <div className="account-menu-group">
                   <Link href="/manage-booking" role="menuitem">
@@ -322,6 +336,9 @@ export function SiteHeader() {
             <span className="nav-language-full">Tiếng Việt</span>
             <span className="nav-language-short" aria-hidden="true">VI</span>
           </span>
+          {accountButtonLabel && !isStaffRole ? <Link href="/account#thong-bao" className="button button-secondary nav-action-button" aria-label={`Thông báo, ${unreadCount} chưa đọc`}>
+            🔔 {unreadCount > 0 ? unreadCount : ""}
+          </Link> : null}
           {accountButtonLabel ? (
             renderAccountPanel("desktop")
           ) : (

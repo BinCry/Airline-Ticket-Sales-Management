@@ -46,6 +46,15 @@ public class ProductCatalogService {
       ), BUSINESS_PRICE_OFFSET, 12, 1, 2)
   );
 
+  public record BaggageMeta(String code,String name,int weightKg,long price){}
+  public List<BaggageMeta> baggageOptions(){
+    return List.of(new BaggageMeta("BAG15","Hành lý 15 kg",15,220000L),
+      new BaggageMeta("BAG20","Hành lý 20 kg",20,280000L),
+      new BaggageMeta("BAG25","Hành lý 25 kg",25,340000L),
+      new BaggageMeta("BAG30","Hành lý 30 kg",30,400000L));
+  }
+  public boolean isBaggage(String code){return baggageOptions().stream().anyMatch(b->b.code().equals(code));}
+
   private static final Map<String, AncillaryMeta> ANCILLARY_CATALOG = Map.of(
       "SEAT_PLUS",
       new AncillaryMeta("SEAT_PLUS", "Ghế hàng đầu", "Dữ liệu lịch sử ghế ưu tiên.", 320000),
@@ -106,6 +115,9 @@ public class ProductCatalogService {
   }
 
   public AncillaryMeta requireAncillary(String code) {
+    String normalized=normalizeAncillaryCode(code);
+    for(var b:baggageOptions())if(b.code().equals(normalized))
+      return new AncillaryMeta(b.code(),b.name(),"Hành lý mua thêm " + b.weightKg()+" kg",b.price());
     AncillaryMeta ancillaryMeta = ANCILLARY_CATALOG.get(normalizeAncillaryCode(code));
     if (ancillaryMeta == null) {
       throw new BadRequestException("Dịch vụ bổ trợ được chọn không hợp lệ.");

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.qlvmb.airticket.domain.dto.MyVoucherResponse;
+import org.springframework.data.domain.PageRequest;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
 import com.qlvmb.airticket.domain.entity.MemberVoucherEntity;
 import com.qlvmb.airticket.domain.entity.RoleEntity;
@@ -127,6 +128,22 @@ class MemberLoyaltyServiceTest {
     assertThat(usedVoucher.isHiddenForMember()).isTrue();
     assertThat(usedVoucher.isHiddenForOperations()).isFalse();
     verify(auditLogRepository).save(any(AuditLogEntity.class));
+  }
+
+  @Test
+  void loyaltyLedgerWithoutAccountReturnsEmptyPageAndNeverLeaksAnotherUsersHistory() {
+    AuthenticatedUser user = new AuthenticatedUser(
+        151L, "nnn045856@gmail.com", "Hoi vien", List.of("member"),
+        List.of("customer.self_service", "member.loyalty"));
+    when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(
+        Optional.of(createUserAccount(151L, "nnn045856@gmail.com", RoleCode.MEMBER)));
+    when(memberLoyaltyAccountRepository.findByUserId(151L)).thenReturn(Optional.empty());
+
+    var page = memberLoyaltyService.getMyLoyaltyLedger(user, 2, 1000);
+
+    assertThat(page.getContent()).isEmpty();
+    assertThat(page.getPageable()).isEqualTo(PageRequest.of(2, 50));
+    org.mockito.Mockito.verifyNoInteractions(memberLoyaltyLedgerRepository);
   }
 
   private UserAccountEntity createUserAccount(Long userId, String email, String roleCode) {

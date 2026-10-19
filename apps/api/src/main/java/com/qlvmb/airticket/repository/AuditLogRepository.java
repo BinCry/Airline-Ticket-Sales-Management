@@ -13,5 +13,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, Long> 
 
   boolean existsByIdAndHiddenAtIsNull(Long id);
 
+  boolean existsByTargetTypeAndTargetIdAndActionAndDetail(
+      String targetType, String targetId, String action, String detail);
+
   Optional<AuditLogEntity> findByIdAndHiddenAtIsNull(Long id);
 }

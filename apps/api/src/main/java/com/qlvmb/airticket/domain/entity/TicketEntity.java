@@ -1,6 +1,11 @@
 package com.qlvmb.airticket.domain.entity;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import org.hibernate.annotations.BatchSize;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -39,6 +44,13 @@ public class TicketEntity {
 
   @OneToOne(mappedBy = "ticket", fetch = FetchType.LAZY, orphanRemoval = true)
   private BoardingPassEntity boardingPass;
+
+  @OneToMany(mappedBy="ticket",cascade=CascadeType.ALL,orphanRemoval=true)
+  @BatchSize(size=20)
+  private List<BaggageTrackingEntity> baggage=new ArrayList<>();
+
+  public List<BaggageTrackingEntity> getBaggage(){return baggage;}
+  public void addBaggage(BaggageTrackingEntity piece){baggage.add(piece);}
 
   @Column(name = "ticket_number", nullable = false, unique = true, length = 20)
   private String ticketNumber;
@@ -139,6 +151,7 @@ public class TicketEntity {
   }
 
   public void markCancelled(OffsetDateTime updatedAt) {
+    baggage.forEach(piece -> piece.cancelWithTicket(updatedAt));
     status = STATUS_CANCELLED;
     this.updatedAt = updatedAt;
   }

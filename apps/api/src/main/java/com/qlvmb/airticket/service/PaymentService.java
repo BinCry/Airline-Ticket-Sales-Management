@@ -44,6 +44,7 @@ public class PaymentService {
   private static final String SEPAY_DEFAULT_QR_BASE_URL = "https://qr.sepay.vn/img";
 
   private final BookingService bookingService;
+  private final BaggageTrackingService baggageTrackingService;
   private final MemberVoucherService memberVoucherService;
   private final NotificationOutboxService notificationOutboxService;
   private final PaymentTransactionRepository paymentTransactionRepository;
@@ -57,8 +58,10 @@ public class PaymentService {
   private final long sePayOrderDurationSeconds;
   private final String sePayQrBaseUrl;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public PaymentService(
       BookingService bookingService,
+      BaggageTrackingService baggageTrackingService,
       MemberVoucherService memberVoucherService,
       NotificationOutboxService notificationOutboxService,
       PaymentTransactionRepository paymentTransactionRepository,
@@ -73,6 +76,7 @@ public class PaymentService {
       @Value("${app.payment.sepay.qr-base-url:https://qr.sepay.vn/img}") String sePayQrBaseUrl
   ) {
     this.bookingService = bookingService;
+    this.baggageTrackingService = baggageTrackingService;
     this.memberVoucherService = memberVoucherService;
     this.notificationOutboxService = notificationOutboxService;
     this.paymentTransactionRepository = paymentTransactionRepository;
@@ -90,6 +94,16 @@ public class PaymentService {
     this.sePayQrBaseUrl = resolvedSePayQrBaseUrl == null
         ? SEPAY_DEFAULT_QR_BASE_URL
         : resolvedSePayQrBaseUrl;
+  }
+
+  // Backward-compatible constructor for existing PaymentService tests.
+  public PaymentService(BookingService bookingService, MemberVoucherService vouchers,
+      NotificationOutboxService notifications, PaymentTransactionRepository transactions,
+      String token, String accountId, String webhookKey, String bankName,
+      String accountNumber, String accountHolder, long duration,
+      String apiBaseUrl, String qrBaseUrl) {
+    this(bookingService, null, vouchers, notifications, transactions, token, accountId,
+        webhookKey, bankName, accountNumber, accountHolder, duration, apiBaseUrl, qrBaseUrl);
   }
 
   @Transactional
@@ -369,15 +383,9 @@ public class PaymentService {
           if (!issuedTicketScopes.add(buildTicketScopeKey(passenger, segment))) {
             continue;
           }
-          booking.addTicket(
-              TicketEntity.issue(
-                  booking,
-                  passenger,
-                  segment,
-                  bookingService.generateUniqueTicketNumber(),
-                  currentTime
-              )
-          );
+          TicketEntity issued=TicketEntity.issue(booking,passenger,segment,bookingService.generateUniqueTicketNumber(),currentTime);
+          booking.addTicket(issued);
+          if (baggageTrackingService != null) baggageTrackingService.attachPieces(booking,issued,currentTime);
         }
       } else {
         for (BookingPassengerEntity passenger : booking.getPassengers()) {
@@ -385,15 +393,9 @@ public class PaymentService {
             if (!issuedTicketScopes.add(buildTicketScopeKey(passenger, segment))) {
               continue;
             }
-            booking.addTicket(
-                TicketEntity.issue(
-                    booking,
-                    passenger,
-                    segment,
-                    bookingService.generateUniqueTicketNumber(),
-                    currentTime
-                )
-            );
+            TicketEntity issued=TicketEntity.issue(booking,passenger,segment,bookingService.generateUniqueTicketNumber(),currentTime);
+            booking.addTicket(issued);
+            if (baggageTrackingService != null) baggageTrackingService.attachPieces(booking,issued,currentTime);
           }
         }
       }

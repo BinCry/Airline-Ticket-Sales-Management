@@ -94,7 +94,7 @@ public class FlightStatusService {
       return flight.getGate().trim().toUpperCase(Locale.ROOT);
     }
     long flightId = flight.getId() == null ? 1L : flight.getId();
-    return "G" + ((flightId % 8) + 1);
+    return "Chưa xác định";
   }
 
   private String resolveNote(FlightEntity flight) {

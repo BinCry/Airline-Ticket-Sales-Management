@@ -78,6 +78,8 @@ export interface MyNotification {
   status: string;
   createdAt: string;
   sentAt: string | null;
+  readAt?: string | null;
+  flightCode?: string | null;
 }
 
 export interface UpsertMyPassengerPayload {
@@ -431,6 +433,10 @@ export async function fetchMyNotifications(accessToken: string): Promise<MyNotif
   }
 
   return payload;
+}
+
+export async function markMyNotificationRead(accessToken:string,id:number):Promise<MyNotification>{
+ return requestApi<MyNotification>(`/api/me/notifications/${id}/read`,{method:"PATCH",accessToken});
 }
 
 export async function deleteMyVoucherHistory(

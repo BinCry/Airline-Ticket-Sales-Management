@@ -13,6 +13,8 @@ export interface BackofficeOperationsUpdateInput {
   note: string | null;
   salesOpen: boolean;
   baseFare: number | null;
+  departureAt?: string;
+  arrivalAt?: string;
 }
 
 export interface BackofficeFareReadonlyItem {
@@ -300,7 +302,9 @@ export async function updateBackofficeOperationsFlight(
   const result = await requestApi<unknown>(`/api/backoffice/operations/flights/${flightId}`, {
     accessToken,
     method: "PATCH",
-    json: payload,
+    json: {...payload,
+      departureAt:payload.departureAt?new Date(payload.departureAt).toISOString():undefined,
+      arrivalAt:payload.arrivalAt?new Date(payload.arrivalAt).toISOString():undefined},
     fallbackMessage: "Không thể cập nhật chuyến bay vận hành lúc này."
   });
 

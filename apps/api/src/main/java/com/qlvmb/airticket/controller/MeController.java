@@ -2,6 +2,7 @@ package com.qlvmb.airticket.controller;
 
 import com.qlvmb.airticket.domain.dto.ChangePasswordRequest;
 import com.qlvmb.airticket.domain.dto.MyLoyaltyResponse;
+import com.qlvmb.airticket.domain.dto.MyLoyaltyLedgerItemResponse;
 import com.qlvmb.airticket.domain.dto.MyNotificationResponse;
 import com.qlvmb.airticket.domain.dto.MyPassengerResponse;
 import com.qlvmb.airticket.domain.dto.MyProfileResponse;
@@ -17,6 +18,7 @@ import com.qlvmb.airticket.service.MyAccountService;
 import com.qlvmb.airticket.service.NotificationOutboxService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -101,6 +104,16 @@ public class MeController {
   }
 
   @PreAuthorize("hasAuthority('" + PermissionCode.MEMBER_LOYALTY + "')")
+  @GetMapping("/loyalty/ledger")
+  public Page<MyLoyaltyLedgerItemResponse> getMyLoyaltyLedger(
+      Authentication authentication,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size
+  ) {
+    return memberLoyaltyService.getMyLoyaltyLedger(requireAuthenticatedUser(authentication), page, size);
+  }
+
+  @PreAuthorize("hasAuthority('" + PermissionCode.MEMBER_LOYALTY + "')")
   @GetMapping("/vouchers")
   public List<MyVoucherResponse> getMyVouchers(Authentication authentication) {
     return memberLoyaltyService.getMyVouchers(requireAuthenticatedUser(authentication));
@@ -151,6 +164,12 @@ public class MeController {
       throw new UnauthorizedException("Bạn cần đăng nhập để thực hiện thao tác này.");
     }
     return authenticatedUser;
+  }
+
+  @PatchMapping("/notifications/{id}/read")
+  @PreAuthorize("isAuthenticated()")
+  public MyNotificationResponse markNotificationRead(Authentication authentication,@PathVariable Long id){
+    return notificationOutboxService.markRead(requireAuthenticatedUser(authentication),id);
   }
 
   @GetMapping("/notifications")

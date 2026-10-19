@@ -14,6 +14,7 @@ import com.qlvmb.airticket.domain.entity.BookingSeatSelectionEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
+import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.BoardingPassRepository;
@@ -87,6 +88,56 @@ class CheckinServiceTest {
         .findFirst()
         .orElseThrow()
         .getStatus()).isEqualTo(TicketEntity.STATUS_ISSUED);
+  }
+
+  @Test
+  void completeCheckin_shouldRejectTicketWithPendingRefundRequest() {
+    BookingEntity booking = ticketedBooking("A6C2P1", "one_way", false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    addRefundRequest(booking, java.util.List.of(ticket), true);
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+
+    assertThatThrownBy(() -> checkinService.completeCheckin(
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of(ticket.getTicketNumber()), java.util.List.of())
+    )).isInstanceOf(BadRequestException.class)
+        .hasMessage("Vé đang có yêu cầu hoàn tiền chờ duyệt, chưa thể làm thủ tục trực tuyến.");
+  }
+
+  @Test
+  void completeCheckin_shouldAllowOtherTicketWhenPartialRefundIsPending() {
+    BookingEntity booking = roundTripBooking("A6C2P1", false);
+    TicketEntity requestedTicket = booking.getTickets().stream()
+        .filter(ticket -> "7380000000002".equals(ticket.getTicketNumber())).findFirst().orElseThrow();
+    TicketEntity selectedTicket = booking.getTickets().stream()
+        .filter(ticket -> "7380000000001".equals(ticket.getTicketNumber())).findFirst().orElseThrow();
+    addRefundRequest(booking, java.util.List.of(requestedTicket), true);
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+    when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    checkinService.completeCheckin(new CheckinCompleteRequest(
+        "A6C2P1", java.util.List.of(selectedTicket.getTicketNumber()),
+        java.util.List.of(new CheckinCompleteRequest.SeatSelectionRequest(selectedTicket.getTicketNumber(), "12A"))));
+
+    assertThat(selectedTicket.getStatus()).isEqualTo(TicketEntity.STATUS_CHECKED_IN);
+    assertThat(requestedTicket.getStatus()).isEqualTo(TicketEntity.STATUS_ISSUED);
+  }
+
+  @Test
+  void completeCheckin_shouldAllowTicketAfterItsRefundRequestWasRejected() {
+    BookingEntity booking = ticketedBooking("A6C2P1", "one_way", false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    addRefundRequest(booking, java.util.List.of(ticket), false);
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+    when(boardingPassRepository.save(any(BoardingPassEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+    checkinService.completeCheckin(new CheckinCompleteRequest(
+        "A6C2P1", java.util.List.of(ticket.getTicketNumber()),
+        java.util.List.of(new CheckinCompleteRequest.SeatSelectionRequest(ticket.getTicketNumber(), "12A"))));
+
+    assertThat(ticket.getStatus()).isEqualTo(TicketEntity.STATUS_CHECKED_IN);
   }
 
   @Test
@@ -294,6 +345,17 @@ class CheckinServiceTest {
         OffsetDateTime.now().plusDays(3),
         "scheduled"
     );
+  }
+
+  private void addRefundRequest(BookingEntity booking, java.util.List<TicketEntity> tickets, boolean pending) {
+    OffsetDateTime now = OffsetDateTime.now();
+    RefundRequestEntity request = RefundRequestEntity.createPending(booking, "Kiểm thử", 100_000L, now, tickets);
+    if (pending) {
+      booking.markRefundPending(now);
+    } else {
+      request.markRejected(now);
+    }
+    booking.addRefundRequest(request);
   }
 
   private BookingEntity ticketedBooking(

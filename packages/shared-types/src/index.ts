@@ -306,6 +306,8 @@ export interface ApiBookingSegmentInput {
 export interface ApiBookingAncillaryInput {
   code: string;
   quantity?: number | null;
+  passengerIndex?: number;
+  segmentIndex?: number;
 }
 
 export interface ApiBookingSeatSelectionInput {
@@ -605,6 +607,9 @@ export interface ApiManageBookingOverview {
   seatSelections: ApiManageBookingSeatSelection[];
   tickets: ApiManageBookingTicket[];
   boardingPasses: ApiBoardingPass[];
+  baggage?: Array<{id:number;tagCode:string;flightCode:string;passengerName:string;
+    status:string;purchasedWeightKg:number;weightKg:number|null;acceptedAt:string|null;
+    loadedAt:string|null;deliveredAt:string|null}>;
   refundRequest: ApiRefundRequestSummary | null;
   paymentMethods: string[];
   priceSummary: ApiManageBookingPriceSummary;

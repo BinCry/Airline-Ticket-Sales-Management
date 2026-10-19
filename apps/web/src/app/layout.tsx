@@ -7,6 +7,7 @@ import { RouteFocusManager } from "@/components/route-focus-manager";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ToastProvider } from "@/components/toast-provider";
+import {RealtimeNotificationKeeper} from "@/components/realtime-notification-keeper";
 
 import "./globals.css";
 import "../styles/shell.css";
@@ -52,6 +53,7 @@ export default function RootLayout({
             <ToastProvider />
           </Suspense>
           <AuthSessionKeeper />
+          <RealtimeNotificationKeeper />
           <RouteFocusManager />
           <SiteHeader />
           <main id="main-content" className="page-main" tabIndex={-1}>{children}</main>

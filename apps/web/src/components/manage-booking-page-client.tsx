@@ -25,6 +25,7 @@ import {
   type ManageBookingOverview
 } from "@/lib/manage-booking-api";
 import { pushToast } from "@/lib/toast";
+import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
 type LookupState = "idle" | "loading" | "error" | "success";
 
@@ -180,6 +181,13 @@ export function ManageBookingPageClient() {
   const [refundReason, setRefundReason] = useState("Không thể tiếp tục hành trình.");
   const [selectedRefundScopeKey, setSelectedRefundScopeKey] = useState<string>(KHOA_HOAN_TOAN_BO);
   const [isRefunding, setIsRefunding] = useState(false);
+  useEffect(()=>{
+    if(!accessToken||!bookingOverview)return;
+    const code=bookingOverview.bookingCode;
+    const refresh=()=>{void fetchManageBooking(code,accessToken).then(setBookingOverview).catch(()=>{});};
+    window.addEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+    return ()=>window.removeEventListener(FLIGHT_NOTIFICATION_EVENT,refresh);
+  },[accessToken,bookingOverview?.bookingCode]);
   const isHoldingBooking =
     bookingOverview?.status === "held" && bookingOverview.paymentStatus === "pending";
 
@@ -431,7 +439,7 @@ export function ManageBookingPageClient() {
 
         <div className="section-gap" />
         <form className="lookup-card" onSubmit={handleLookup}>
-          <div className="field-grid compact-grid">
+          <div className="field-grid compact-grid manage-booking-lookup-grid">
             <label className="field">
               <span>Mã đặt chỗ</span>
               <input
@@ -482,7 +490,7 @@ export function ManageBookingPageClient() {
             ) : null}
             <div className="field field-inline">
               <span>Trạng thái tra cứu</span>
-              <div className="surface-card">
+              <div className="surface-card manage-booking-status-card">
                 <strong>
                   {lookupState === "loading"
                     ? "Đang tải..."
@@ -506,20 +514,25 @@ export function ManageBookingPageClient() {
             {!accessToken ? (
               <button
                 type="button"
-                className="button button-secondary"
+                className="button button-secondary manage-booking-lookup-button"
                 onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
                 disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
               >
                 {isVerifyingLookupOtp ? "Đang xác minh..." : "Xác minh OTP"}
               </button>
             ) : null}
-            <button
-              type="submit"
-              className="button button-primary"
-              disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
-            >
-              {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
-            </button>
+            <div className="field manage-booking-lookup-action">
+              <span className="manage-booking-lookup-label-spacer" aria-hidden="true">
+                {"\u00a0"}
+              </span>
+              <button
+                type="submit"
+                className="button button-primary manage-booking-lookup-button"
+                disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
+              >
+                {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
+              </button>
+            </div>
           </div>
         </form>
 
@@ -701,7 +714,18 @@ export function ManageBookingPageClient() {
                   description="Mỗi ticket gắn với đúng một chặng bay, nhờ vậy bạn có thể làm thủ tục và hoàn vé tách biệt theo từng chiều."
                 />
                 <div className="stack-list">
-                  {bookingOverview.tickets.length > 0 ? (
+                  {(bookingOverview.baggage?.length ?? 0)>0 && <article className="surface-card">
+                  <h3>Hành lý ký gửi đã mua</h3>
+                  <div className="stack-list">{bookingOverview.baggage!.map(item=><div key={item.id} className="support-compact-item">
+                    <strong>{item.tagCode} • {item.passengerName} • {item.flightCode}</strong>
+                    <p>{item.purchasedWeightKg} kg • {item.status} {item.weightKg!=null?` • thực tế ${item.weightKg} kg`:""}</p>
+                    <small>{item.acceptedAt?`Nhận: ${formatDateTime(item.acceptedAt)} `:""}
+                     {item.loadedAt?`Bốc xếp: ${formatDateTime(item.loadedAt)} `:""}
+                     {item.deliveredAt?`Trả: ${formatDateTime(item.deliveredAt)}`:""}</small>
+                    {item.status==="RETURN_PENDING"&&<p>Vui lòng liên hệ quầy hành lý để nhận lại kiện.</p>}
+                  </div>)}</div>
+                </article>}
+                {bookingOverview.tickets.length > 0 ? (
                     bookingOverview.tickets.map((ticket) => {
                       const segment = timPhanDoanChoVe(bookingOverview, ticket);
                       return (

@@ -2,6 +2,7 @@ package com.qlvmb.airticket.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,12 +11,14 @@ import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
+import com.qlvmb.airticket.domain.entity.BaggageTrackingEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.entity.RefundRequestEntity;
 import com.qlvmb.airticket.domain.entity.TicketEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.repository.RefundRequestRepository;
+import com.qlvmb.airticket.repository.BaggageTrackingRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -35,12 +38,114 @@ class FinanceServiceTest {
   @Mock
   private NotificationOutboxService notificationOutboxService;
 
+  @Mock
+  private BaggageTrackingRepository baggageRepository;
+  @Mock
+  private BookingService bookingService;
+
   private FinanceService financeService;
   @Mock private SeatMapService seatMapService;
 
   @BeforeEach
   void setUp() {
-    financeService = new FinanceService(refundRequestRepository, notificationOutboxService, seatMapService);
+    financeService = new FinanceService(refundRequestRepository, notificationOutboxService, seatMapService, baggageRepository, bookingService);
+    org.mockito.Mockito.lenient().when(bookingService.isRefundRequestCurrent(any())).thenReturn(true);
+    org.mockito.Mockito.lenient().when(baggageRepository.findByBookingId(org.mockito.ArgumentMatchers.isNull()))
+        .thenReturn(List.of());
+  }
+
+  @Test
+  void approveRefund_shouldWaitForAirportReturnAfterCancelledFlight() {
+    Fixture fixture = pendingRefundFixture();
+    fixture.booking.markCancelled(OffsetDateTime.now());
+    var baggage = mock(BaggageTrackingEntity.class);
+    when(baggage.getTicket()).thenReturn(fixture.ticket);
+    when(baggage.getStatus()).thenReturn("RETURN_PENDING");
+    when(baggageRepository.findByBookingId(org.mockito.ArgumentMatchers.isNull())).thenReturn(List.of(baggage));
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    assertThatThrownBy(() -> financeService.approveRefund(55L))
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  void approveRefund_shouldAllowRegisteredBaggageRefund() {
+    Fixture fixture = pendingRefundFixture();
+    var baggage = mock(BaggageTrackingEntity.class);
+    when(baggage.getTicket()).thenReturn(fixture.ticket);
+    when(baggage.getStatus()).thenReturn("REGISTERED");
+    when(baggageRepository.findByBookingId(org.mockito.ArgumentMatchers.isNull())).thenReturn(List.of(baggage));
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    var response = financeService.approveRefund(55L);
+
+    assertThat(response.status()).isEqualTo("approved");
+  }
+
+  @Test
+  void approveRefund_shouldKeepBlockingAcceptedBaggage() {
+    assertBaggageStatusBlocksRefund("ACCEPTED");
+  }
+
+  @Test
+  void approveRefund_shouldKeepBlockingLoadedBaggage() {
+    assertBaggageStatusBlocksRefund("LOADED");
+  }
+
+  private void assertBaggageStatusBlocksRefund(String status) {
+    Fixture fixture = pendingRefundFixture();
+    var baggage = mock(BaggageTrackingEntity.class);
+    when(baggage.getTicket()).thenReturn(fixture.ticket);
+    when(baggage.getStatus()).thenReturn(status);
+    when(baggageRepository.findByBookingId(org.mockito.ArgumentMatchers.isNull()))
+        .thenReturn(List.of(baggage));
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    assertThatThrownBy(() -> financeService.approveRefund(55L))
+        .isInstanceOf(BadRequestException.class);
+  }
+
+  @Test
+  void approveRefund_shouldAllowDeliveredBaggageAndUseRequestAmount() {
+    Fixture fixture = pendingRefundFixture();
+    var baggage = mock(BaggageTrackingEntity.class);
+    when(baggage.getTicket()).thenReturn(fixture.ticket);
+    when(baggage.getStatus()).thenReturn("DELIVERED");
+    when(baggageRepository.findByBookingId(org.mockito.ArgumentMatchers.isNull())).thenReturn(List.of(baggage));
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+
+    var response = financeService.approveRefund(55L);
+
+    assertThat(response.status()).isEqualTo("approved");
+    assertThat(response.refundAmount()).isEqualTo(fixture.refundRequest.getRefundAmount());
+  }
+
+  @Test
+  void approveRefund_shouldRejectWhenRefundAmountChangedSinceRequest() {
+    Fixture fixture = pendingRefundFixture();
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+    when(bookingService.isRefundRequestCurrent(fixture.refundRequest)).thenReturn(false);
+
+    assertThatThrownBy(() -> financeService.approveRefund(55L))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Dữ liệu vé hoặc hành lý đã thay đổi kể từ khi tạo yêu cầu; vui lòng từ chối yêu cầu này.");
+
+    assertThat(fixture.refundRequest.getStatus()).isEqualTo(RefundRequestEntity.STATUS_PENDING);
+    assertThat(fixture.ticket.getStatus()).isEqualTo(TicketEntity.STATUS_ISSUED);
+  }
+
+  @Test
+  void approveRefund_shouldRejectWhenRequestedTicketWasCheckedInAfterRequest() {
+    Fixture fixture = pendingRefundFixture();
+    fixture.ticket.markCheckedIn(OffsetDateTime.now());
+    when(refundRequestRepository.lockDetailedById(55L)).thenReturn(Optional.of(fixture.refundRequest));
+    when(bookingService.isRefundRequestCurrent(fixture.refundRequest)).thenReturn(false);
+
+    assertThatThrownBy(() -> financeService.approveRefund(55L))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Dữ liệu vé hoặc hành lý đã thay đổi kể từ khi tạo yêu cầu; vui lòng từ chối yêu cầu này.");
+
+    assertThat(fixture.refundRequest.getStatus()).isEqualTo(RefundRequestEntity.STATUS_PENDING);
   }
 
   @Test

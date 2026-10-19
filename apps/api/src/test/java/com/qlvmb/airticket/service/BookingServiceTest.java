@@ -16,6 +16,7 @@ import com.qlvmb.airticket.domain.dto.BookingHoldResponse;
 import com.qlvmb.airticket.domain.dto.BookingOverviewResponse;
 import com.qlvmb.airticket.domain.entity.AirportEntity;
 import com.qlvmb.airticket.domain.entity.BookingContactEntity;
+import com.qlvmb.airticket.domain.entity.BookingAncillaryEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.BookingPassengerEntity;
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
@@ -66,6 +67,7 @@ class BookingServiceTest {
 
   private BookingService bookingService;
   @Mock private SeatMapService seatMapService;
+  @Mock private BaggageTrackingService baggageTrackingService;
 
   @BeforeEach
   void setUp() {
@@ -82,7 +84,8 @@ class BookingServiceTest {
         new ProductCatalogService(),
         memberVoucherService,
         userAccountRepository,
-        seatMapService
+        seatMapService,
+        baggageTrackingService
     );
   }
 
@@ -475,6 +478,49 @@ class BookingServiceTest {
   }
 
   @Test
+  void isRefundRequestCurrent_shouldRejectWhenDestinationDeliveryChangesRefundAmount() {
+    BookingEntity booking = ticketedBooking("A6C2R1", "one_way", false, false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    BookingAncillaryEntity baggage = addBaggage(booking, ticket, 100_000L, 1);
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        booking, "totalAmount", booking.getTotalAmount() + baggage.getSubtotalAmount());
+    OffsetDateTime now = OffsetDateTime.now();
+    RefundRequestEntity request = RefundRequestEntity.createPending(
+        booking, "Thay đổi kế hoạch", booking.getTotalAmount(), now, List.of(ticket));
+    when(baggageTrackingService.refundableAmount(baggage)).thenReturn(0L);
+
+    assertThat(bookingService.isRefundRequestCurrent(request)).isFalse();
+  }
+
+  @Test
+  void isRefundRequestCurrent_shouldKeepAirportReturnRefundEligible() {
+    BookingEntity booking = ticketedBooking("A6C2R2", "one_way", false, false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    BookingAncillaryEntity baggage = addBaggage(booking, ticket, 100_000L, 1);
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        booking, "totalAmount", booking.getTotalAmount() + baggage.getSubtotalAmount());
+    OffsetDateTime now = OffsetDateTime.now();
+    RefundRequestEntity request = RefundRequestEntity.createPending(
+        booking, "Chuyến bay bị hủy", booking.getTotalAmount(), now, List.of(ticket));
+    ticket.markCancelled(now);
+    booking.markCancelled(now);
+    when(baggageTrackingService.refundableAmount(baggage)).thenReturn(100_000L);
+
+    assertThat(bookingService.isRefundRequestCurrent(request)).isTrue();
+  }
+
+  @Test
+  void isRefundRequestCurrent_shouldRejectWhenRequestedTicketWasCheckedIn() {
+    BookingEntity booking = ticketedBooking("A6C2R3", "one_way", false, false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    RefundRequestEntity request = RefundRequestEntity.createPending(
+        booking, "Thay đổi kế hoạch", booking.getTotalAmount(), OffsetDateTime.now(), List.of(ticket));
+    ticket.markCheckedIn(OffsetDateTime.now());
+
+    assertThat(bookingService.isRefundRequestCurrent(request)).isFalse();
+  }
+
+  @Test
   void requestRefund_shouldRejectWhenPendingRefundAlreadyExists() {
     BookingEntity booking = ticketedBooking("A6C2P1", "one_way", false, true);
     when(bookingRepository.lockDetailedByBookingCode("A6C2P1")).thenReturn(Optional.of(booking));
@@ -549,6 +595,85 @@ class BookingServiceTest {
     assertThat(booking.getRefundRequests().iterator().next().getRequestedTickets())
         .extracting(TicketEntity::getTicketNumber)
         .containsExactly("7380000000002");
+  }
+
+  @Test
+  void requestRefund_shouldExcludeDestinationDeliveredBaggageFromFullBookingAmount() {
+    BookingEntity booking = ticketedBooking("A6C2D1", "one_way", false, false);
+    TicketEntity ticket = booking.getTickets().iterator().next();
+    BookingAncillaryEntity baggage = addBaggage(booking, ticket, 100_000L, 1);
+    org.springframework.test.util.ReflectionTestUtils.setField(
+        booking, "totalAmount", booking.getTotalAmount() + baggage.getSubtotalAmount());
+    when(baggageTrackingService.refundableAmount(baggage)).thenReturn(0L);
+    when(bookingRepository.lockDetailedByBookingCode("A6C2D1")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2D1", new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest("Thay doi ke hoach"));
+
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1_490_000L);
+  }
+
+  @Test
+  void requestRefund_shouldApplyRefundableBaggageOnlyToRequestedPassengerSegmentScopes() {
+    BookingEntity booking = cancelledRoundTripBookingFromOperationsWithVoucher("A6C2S1");
+    List<TicketEntity> tickets = booking.getTickets().stream().toList();
+    org.springframework.test.util.ReflectionTestUtils.setField(tickets.get(0).getSegment(), "id", 101L);
+    org.springframework.test.util.ReflectionTestUtils.setField(tickets.get(1).getSegment(), "id", 102L);
+    BookingAncillaryEntity outboundBaggage = addBaggage(booking, tickets.get(0), 100_000L, 1);
+    BookingAncillaryEntity returnBaggage = addBaggage(booking, tickets.get(1), 100_000L, 1);
+    when(baggageTrackingService.refundableAmount(returnBaggage)).thenReturn(50_000L);
+    when(bookingRepository.lockDetailedByBookingCode("A6C2S1")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2S1",
+        new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest(
+            "Chuyen bay bi huy", List.of("7380000000002")));
+
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(1_050_000L);
+    verify(baggageTrackingService).refundableAmount(returnBaggage);
+    verify(baggageTrackingService, never()).refundableAmount(outboundBaggage);
+  }
+
+  @Test
+  void requestRefund_shouldAdjustFullMultiSegmentAmountWithoutChangingOtherAncillaries() {
+    BookingEntity booking = cancelledRoundTripBookingFromOperationsWithVoucher("A6C2F1");
+    List<TicketEntity> tickets = booking.getTickets().stream().toList();
+    var outboundSegment = tickets.get(0).getSegment();
+    var returnSegment = tickets.get(1).getSegment();
+    var passengerA = tickets.get(0).getPassenger();
+    org.springframework.test.util.ReflectionTestUtils.setField(passengerA, "id", 201L);
+    org.springframework.test.util.ReflectionTestUtils.setField(outboundSegment, "id", 301L);
+    org.springframework.test.util.ReflectionTestUtils.setField(returnSegment, "id", 302L);
+
+    OffsetDateTime now = OffsetDateTime.now();
+    var passengerB = BookingPassengerEntity.create(
+        booking, "Passenger B", "adult", LocalDate.of(1994, 3, 10), "CCCD", "079123456780", now);
+    org.springframework.test.util.ReflectionTestUtils.setField(passengerB, "id", 202L);
+    booking.addPassenger(passengerB);
+    TicketEntity passengerBOutbound = TicketEntity.issue(booking, passengerB, outboundSegment, "7380000000003", now);
+    TicketEntity passengerBReturn = TicketEntity.issue(booking, passengerB, returnSegment, "7380000000004", now);
+    passengerBOutbound.markCancelled(now);
+    passengerBReturn.markCancelled(now);
+    booking.addTicket(passengerBOutbound);
+    booking.addTicket(passengerBReturn);
+
+    BookingAncillaryEntity passengerAOutbound = addBaggage(booking, tickets.get(0), 100_000L, 1);
+    BookingAncillaryEntity passengerAReturn = addBaggage(booking, tickets.get(1), 100_000L, 1);
+    BookingAncillaryEntity passengerBOutboundBaggage = addBaggage(booking, passengerBOutbound, 100_000L, 1);
+    BookingAncillaryEntity passengerBReturnBaggage = addBaggage(booking, passengerBReturn, 100_000L, 1);
+    org.springframework.test.util.ReflectionTestUtils.setField(booking, "baseAmount", 4_400_000L);
+    org.springframework.test.util.ReflectionTestUtils.setField(booking, "discountAmount", 400_000L);
+    org.springframework.test.util.ReflectionTestUtils.setField(booking, "totalAmount", 4_400_000L);
+    when(baggageTrackingService.refundableAmount(passengerAOutbound)).thenReturn(60_000L);
+    when(baggageTrackingService.refundableAmount(passengerAReturn)).thenReturn(0L);
+    when(baggageTrackingService.refundableAmount(passengerBOutboundBaggage)).thenReturn(100_000L);
+    when(baggageTrackingService.refundableAmount(passengerBReturnBaggage)).thenReturn(0L);
+    when(bookingRepository.lockDetailedByBookingCode("A6C2F1")).thenReturn(Optional.of(booking));
+
+    BookingOverviewResponse response = bookingService.requestRefund(
+        "A6C2F1", new com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest("Chuyen bay bi huy"));
+
+    assertThat(response.refundRequest().refundAmount()).isEqualTo(4_160_000L);
   }
 
   @Test
@@ -782,6 +907,17 @@ class BookingServiceTest {
         "scheduled",
         false
     );
+  }
+
+  private BookingAncillaryEntity addBaggage(
+      BookingEntity booking, TicketEntity ticket, long unitPrice, int quantity) {
+    OffsetDateTime now = OffsetDateTime.now();
+    BookingAncillaryEntity ancillary = BookingAncillaryEntity.create(
+        booking, "BAG_23", "Hanh ly ky gui", "Goi hanh ly", unitPrice, quantity,
+        unitPrice * quantity, now);
+    ancillary.attachBaggageScope(ticket.getPassenger(), ticket.getSegment());
+    booking.addAncillary(ancillary);
+    return ancillary;
   }
 
   private BookingEntity ticketedBooking(

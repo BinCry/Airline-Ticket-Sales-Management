@@ -20,7 +20,8 @@ test("header hiển thị avatar từ phiên đăng nhập", async ({ page }) =>
     avatarUrl: avatarPath,
     displayName: "Nhân viên vận hành",
     permissions: ["backoffice.operations"],
-    roles: ["operations_staff"]
+    roles: ["operations_staff"],
+    mockMyNotifications: true
   });
 
   await page.goto("/");
@@ -41,7 +42,8 @@ test("header dùng chữ cái mặc định khi avatar tải lỗi", async ({ pa
     avatarUrl: avatarPath,
     displayName: "Dinh Thi Quynh Huong",
     permissions: [],
-    roles: ["customer"]
+    roles: ["customer"],
+    mockMyNotifications: true
   });
 
   await page.goto("/");

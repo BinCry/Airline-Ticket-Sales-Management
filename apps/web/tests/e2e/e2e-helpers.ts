@@ -10,6 +10,7 @@ type SeedAuthSessionOptions = {
   displayName?: string;
   phone?: string | null;
   avatarUrl?: string | null;
+  mockMyNotifications?: boolean;
 };
 
 function encodeBase64Url(value: string) {
@@ -41,6 +42,12 @@ export function jsonResponse(payload: unknown, status = 200) {
 }
 
 export async function seedAuthSession(page: Page, options: SeedAuthSessionOptions) {
+  if (options.mockMyNotifications) {
+    await page.route("**/api/me/notifications", async (route) => {
+      await route.fulfill(jsonResponse([]));
+    });
+  }
+
   const accessToken = createAccessToken(options.roles, options.permissions);
   const authSession = {
     accessToken,

@@ -32,6 +32,7 @@ import { layLopMauGoiGia } from "@/lib/display";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { pushToast } from "@/lib/toast";
 import { fetchFlightSeatMap } from "@/lib/seat-map-api";
+import {fetchBaggageOptions,type BaggageOption} from "@/lib/baggage-api";
 
 interface ContactFormState {
   email: string;
@@ -53,6 +54,9 @@ interface PassengerSegmentChoice {
   fareTitle: string;
   inventoryId: number | null;
   seatNumber: string;
+  baggageCode: string;
+  baggagePrice: number;
+  baggageQuantity: number;
 }
 
 type SubmitAction = "checkout" | "backoffice_sales";
@@ -113,7 +117,7 @@ function createEmptyPassengerChoice(): PassengerSegmentChoice {
     farePrice: 0,
     fareTitle: "",
     inventoryId: null,
-    seatNumber: ""
+    seatNumber: "",baggageCode:"",baggagePrice:0,baggageQuantity:0
   };
 }
 
@@ -131,7 +135,7 @@ function taoLuaChonMacDinh(
     farePrice: fareMacDinh.price,
     fareTitle: fareMacDinh.title,
     inventoryId: fareMacDinh.inventoryId,
-    seatNumber: ""
+    seatNumber: "",baggageCode:"",baggagePrice:0,baggageQuantity:0
   };
 }
 
@@ -146,7 +150,7 @@ function createDefaultChoices(
 }
 
 function tinhTongTienTamTinh(segmentChoices: PassengerSegmentChoice[][]): number {
-  return segmentChoices.flat().reduce((tongTien, choice) => tongTien + choice.farePrice, 0);
+  return segmentChoices.flat().reduce((sum,choice)=>sum+choice.farePrice+choice.baggagePrice*choice.baggageQuantity,0);
 }
 
 function tinhTongGheCon(segmentOptions: ApiFlightBookingOptionsResponse | undefined): number {
@@ -185,11 +189,14 @@ export function BookingPageClient() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [bookingOptions, setBookingOptions] = useState<ApiFlightBookingOptionsResponse[]>([]);
   const [seatMaps, setSeatMaps] = useState<ApiFlightSeatMap[]>([]);
+  const [baggageOptions,setBaggageOptions]=useState<BaggageOption[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [segmentChoices, setSegmentChoices] = useState<PassengerSegmentChoice[][]>([]);
   const [activePassengerBySegment, setActivePassengerBySegment] = useState<number[]>([]);
 
+  useEffect(()=>{let live=true;fetchBaggageOptions().then(options=>{if(live)setBaggageOptions(options);}).catch(()=>{});
+    return ()=>{live=false;};},[]);
   useEffect(() => {
     const storedSession = loadActiveAuthSession();
     setAccessToken(storedSession?.accessToken);
@@ -353,6 +360,7 @@ export function BookingPageClient() {
         return segmentChoiceList.map((choice, currentPassengerIndex) =>
           currentPassengerIndex === passengerIndex
             ? {
+                ...choice,
                 fareFamily: fareOption.fareFamily,
                 farePrice: fareOption.price,
                 fareTitle: fareOption.title,
@@ -363,6 +371,20 @@ export function BookingPageClient() {
         );
       })
     );
+  }
+
+  function chooseBaggage(segmentIndex:number,passengerIndex:number,code:string,quantity:number){
+    const option=baggageOptions.find(x=>x.code===code);
+    setSegmentChoices(rows=>rows.map((row,s)=>s!==segmentIndex?row:row.map((choice,p)=>
+      p!==passengerIndex?choice:{...choice,baggageCode:option?.code??"",
+        baggagePrice:option?.price??0,baggageQuantity:option?quantity:0})));
+  }
+  function applyBaggageToAll(segmentIndex:number,sourceIndex:number){
+    setSegmentChoices(rows=>rows.map((row,s)=>s!==segmentIndex?row:row.map((choice,p)=>{
+      if(passengers[p]?.passengerType==="infant")return choice;
+      const selected=row[sourceIndex];return {...choice,baggageCode:selected.baggageCode,
+       baggageQuantity:selected.baggageQuantity,baggagePrice:selected.baggagePrice};
+    })));
   }
 
   function chonGheChoHanhKhach(segmentIndex: number, passengerIndex: number, seatNumber: string) {
@@ -417,7 +439,9 @@ export function BookingPageClient() {
 
     try {
       const payload: ApiCreateBookingHoldRequest = {
-        ancillaries: [],
+        ancillaries: segmentChoices.flatMap((row,segmentIndex)=>row.flatMap((choice,passengerIndex)=>
+          choice.baggageCode&&choice.baggageQuantity>0?[{code:choice.baggageCode,
+           quantity:choice.baggageQuantity,passengerIndex,segmentIndex}]:[])),
         contact: {
           email: contact.email.trim(),
           fullName: contact.fullName.trim(),
@@ -796,6 +820,25 @@ export function BookingPageClient() {
                           unavailableSeats={localTakenSeats} disabled={pendingSubmitAction !== null}
                           onSelect={(seat) => chonGheChoHanhKhach(segmentIndex, activePassengerIndex, seat)} />
                       ) : <p role="alert">Chưa có sơ đồ ghế từ tàu bay.</p>}
+                      {activePassenger && <div className="surface-card booking-baggage-card">
+                        <h4>Hành lý ký gửi mua thêm</h4>
+                        {activePassenger.passengerType === "infant" ? <p>Em bé không mua thêm hành lý.</p> : <>
+                          <label className="field"><span>Gói cân</span><select value={activeChoice.baggageCode}
+                            onChange={event=>chooseBaggage(segmentIndex,activePassengerIndex,event.target.value,
+                              event.target.value?(activeChoice.baggageQuantity||1):0)}>
+                            <option value="">Không mua thêm</option>
+                            {baggageOptions.map(item=><option key={item.code} value={item.code}>{item.name} — {formatCurrency(item.price)}/kiện</option>)}
+                          </select></label>
+                          {activeChoice.baggageCode && <label className="field"><span>Số kiện</span><select value={activeChoice.baggageQuantity}
+                             onChange={event=>chooseBaggage(segmentIndex,activePassengerIndex,activeChoice.baggageCode,Number(event.target.value))}>
+                            {[1,2,3].map(n=><option key={n} value={n}>{n} kiện</option>)}
+                          </select></label>}
+                          <div className="booking-baggage-actions">
+                            <button type="button" className="button button-secondary"
+                              onClick={()=>applyBaggageToAll(segmentIndex,activePassengerIndex)}>Áp dụng cho tất cả hành khách</button>
+                          </div>
+                        </>}
+                      </div>}
                     </div>
                   );
                 })}

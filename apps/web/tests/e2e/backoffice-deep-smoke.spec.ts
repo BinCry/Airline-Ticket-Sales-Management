@@ -283,7 +283,8 @@ test("backoffice support gửi lại email lỗi và đổi trạng thái", asyn
 test("backoffice sales tạo booking hộ rồi xuất vé", async ({ page }) => {
   await seedAuthSession(page, {
     roles: ["customer_support"],
-    permissions: ["backoffice.sales"]
+    permissions: ["backoffice.sales"],
+    mockMyNotifications: true
   });
 
   let createPayload: Record<string, unknown> | null = null;
@@ -824,10 +825,18 @@ test("backoffice admin cập nhật role, trạng thái và xóa nhật ký", as
   await row.locator("select").nth(1).selectOption("locked");
   await row.getByRole("button", { name: "Lưu trạng thái cho tài khoản Điều hành A" }).click();
   await expect(row).toContainText("Đã khóa");
+  await expect(
+  row.getByRole("button", {
+    name: "Lưu trạng thái cho tài khoản Điều hành A"
+  })
+).toBeEnabled();
+
+  const deleteAuditButton = page.locator(".admin-audit-delete-button");
+  await expect(deleteAuditButton).toBeEnabled();
 
   page.once("dialog", async (dialog) => {
     await dialog.accept();
   });
-  await page.locator(".admin-audit-delete-button").click();
+  await deleteAuditButton.click();
   await expect(page.locator("article", { hasText: "Ops Lead" })).toHaveCount(0);
 });
