@@ -99,12 +99,12 @@ class BaggageTrackingServiceTest {
   }
 
   @Test
-  void emptySearchFiltersArePassedAsNull() {
-    when(repository.search(null, null, null, null)).thenReturn(List.of());
+  void emptySearchFiltersArePassedAsEmptyStrings() {
+    when(repository.search("", "", "", "")).thenReturn(List.of());
 
     assertThat(service.search(" ", null, "", "  ")).isEmpty();
 
-    verify(repository).search(null, null, null, null);
+    verify(repository).search("", "", "", "");
   }
 
   @Test
