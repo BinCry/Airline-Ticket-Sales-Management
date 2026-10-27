@@ -103,6 +103,10 @@ export function proxy(request: NextRequest) {
   }
 
   const moduleKey = pathname.split("/")[2]?.trim() ?? "";
+  if (moduleKey === "audit") {
+    return canAccessBackofficeModule(permissions, "admin")
+      ? NextResponse.next() : buildBackofficeRedirect(request);
+  }
   if (!moduleKey) {
     return NextResponse.next();
   }

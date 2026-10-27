@@ -1,0 +1,105 @@
+.audit-log-page .audit-log-filters {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.audit-log-page .audit-log-filter-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.audit-log-page .field,
+.audit-log-page .field input,
+.audit-log-page .field select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.audit-log-page .audit-log-table {
+  table-layout: fixed;
+}
+
+.audit-log-page .finance-table-head > .finance-action-row {
+  flex: 0 1 auto;
+}
+
+.audit-log-page .audit-log-table th,
+.audit-log-page .audit-log-table td,
+.audit-log-page .finance-table-head p {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.audit-log-page .audit-log-detail summary {
+  cursor: pointer;
+}
+
+.audit-log-page .audit-log-detail-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.audit-log-page .audit-log-detail small {
+  color: var(--brand-primary);
+}
+
+.audit-log-page .audit-log-detail[open] .audit-log-detail-preview {
+  display: none;
+}
+
+.audit-log-page .audit-log-detail-full {
+  margin-top: var(--space-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.audit-log-page .audit-log-hidden {
+  display: inline-flex;
+  margin-top: var(--space-2);
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.audit-log-page .audit-log-pagination {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+}
+
+.audit-log-page .audit-log-pagination .field {
+  max-width: 180px;
+}
+
+@media (max-width: 1024px) {
+  .audit-log-page .audit-log-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .audit-log-page .finance-table-head > div {
+    flex: 0 1 auto;
+    width: 100%;
+  }
+
+  .audit-log-page .audit-log-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audit-log-page .audit-log-pagination {
+    align-items: stretch;
+    flex-direction: column;
+    padding: var(--space-4);
+  }
+
+  .audit-log-page .audit-log-pagination .field {
+    max-width: 100%;
+  }
+}
