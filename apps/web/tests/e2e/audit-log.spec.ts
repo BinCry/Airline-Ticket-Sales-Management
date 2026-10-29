@@ -125,8 +125,8 @@ test("áp dụng bộ lọc kết hợp, literal, pagination và đặt lại b�
   await page.getByLabel("Nhóm hành động", { exact: true }).selectOption("admin");
   await expect(page.getByLabel("Hành động cụ thể").locator("option")).toHaveCount(3);
   await page.getByLabel("Hành động cụ thể").selectOption("admin.user.update");
-  await page.getByLabel("Loại đối tượng").fill("user");
-  await page.getByLabel("Mã đối tượng").fill("%_\\");
+  await page.getByRole("textbox", { name: "Loại đối tượng", exact: true }).fill("user");
+  await page.getByRole("textbox", { name: "Mã đối tượng", exact: true }).fill("%_\\");
   await page.getByLabel("Từ khóa trong chi tiết").fill("50%_\\");
   await page.getByLabel("Hiện cả bản ghi đã ẩn").check();
   await page.getByRole("button", { name: "Áp dụng", exact: true }).click();
@@ -206,7 +206,7 @@ test("retry đúng truy vấn thất bại B, giữ kết quả A và CSV A trư
   const queryA = Object.fromEntries(queries.at(-1)!);
   expect(queryA.size).toBe("50");
   await page.getByLabel("Từ khóa trong chi tiết").fill("B");
-  await page.getByLabel("Mã đối tượng").fill("%_\\");
+  await page.getByRole("textbox", { name: "Mã đối tượng", exact: true }).fill("%_\\");
   await page.getByLabel("Người thao tác trong kết quả đã tải").selectOption("none");
   await page.getByLabel("Hiện cả bản ghi đã ẩn").check();
   await page.getByRole("button", { name: "Áp dụng", exact: true }).click();
