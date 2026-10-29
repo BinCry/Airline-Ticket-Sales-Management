@@ -96,7 +96,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
 
@@ -105,25 +105,25 @@ class BookingServiceTest {
     assertThat(response.selectedSegments()).hasSize(1);
     assertThat(response.priceSummary().totalAmount()).isEqualTo(1490000L);
     verify(inventory).reserveSeats(1);
-    verify(bookingRepository).save(argThat(booking -> booking.getMemberUserId() == null));
+    verify(bookingRepository, times(2)).saveAndFlush(argThat(booking -> booking.getMemberUserId() == null));
   }
 
   @Test
   void createHold_shouldBindCurrentMemberFromAuthenticatedIdDespiteDifferentContactEmail() {
     createAuthenticatedHold("member", "customer");
-    verify(bookingRepository).save(argThat(booking -> Long.valueOf(151).equals(booking.getMemberUserId())));
+    verify(bookingRepository, times(2)).saveAndFlush(argThat(booking -> Long.valueOf(151).equals(booking.getMemberUserId())));
   }
 
   @Test
   void createHold_shouldNotBindRemovedMemberFromStaleClaims() {
     createAuthenticatedHold("customer", "member");
-    verify(bookingRepository).save(argThat(booking -> booking.getMemberUserId() == null));
+    verify(bookingRepository, times(2)).saveAndFlush(argThat(booking -> booking.getMemberUserId() == null));
   }
 
   private void createAuthenticatedHold(String currentRole, String claimedRole) {
     FlightFareInventoryEntity inventory = mockInventory(20101L, 5, 1490000L, "pho_thong_tiet_kiem");
     when(flightFareInventoryRepository.lockByIds(List.of(20101L))).thenReturn(List.of(inventory));
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     UserAccountEntity member = mock(UserAccountEntity.class);
     RoleEntity role = mock(RoleEntity.class);
     when(role.getCode()).thenReturn(currentRole);
@@ -188,7 +188,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(true, false);
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(oneWayHoldRequest(List.of(), List.of(20101L)));
 
@@ -203,7 +203,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(
         oneWayHoldRequest(
@@ -252,7 +252,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(bookingHoldChoNhieuHanhKhachMotChieu());
 
@@ -318,7 +318,7 @@ class BookingServiceTest {
     when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
     when(bookingSeatSelectionRepository.findOccupiedSeatNumbersByFlightId(any(), any())).thenReturn(List.of());
     when(bookingRepository.existsByBookingCodeIgnoreCase(any())).thenReturn(false);
-    when(bookingRepository.save(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    when(bookingRepository.saveAndFlush(any(BookingEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingHoldResponse response = bookingService.createHold(bookingHoldKhuHoiNhieuHanhKhach());
 
