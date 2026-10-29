@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { DateField } from "@/components/date-field";
+import { AuditLogEntryCells } from "@/components/audit-log-entry-cells";
 import { SectionHeading } from "@/components/section-heading";
 import { ApiClientError, resolveApiClientErrorMessage } from "@/lib/api-client";
 import {
@@ -15,6 +16,7 @@ import {
   normalizeAuditLogFilters, validateAuditLogFilters, type AuditLogFilters
 } from "@/lib/audit-log-filters";
 import { AUTH_SESSION_UPDATED_EVENT, loadActiveAuthSession, type AuthSession } from "@/lib/auth-session";
+import { getAuditActionLabel } from "@/lib/audit-log-presentation";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { presentUserDisplayName } from "@/lib/present-user-label";
 import { pushToast } from "@/lib/toast";
@@ -268,7 +270,7 @@ export function BackofficeAuditPageClient() {
           <option value="">Tất cả nhóm</option>{groups.map((group) => <option key={group} value={group}>{group}</option>)}
         </select></label>
         <label className="field"><span>Hành động cụ thể</span><select aria-label="Hành động cụ thể" value={draft.action} disabled={actionsLoading} onChange={(event) => updateDraft("action", event.target.value)}>
-          <option value="">Tất cả hành động</option>{visibleActions.map((action) => <option key={action} value={action}>{action}</option>)}
+          <option value="">Tất cả hành động</option>{visibleActions.map((action) => <option key={action} value={action}>{getAuditActionLabel(action)}{getAuditActionLabel(action) !== action ? ` (${action})` : ""}</option>)}
         </select></label>
         <label className="field"><span>Loại đối tượng</span><input value={draft.targetType} onChange={(event) => updateDraft("targetType", event.target.value)} placeholder="So khớp chính xác" /></label>
         <label className="field"><span>Mã đối tượng</span><input value={draft.targetId} onChange={(event) => updateDraft("targetId", event.target.value)} placeholder="Chứa mã được nhập" /></label>
@@ -288,6 +290,7 @@ export function BackofficeAuditPageClient() {
     <article className="table-card audit-log-table-card" aria-busy={pending !== null}>
       <div className="finance-table-head"><div><h2>Kết quả tra cứu</h2>
         <p aria-live="polite">{result ? `${result.data.totalElements} bản ghi` : "Chưa có kết quả tải thành công"}</p>
+        <p>Mở “Xem đầy đủ” để xem hoặc sao chép mã hành động, mã đối tượng và chi tiết gốc.</p>
         {result ? <p>Bộ lọc đang hiển thị: {Object.entries(result.filters).filter(([, value]) => Boolean(value)).map(([key, value]) => {
           const labels: Record<string, string> = { actorId: "Người thao tác", actorKeyword: "Tên/email", actionPrefix: "Nhóm", action: "Hành động", targetType: "Loại", targetId: "Mã", from: "Từ", to: "Đến", keyword: "Từ khóa", includeHidden: "Hiện log ẩn" };
           return `${labels[key]}: ${key === "from" || key === "to" ? formatDate(value as string) : value === true ? "Có" : value === "none" ? "Hệ thống/không rõ" : value}`;
@@ -307,8 +310,7 @@ export function BackofficeAuditPageClient() {
         <tbody>{result?.data.items.length ? result.data.items.map((item) => <tr key={item.id}>
           <td data-label="Thời gian"><time dateTime={item.createdAt}>{formatDateTime(item.createdAt)}</time>{item.hidden ? <span className="pill audit-log-hidden">Đã ẩn</span> : null}</td>
           <td data-label="Người thao tác"><div className="finance-cell-stack"><strong>{actorLabel(item)}</strong>{item.actorId !== null && item.actorEmail ? <span>{item.actorEmail}</span> : null}</div></td>
-          <td data-label="Hành động">{item.action}</td><td data-label="Đối tượng"><div className="finance-cell-stack"><strong>{item.targetType}</strong><span>{item.targetId}</span></div></td>
-          <td data-label="Chi tiết"><details className="audit-log-detail"><summary><span className="audit-log-detail-preview">{item.detail || "Không có chi tiết"}</span><small>Xem đầy đủ</small></summary><div className="audit-log-detail-full">{item.detail}</div></details></td>
+          <AuditLogEntryCells item={item} />
         </tr>) : <tr><td colSpan={5}><article className="booking-inline-info" role="status"><strong>{pending && !result ? "Đang tải nhật ký..." : result ? "Không có bản ghi khớp bộ lọc" : "Chưa tải được nhật ký"}</strong></article></td></tr>}</tbody>
       </table></div>
       <div className="audit-log-pagination"><label className="field"><span>Số dòng mỗi trang</span><select value={result?.data.size ?? 20} disabled={busy || !result}
