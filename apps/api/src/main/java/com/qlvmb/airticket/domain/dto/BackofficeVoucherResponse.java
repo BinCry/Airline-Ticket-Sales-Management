@@ -23,7 +23,10 @@ public record BackofficeVoucherResponse(
       String status,
       OffsetDateTime expiresAt,
       OffsetDateTime usedAt,
-      String bookingCode
+      String bookingCode,
+      VoucherConditions conditions,
+      String conditionSummary,
+      boolean conditionsValid
   ) {
   }
 }

@@ -41,17 +41,23 @@ public class BackofficeVoucherService {
   private final UserAccountRepository userAccountRepository;
   private final BookingRepository bookingRepository;
   private final AuditLogRepository auditLogRepository;
+  private final VoucherConditionService conditions;
+  private final VoucherLockService locks;
 
   public BackofficeVoucherService(
       MemberVoucherRepository memberVoucherRepository,
       UserAccountRepository userAccountRepository,
       BookingRepository bookingRepository,
-      AuditLogRepository auditLogRepository
+      AuditLogRepository auditLogRepository,
+      VoucherConditionService conditions,
+      VoucherLockService locks
   ) {
     this.memberVoucherRepository = memberVoucherRepository;
     this.userAccountRepository = userAccountRepository;
     this.bookingRepository = bookingRepository;
     this.auditLogRepository = auditLogRepository;
+    this.conditions = conditions;
+    this.locks = locks;
   }
 
   @Transactional(readOnly = true)
@@ -107,6 +113,7 @@ public class BackofficeVoucherService {
         request.expiresAt(),
         currentTime
     );
+    voucher.updateConditions(conditions.validateAndEncode(request.conditions()));
     memberVoucherRepository.save(voucher);
 
     auditLogRepository.save(AuditLogEntity.create(
@@ -128,8 +135,7 @@ public class BackofficeVoucherService {
       BackofficeVoucherUpdateRequest request
   ) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần cập nhật."));
+    MemberVoucherEntity voucher = locks.lockId(voucherId);
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -143,6 +149,8 @@ public class BackofficeVoucherService {
       );
     }
 
+    String nextConditions = request.conditions() == null ? voucher.getConditionJson()
+        : conditions.validateAndEncode(request.conditions());
     String nextStatus = normalizeBackofficeStatus(request.status());
     OffsetDateTime currentTime = OffsetDateTime.now();
     String oldStatus = voucher.getStatus();
@@ -158,6 +166,7 @@ public class BackofficeVoucherService {
         request.expiresAt(),
         currentTime
     );
+    voucher.updateConditions(nextConditions);
     voucher.applyBackofficeStatus(nextStatus, currentTime);
 
     auditLogRepository.save(AuditLogEntity.create(
@@ -179,8 +188,8 @@ public class BackofficeVoucherService {
   @Transactional
   public BackofficeVoucherResponse.VoucherItem revokeVoucher(AuthenticatedUser actor, Long voucherId) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần thu hồi."));
+    VoucherLockService.Reservation reservation = locks.lockForRevocation(voucherId);
+    MemberVoucherEntity voucher = reservation.voucher();
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -190,7 +199,7 @@ public class BackofficeVoucherService {
 
     OffsetDateTime currentTime = OffsetDateTime.now();
     if (voucher.isReserved()) {
-      releaseReservedBooking(voucher, currentTime);
+      releaseReservedBooking(voucher, reservation.booking(), currentTime);
     }
     voucher.revoke(currentTime);
 
@@ -209,8 +218,7 @@ public class BackofficeVoucherService {
   @Transactional
   public void hideVoucherFromOperations(AuthenticatedUser actor, Long voucherId) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần ẩn khỏi giao diện."));
+    MemberVoucherEntity voucher = locks.lockId(voucherId);
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -278,21 +286,16 @@ public class BackofficeVoucherService {
     return userAccount;
   }
 
-  private void releaseReservedBooking(MemberVoucherEntity voucher, OffsetDateTime currentTime) {
-    String linkedBookingCode = voucher.getBookingCode();
-    if (linkedBookingCode == null || linkedBookingCode.isBlank()) {
-      return;
+  private void releaseReservedBooking(MemberVoucherEntity voucher, BookingEntity booking, OffsetDateTime currentTime) {
+    if (booking != null && booking.isHold()
+        && voucher.getBookingCode().equalsIgnoreCase(booking.getBookingCode())
+        && voucher.getVoucherCode().equalsIgnoreCase(booking.getAppliedVoucherCode())) {
+      booking.clearAppliedVoucher(currentTime);
     }
-
-    bookingRepository.findDetailedByBookingCode(linkedBookingCode)
-        .ifPresent(booking -> {
-          if (booking.isHold() && linkedBookingCode.equalsIgnoreCase(booking.getBookingCode())) {
-            booking.clearAppliedVoucher(currentTime);
-          }
-        });
   }
 
   private BackofficeVoucherResponse.VoucherItem mapVoucher(MemberVoucherEntity voucher, UserAccountEntity userAccount) {
+    VoucherConditionService.Presentation presentation = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
     return new BackofficeVoucherResponse.VoucherItem(
         voucher.getId(),
         voucher.getUserId(),
@@ -306,7 +309,10 @@ public class BackofficeVoucherService {
         voucher.getStatus(),
         voucher.getExpiresAt(),
         voucher.getUsedAt(),
-        voucher.getBookingCode()
+        voucher.getBookingCode(),
+        presentation.conditions(),
+        presentation.conditionSummary(),
+        presentation.conditionsValid()
     );
   }
 

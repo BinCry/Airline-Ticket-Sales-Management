@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qlvmb.airticket.repository.AirportRepository;
 import com.qlvmb.airticket.domain.dto.BackofficeVoucherCreateRequest;
 import com.qlvmb.airticket.domain.dto.BackofficeVoucherResponse;
 import com.qlvmb.airticket.domain.dto.BackofficeVoucherUpdateRequest;
@@ -50,6 +52,9 @@ class BackofficeVoucherServiceTest {
   @Mock
   private AuditLogRepository auditLogRepository;
 
+  @Mock
+  private VoucherLockService locks;
+
   private BackofficeVoucherService backofficeVoucherService;
 
   @BeforeEach
@@ -58,7 +63,10 @@ class BackofficeVoucherServiceTest {
         memberVoucherRepository,
         userAccountRepository,
         bookingRepository,
-        auditLogRepository
+        auditLogRepository,
+        new VoucherConditionService(new ObjectMapper().findAndRegisterModules(),
+            org.mockito.Mockito.mock(AirportRepository.class), new ProductCatalogService()),
+        locks
     );
   }
 
@@ -83,7 +91,7 @@ class BackofficeVoucherServiceTest {
             "Giam gia cho hoi vien bi anh huong chuyen bay.",
             180000L,
             "VND",
-            expiresAt
+            expiresAt, null
         )
     );
 
@@ -113,7 +121,7 @@ class BackofficeVoucherServiceTest {
             "Giam gia cho hoi vien bi anh huong chuyen bay.",
             180000L,
             "VND",
-            OffsetDateTime.parse("2026-06-05T03:00:00Z")
+            OffsetDateTime.parse("2026-06-05T03:00:00Z"), null
         )
     ))
         .isInstanceOf(BadRequestException.class)
@@ -140,7 +148,7 @@ class BackofficeVoucherServiceTest {
     booking.applyVoucher("OPS52026", 180000L, currentTime);
 
     when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
-    when(memberVoucherRepository.findById(5L)).thenReturn(Optional.of(voucher));
+    when(locks.lockId(5L)).thenReturn(voucher);
     when(userAccountRepository.findById(151L)).thenReturn(Optional.of(memberAccount));
 
     assertThatThrownBy(() -> backofficeVoucherService.updateVoucher(
@@ -152,7 +160,7 @@ class BackofficeVoucherServiceTest {
             220000L,
             "VND",
             "expired",
-            OffsetDateTime.parse("2026-06-10T03:00:00Z")
+            OffsetDateTime.parse("2026-06-10T03:00:00Z"), null
         )
     ))
         .isInstanceOf(BadRequestException.class)
@@ -180,7 +188,7 @@ class BackofficeVoucherServiceTest {
     );
 
     when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
-    when(memberVoucherRepository.findById(5L)).thenReturn(Optional.of(voucher));
+    when(locks.lockForRevocation(5L)).thenReturn(new VoucherLockService.Reservation(voucher, null));
     when(userAccountRepository.findById(151L)).thenReturn(Optional.of(memberAccount));
 
     assertThatThrownBy(() -> backofficeVoucherService.revokeVoucher(actor(), 5L))
@@ -205,7 +213,7 @@ class BackofficeVoucherServiceTest {
     );
 
     when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
-    when(memberVoucherRepository.findById(5L)).thenReturn(Optional.of(voucher));
+    when(locks.lockId(5L)).thenReturn(voucher);
     when(userAccountRepository.findById(151L)).thenReturn(Optional.of(memberAccount));
     when(auditLogRepository.save(any(AuditLogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -233,7 +241,7 @@ class BackofficeVoucherServiceTest {
     );
 
     when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
-    when(memberVoucherRepository.findById(5L)).thenReturn(Optional.of(voucher));
+    when(locks.lockId(5L)).thenReturn(voucher);
     when(userAccountRepository.findById(151L)).thenReturn(Optional.of(memberAccount));
     when(auditLogRepository.save(any(AuditLogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -241,6 +249,62 @@ class BackofficeVoucherServiceTest {
 
     assertThat(voucher.isHiddenForOperations()).isTrue();
     verify(auditLogRepository).save(any(AuditLogEntity.class));
+  }
+
+
+  @Test
+  void updatePreservesOmittedConditionsAndExplicitNullClearsThem() {
+    var actorAccount = createUserAccount(301L, "operator@example.test", RoleCode.OPERATIONS_STAFF);
+    var member = createUserAccount(151L, "member@example.test", RoleCode.MEMBER);
+    var expiry = OffsetDateTime.parse("2026-11-30T00:00:00Z");
+    var voucher = createVoucher(5L, 151L, "TEST", "Voucher", "Kiểm thử", 1000,
+        MemberVoucherEntity.STATUS_AVAILABLE, expiry, null);
+    voucher.updateConditions("{\"minAmount\":1500000}");
+    when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
+    when(userAccountRepository.findById(151L)).thenReturn(Optional.of(member));
+    when(locks.lockId(5L)).thenReturn(voucher);
+    var unchanged = backofficeVoucherService.updateVoucher(actor(), 5L,
+        new BackofficeVoucherUpdateRequest("Voucher", "Kiểm thử", 1000, "VND", "AVAILABLE", expiry, null));
+    assertThat(voucher.getConditionJson()).isEqualTo("{\"minAmount\":1500000}");
+    assertThat(unchanged.conditionSummary()).contains("1.500.000 VND");
+    var cleared = backofficeVoucherService.updateVoucher(actor(), 5L,
+        new BackofficeVoucherUpdateRequest("Voucher", "Kiểm thử", 1000, "VND", "AVAILABLE", expiry,
+            com.fasterxml.jackson.databind.node.NullNode.instance));
+    assertThat(voucher.getConditionJson()).isNull();
+    assertThat(cleared.conditions()).isNull();
+    assertThat(cleared.conditionsValid()).isTrue();
+  }
+
+  @Test
+  void reservedRevocationClearsOnlyItsOwnBookingDiscount() {
+    var actorAccount = createUserAccount(301L, "operator@example.test", RoleCode.OPERATIONS_STAFF);
+    var member = createUserAccount(151L, "member@example.test", RoleCode.MEMBER);
+    var now = OffsetDateTime.parse("2026-10-29T00:00:00Z");
+    var voucher = createVoucher(5L, 151L, "TEST", "Voucher", "Kiểm thử", 1000,
+        MemberVoucherEntity.STATUS_RESERVED, now.plusDays(10), "VC0001");
+    var booking = createHeldBooking("VC0001", "member@example.test", now);
+    booking.applyVoucher("TEST", 1000, now);
+    when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
+    when(userAccountRepository.findById(151L)).thenReturn(Optional.of(member));
+    when(locks.lockForRevocation(5L)).thenReturn(new VoucherLockService.Reservation(voucher, booking));
+    backofficeVoucherService.revokeVoucher(actor(), 5L);
+    assertThat(booking.getAppliedVoucherCode()).isNull();
+    assertThat(booking.getDiscountAmount()).isZero();
+    assertThat(voucher.getStatus()).isEqualTo(MemberVoucherEntity.STATUS_REVOKED);
+  }
+
+  @Test
+  void malformedCreationIsRejectedBeforeSavingVoucher() {
+    var actorAccount = createUserAccount(301L, "operator@example.test", RoleCode.OPERATIONS_STAFF);
+    var member = createUserAccount(151L, "member@example.test", RoleCode.MEMBER);
+    when(userAccountRepository.findOneWithRolesById(301L)).thenReturn(Optional.of(actorAccount));
+    when(userAccountRepository.findOneWithRolesByEmailIgnoreCase("member@example.test")).thenReturn(Optional.of(member));
+    var bad = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("minAmount", -1);
+    assertThatThrownBy(() -> backofficeVoucherService.createVoucher(actor(),
+        new BackofficeVoucherCreateRequest("member@example.test", "TEST", "Voucher", "Kiểm thử", 1000,
+            "VND", OffsetDateTime.parse("2026-11-30T00:00:00Z"), bad)))
+        .isInstanceOf(BadRequestException.class);
+    org.mockito.Mockito.verify(memberVoucherRepository, org.mockito.Mockito.never()).save(any());
   }
 
   private AuthenticatedUser actor() {

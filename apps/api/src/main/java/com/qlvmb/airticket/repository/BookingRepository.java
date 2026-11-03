@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
 
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select booking from BookingEntity booking where upper(booking.bookingCode) = upper(:code)")
+  Optional<BookingEntity> lockVoucherBookingByCode(@Param("code") String code);
+
   long countByStatus(String status);
 
   long countByPaymentStatus(String paymentStatus);
