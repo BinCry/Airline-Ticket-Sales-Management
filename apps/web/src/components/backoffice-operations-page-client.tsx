@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 
 import type { AirportOption } from "@qlvmb/shared-types";
 
+import { VoucherConditionEditor } from "@/components/voucher-condition-editor";
+import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
+import { buildVoucherConditions, createVoucherConditionDraft, type VoucherConditionDraft } from "@/lib/voucher-conditions";
 import { DateField } from "@/components/date-field";
 import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
 import {BackofficeBaggagePanel} from "@/components/backoffice-baggage-panel";
@@ -274,6 +277,8 @@ export function BackofficeOperationsPageClient() {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState("ALL");
   const [vouchers, setVouchers] = useState<BackofficeVoucherItem[]>([]);
+  const [conditionForm, setConditionForm] = useState(createVoucherConditionDraft);
+  const [conditionDrafts, setConditionDrafts] = useState<Record<number, { value: VoucherConditionDraft; changed: boolean }>>({});
   const [voucherForm, setVoucherForm] = useState<BackofficeVoucherCreateInput>(createEmptyVoucherForm);
   const [voucherDrafts, setVoucherDrafts] = useState<Record<number, BackofficeVoucherUpdateInput>>({});
   const [pendingVoucherAction, setPendingVoucherAction] = useState<string | null>(null);
@@ -453,6 +458,9 @@ export function BackofficeOperationsPageClient() {
         status: nextStatus === "ALL" ? null : nextStatus
       });
       setVouchers(payload.vouchers);
+      setConditionDrafts(Object.fromEntries(payload.vouchers.map((voucher) => [voucher.voucherId, {
+        value: createVoucherConditionDraft(voucher.conditions), changed: false
+      }])));
       setVoucherDrafts(
         Object.fromEntries(payload.vouchers.map((voucher) => [voucher.voucherId, buildVoucherDraft(voucher)]))
       );
@@ -624,6 +632,7 @@ export function BackofficeOperationsPageClient() {
       await createBackofficeOperationsVoucher(
         {
           ...voucherForm,
+          conditions: buildVoucherConditions(conditionForm),
           memberEmail: voucherForm.memberEmail.trim(),
           voucherCode: voucherForm.voucherCode.trim().toUpperCase(),
           title: voucherForm.title.trim(),
@@ -635,6 +644,7 @@ export function BackofficeOperationsPageClient() {
       );
       await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
       setVoucherForm(createEmptyVoucherForm());
+      setConditionForm(createVoucherConditionDraft());
       pushToast({
         title: "Đã cấp voucher",
         message: "Voucher mới đã được cấp cho hội viên.",
@@ -663,6 +673,7 @@ export function BackofficeOperationsPageClient() {
         voucherId,
         {
           ...draft,
+          ...(conditionDrafts[voucherId]?.changed ? { conditions: buildVoucherConditions(conditionDrafts[voucherId].value) } : {}),
           title: draft.title.trim(),
           description: draft.description.trim(),
           currency: draft.currency.trim().toUpperCase(),
@@ -706,6 +717,9 @@ export function BackofficeOperationsPageClient() {
         ...current,
         [voucherId]: buildVoucherDraft(updatedVoucher)
       }));
+      setConditionDrafts((current) => ({ ...current, [voucherId]: {
+        value: createVoucherConditionDraft(updatedVoucher.conditions), changed: false
+      } }));
       pushToast({
         title: "Đã thu hồi voucher",
         message: "Voucher đã được chuyển về trạng thái thu hồi an toàn.",
@@ -1369,6 +1383,8 @@ export function BackofficeOperationsPageClient() {
                 />
               </label>
             </div>
+            <VoucherConditionEditor value={conditionForm} onChange={setConditionForm}
+              disabled={pendingVoucherAction !== null} currency={voucherForm.currency} />
             <div className="booking-action-list booking-action-list-spacious">
               <button
                 type="button"
@@ -1465,6 +1481,10 @@ export function BackofficeOperationsPageClient() {
                     </div>
                   </div>
 
+                  <VoucherConditionSummary voucher={voucher} />
+                  <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
+                    onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
+                    disabled={pendingVoucherAction !== null} readOnly={!isEditableVoucher} currency={draft?.currency ?? voucher.currency} />
                   <div className="field-grid compact-grid">
                     <label className="field result-grid-span-full">
                       <span>Tiêu đề</span>

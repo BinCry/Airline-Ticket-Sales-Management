@@ -1,4 +1,5 @@
 import { ApiClientError, requestApi } from "@/lib/api-client";
+import { normalizeVoucherConditionInfo, type VoucherConditionInfo, type VoucherConditions } from "@/lib/voucher-conditions";
 import { presentUserDisplayName } from "@/lib/present-user-label";
 
 export interface BackofficeOperationsFlightQuery {
@@ -71,6 +72,7 @@ export interface BackofficeVoucherQuery {
 }
 
 export interface BackofficeVoucherCreateInput {
+  conditions?: VoucherConditions | null;
   memberEmail: string;
   voucherCode: string;
   title: string;
@@ -81,6 +83,7 @@ export interface BackofficeVoucherCreateInput {
 }
 
 export interface BackofficeVoucherUpdateInput {
+  conditions?: VoucherConditions | null;
   title: string;
   description: string;
   discountAmount: number;
@@ -89,7 +92,7 @@ export interface BackofficeVoucherUpdateInput {
   expiresAt: string;
 }
 
-export interface BackofficeVoucherItem {
+export interface BackofficeVoucherItem extends VoucherConditionInfo {
   voucherId: number;
   userId: number;
   memberEmail: string;
@@ -215,6 +218,7 @@ function laVoucherResponse(value: unknown): value is BackofficeVoucherResponse {
 function chuanHoaVoucher(voucher: BackofficeVoucherItem): BackofficeVoucherItem {
   return {
     ...voucher,
+    ...normalizeVoucherConditionInfo(voucher),
     memberDisplayName: presentUserDisplayName(voucher.memberDisplayName)
   };
 }

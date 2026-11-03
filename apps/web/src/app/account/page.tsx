@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
 import { DateField } from "@/components/date-field";
 import { PasswordChecklist } from "@/components/password-checklist";
 import { PasswordField } from "@/components/password-field";
@@ -1770,6 +1771,7 @@ export default function AccountPage() {
                         <div key={voucher.voucherCode} className="support-compact-item">
                           <strong>{voucher.title}</strong>
                           <p>{voucher.description}</p>
+                          <VoucherConditionSummary voucher={voucher} />
                           <small>
                             {formatVoucherAmount(voucher.discountAmount, voucher.currency)} • {formatVoucherStatus(voucher.status)} • Hết hạn {formatDateTime(voucher.expiresAt)}
                             {voucher.status === "RESERVED" && voucher.bookingCode ? ` • Giữ cho ${voucher.bookingCode}` : ""}

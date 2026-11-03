@@ -3,6 +3,7 @@ import {
   requestApi,
   resolveApiClientErrorMessage
 } from "@/lib/api-client";
+import { normalizeVoucherConditionInfo, type VoucherConditionInfo } from "@/lib/voucher-conditions";
 import { presentUserDisplayName } from "@/lib/present-user-label";
 
 export interface MyProfile {
@@ -57,7 +58,7 @@ export interface MyLoyalty {
   progressPercent?: number;
 }
 
-export interface MyVoucher {
+export interface MyVoucher extends VoucherConditionInfo {
   voucherCode: string;
   title: string;
   description: string;
@@ -412,7 +413,7 @@ export async function fetchMyVouchers(accessToken: string): Promise<MyVoucher[]>
     throw new MyAccountApiError("Dữ liệu voucher trả về không hợp lệ.", 500);
   }
 
-  return payload;
+  return payload.map((voucher) => ({ ...voucher, ...normalizeVoucherConditionInfo(voucher) }));
 }
 
 export async function fetchMyNotifications(accessToken: string): Promise<MyNotification[]> {
