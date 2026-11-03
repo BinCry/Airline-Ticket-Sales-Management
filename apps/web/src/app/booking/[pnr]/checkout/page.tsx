@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ApiPaymentSessionResponse } from "@qlvmb/shared-types";
 
+import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
 import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
 import { Stepper } from "@/components/ui/primitives";
@@ -48,7 +49,7 @@ function isHoldExpiredError(error: unknown) {
 
 function formatVoucherStatus(status: string) {
   if (status === "AVAILABLE") {
-    return "Sẵn sàng áp dụng";
+    return "Chưa sử dụng";
   }
 
   if (status === "RESERVED") {
@@ -128,7 +129,16 @@ export default function BookingCheckoutPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
+  const [voucherListErrorMessage, setVoucherListErrorMessage] = useState<string | null>(null);
   const [holdExpiredMessage, setHoldExpiredMessage] = useState<string | null>(null);
+  const [paymentNeedsVerification, setPaymentNeedsVerification] = useState(false);
+  const [voucherListConfirmed, setVoucherListConfirmed] = useState(false);
+  const paymentGuardRef = useRef({ generation: 0, operation: null as "voucher" | "payment" | null, blocked: false, bookingCode: "" });
+  const canPublishSession = useCallback((generation: number) => {
+    const guard = paymentGuardRef.current;
+    return guard.generation === generation && guard.operation === null && !guard.blocked;
+  }, []);
+  useEffect(() => () => { paymentGuardRef.current.generation++; }, []);
   const isRefreshingExpiredHoldRef = useRef(false);
   const daChuyenTrangSauThanhToanRef = useRef(false);
 
@@ -149,6 +159,15 @@ export default function BookingCheckoutPage() {
       return;
     }
 
+    const guard = paymentGuardRef.current;
+    if (guard.bookingCode !== bookingCode) {
+      guard.generation++; guard.bookingCode = bookingCode; guard.operation = null; guard.blocked = false;
+      setSession(null); setPaymentNeedsVerification(false); setVoucherListConfirmed(false);
+      setIsApplyingVoucher(false); setIsRemovingVoucher(false); setIsPaying(false);
+      setVoucherListErrorMessage(null);
+    }
+    if (guard.operation || guard.blocked) return;
+    const generation = ++guard.generation;
     let isMounted = true;
 
     async function initSession() {
@@ -158,7 +177,7 @@ export default function BookingCheckoutPage() {
 
       try {
         const nextSession = await createPaymentSession(bookingCode, accessToken);
-        if (!isMounted) {
+        if (!isMounted || !canPublishSession(generation)) {
           return;
         }
         setSession(nextSession);
@@ -166,7 +185,7 @@ export default function BookingCheckoutPage() {
           isClosedPaymentStatus(nextSession.paymentStatus) ? HOLD_EXPIRED_NOTICE : null
         );
       } catch (error) {
-        if (!isMounted) {
+        if (!isMounted || !canPublishSession(generation)) {
           return;
         }
         setSession(null);
@@ -177,7 +196,7 @@ export default function BookingCheckoutPage() {
         setErrorMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : resolvedMessage);
         setHoldExpiredMessage(isHoldExpiredError(error) ? HOLD_EXPIRED_NOTICE : null);
       } finally {
-        if (isMounted) {
+        if (isMounted && canPublishSession(generation)) {
           setIsLoading(false);
         }
       }
@@ -188,18 +207,20 @@ export default function BookingCheckoutPage() {
     return () => {
       isMounted = false;
     };
-  }, [accessToken, bookingCode]);
+  }, [accessToken, bookingCode, canPublishSession]);
 
   useEffect(() => {
-    if (!bookingCode || !session || session.paymentStatus === "paid" || holdExpiredMessage) {
+    if (!bookingCode || !session || session.paymentStatus === "paid" || holdExpiredMessage || isApplyingVoucher || isRemovingVoucher || isPaying || paymentNeedsVerification) {
       return;
     }
 
     let isMounted = true;
     const intervalId = window.setInterval(() => {
+      const generation = paymentGuardRef.current.generation;
+      if (!canPublishSession(generation)) return;
       void createPaymentSession(bookingCode, accessToken)
         .then((nextSession) => {
-          if (!isMounted) {
+          if (!isMounted || !canPublishSession(generation)) {
             return;
           }
           setSession(nextSession);
@@ -208,7 +229,7 @@ export default function BookingCheckoutPage() {
           }
         })
         .catch((error) => {
-          if (isMounted && isHoldExpiredError(error)) {
+          if (isMounted && canPublishSession(generation) && isHoldExpiredError(error)) {
             setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
           }
         });
@@ -218,7 +239,7 @@ export default function BookingCheckoutPage() {
       isMounted = false;
       window.clearInterval(intervalId);
     };
-  }, [accessToken, bookingCode, holdExpiredMessage, session]);
+  }, [accessToken, bookingCode, holdExpiredMessage, session, isApplyingVoucher, isRemovingVoucher, isPaying, paymentNeedsVerification, canPublishSession]);
 
   useEffect(() => {
     if (!accessToken || !isMemberSession) {
@@ -228,28 +249,31 @@ export default function BookingCheckoutPage() {
     }
 
     const memberAccessToken = accessToken;
+    const generation = paymentGuardRef.current.generation;
     let isMounted = true;
 
     async function loadMemberVouchers() {
       setIsLoadingVouchers(true);
-      setVoucherErrorMessage(null);
+      setVoucherListConfirmed(false);
+      setVoucherListErrorMessage(null);
 
       try {
         const nextVouchers = await fetchMyVouchers(memberAccessToken);
-        if (!isMounted) {
+        if (!isMounted || !canPublishSession(generation)) {
           return;
         }
         setMemberVouchers(nextVouchers);
+        setVoucherListConfirmed(true);
       } catch (error) {
-        if (!isMounted) {
+        if (!isMounted || !canPublishSession(generation)) {
           return;
         }
         setMemberVouchers([]);
-        setVoucherErrorMessage(
+        setVoucherListErrorMessage(
           resolveApiClientErrorMessage(error, "Không thể tải danh sách voucher lúc này.")
         );
       } finally {
-        if (isMounted) {
+        if (isMounted && canPublishSession(generation)) {
           setIsLoadingVouchers(false);
         }
       }
@@ -260,7 +284,7 @@ export default function BookingCheckoutPage() {
     return () => {
       isMounted = false;
     };
-  }, [accessToken, isMemberSession]);
+  }, [accessToken, isMemberSession, canPublishSession]);
 
   useEffect(() => {
     if (session?.appliedVoucherCode) {
@@ -283,18 +307,21 @@ export default function BookingCheckoutPage() {
   }, [bookingCode, router, session?.paymentStatus]);
 
   const handleHoldCountdownExpired = useCallback(async () => {
-    if (!bookingCode || isRefreshingExpiredHoldRef.current) {
+    const generation = paymentGuardRef.current.generation;
+    if (!bookingCode || isRefreshingExpiredHoldRef.current || !canPublishSession(generation)) {
       return;
     }
 
     isRefreshingExpiredHoldRef.current = true;
     try {
       const nextSession = await createPaymentSession(bookingCode, accessToken);
+      if (!canPublishSession(generation)) return;
       setSession(nextSession);
       if (isClosedPaymentStatus(nextSession.paymentStatus)) {
         setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
       }
     } catch (error) {
+      if (!canPublishSession(generation)) return;
       if (isHoldExpiredError(error)) {
         setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
         setVoucherErrorMessage(null);
@@ -307,9 +334,10 @@ export default function BookingCheckoutPage() {
     } finally {
       isRefreshingExpiredHoldRef.current = false;
     }
-  }, [accessToken, bookingCode]);
+  }, [accessToken, bookingCode, canPublishSession]);
 
-  const availableVouchers = memberVouchers.filter(
+  const isUpdatingPayment = isApplyingVoucher || isRemovingVoucher;
+  const availableVouchers = (voucherListConfirmed && !paymentNeedsVerification && !isUpdatingPayment ? memberVouchers : []).filter(
     (voucher) =>
       voucher.status === "AVAILABLE" ||
       (voucher.status === "RESERVED" && voucher.bookingCode === bookingCode)
@@ -318,13 +346,18 @@ export default function BookingCheckoutPage() {
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
   const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
   const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
+  const voucherActionsDisabled = isLoading || isPaying || isUpdatingPayment || paymentNeedsVerification || isPaymentClosed || session?.paymentStatus !== "pending";
 
   async function handleLocalPaymentConfirmation() {
-    if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local") {
+    const guard = paymentGuardRef.current;
+    if (!bookingCode || isPaying || isPaymentClosed || session?.sessionMode !== "local" || session.paymentStatus !== "pending" || guard.operation || guard.blocked) {
       return;
     }
 
+    const generation = ++guard.generation;
+    guard.operation = "payment";
     setIsPaying(true);
+    setIsLoadingVouchers(false);
     setErrorMessage(null);
 
     try {
@@ -336,6 +369,7 @@ export default function BookingCheckoutPage() {
         accessToken
       );
 
+      if (generation !== guard.generation) return;
       pushToast({
         message: "Thanh toán thành công.",
         title: "Đã xuất vé",
@@ -344,114 +378,138 @@ export default function BookingCheckoutPage() {
 
       router.replace(`/manage-booking?bookingCode=${encodeURIComponent(bookingCode)}`);
     } catch (error) {
-      setErrorMessage(resolveApiClientErrorMessage(error, "Không thể xác nhận thanh toán."));
+      if (generation === guard.generation) setErrorMessage(resolveApiClientErrorMessage(error, "Không thể xác nhận thanh toán."));
     } finally {
-      setIsPaying(false);
+      if (generation === guard.generation) { guard.operation = null; setIsPaying(false); }
+    }
+  }
+
+  function handleVoucherFailure(error: unknown, confirmed: boolean, generation: number) {
+    const guard = paymentGuardRef.current;
+    if (generation !== guard.generation) return;
+    guard.blocked = true;
+    setSession(null);
+    setPaymentNeedsVerification(true);
+    setVoucherListConfirmed(false);
+    const rejection = !confirmed && error instanceof ApiClientError && error.status === 400
+      ? resolveApiClientErrorMessage(error, "Yêu cầu thay đổi voucher bị từ chối.") + " "
+      : "";
+    setVoucherErrorMessage(confirmed
+      ? "Voucher đã được cập nhật, nhưng chưa xác minh được thông tin thanh toán mới. Thông tin thanh toán cũ đã được ẩn. Vui lòng kiểm tra đặt chỗ trước khi tiếp tục."
+      : rejection + "Chưa xác minh được kết quả thay đổi voucher. Thông tin thanh toán cũ đã được ẩn. Vui lòng kiểm tra đặt chỗ trước khi tiếp tục.");
+  }
+
+  async function refreshVoucherList(generation: number) {
+    if (generation !== paymentGuardRef.current.generation) return;
+    setIsLoadingVouchers(true);
+    setVoucherListErrorMessage(null);
+    try {
+      const vouchers = await fetchMyVouchers(accessToken!);
+      if (generation !== paymentGuardRef.current.generation) return;
+      setMemberVouchers(vouchers);
+      setVoucherListConfirmed(true);
+    } catch {
+      if (generation !== paymentGuardRef.current.generation) return;
+      setMemberVouchers([]);
+      setVoucherListConfirmed(false);
+      setVoucherListErrorMessage("Thông tin thanh toán đã cập nhật, nhưng chưa tải lại được danh sách voucher. Vui lòng kiểm tra đặt chỗ để xem trạng thái voucher.");
+    } finally {
+      if (generation === paymentGuardRef.current.generation) setIsLoadingVouchers(false);
     }
   }
 
   async function handleApplyVoucher(nextVoucherCode?: string) {
     const normalizedVoucherCode = (nextVoucherCode ?? voucherCode).trim().toUpperCase();
-
-    if (
-      !bookingCode ||
-      !accessToken ||
-      !isMemberSession ||
-      !normalizedVoucherCode ||
-      isApplyingVoucher ||
-      isPaymentClosed
-    ) {
-      return;
-    }
-
+    const guard = paymentGuardRef.current;
+    if (!bookingCode || !accessToken || !isMemberSession || !normalizedVoucherCode ||
+      !session || voucherActionsDisabled || guard.operation || guard.blocked) return;
+    const generation = ++guard.generation;
+    guard.operation = "voucher";
+    setSession(null);
+    setIsLoading(false);
+    setIsLoadingVouchers(false);
+    setErrorMessage(null);
     setIsApplyingVoucher(true);
     setVoucherErrorMessage(null);
     setVoucherNotice(null);
-
+    let confirmed = false;
+    let refreshListAfterSuccess = false;
+    setVoucherListErrorMessage(null);
     try {
-      await applyVoucherToBooking(
-        bookingCode,
-        {
-          voucherCode: normalizedVoucherCode
-        },
-        accessToken
-      );
-
-      const [nextSession, nextVouchers] = await Promise.all([
-        createPaymentSession(bookingCode, accessToken),
-        fetchMyVouchers(accessToken)
-      ]);
-
+      const overview = await applyVoucherToBooking(bookingCode, { voucherCode: normalizedVoucherCode }, accessToken);
+      if (generation !== guard.generation) return;
+      confirmed = true;
+      guard.blocked = true;
+      setPaymentNeedsVerification(true);
+      setVoucherCode(overview.priceSummary.appliedVoucherCode ?? "");
+      setMemberVouchers([]);
+      setVoucherListConfirmed(false);
+      const nextSession = await createPaymentSession(bookingCode, accessToken);
+      if (generation !== guard.generation) return;
       setSession(nextSession);
-      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
-        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
-        return;
+      guard.blocked = false;
+      setPaymentNeedsVerification(false);
+      if (isClosedPaymentStatus(nextSession.paymentStatus)) setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+      else {
+        setVoucherNotice("Đã áp voucher " + (nextSession.appliedVoucherCode ?? normalizedVoucherCode) + " cho booking này.");
+        pushToast({ message: "Ưu đãi hội viên đã được cập nhật vào tổng thanh toán.", title: "Đã áp voucher", tone: "success" });
       }
-      setMemberVouchers(nextVouchers);
-      setVoucherCode(nextSession.appliedVoucherCode ?? normalizedVoucherCode);
-      setVoucherNotice(
-        `Đã áp voucher ${nextSession.appliedVoucherCode ?? normalizedVoucherCode} cho booking này.`
-      );
-
-      pushToast({
-        message: "Ưu đãi hội viên đã được cập nhật vào tổng thanh toán.",
-        title: "Đã áp voucher",
-        tone: "success"
-      });
+      refreshListAfterSuccess = true;
     } catch (error) {
-      setVoucherErrorMessage(
-        resolveApiClientErrorMessage(error, "Không thể áp voucher cho booking này.")
-      );
+      handleVoucherFailure(error, confirmed, generation);
     } finally {
-      setIsApplyingVoucher(false);
+      if (generation === guard.generation) {
+        guard.operation = null;
+        setIsApplyingVoucher(false);
+        if (refreshListAfterSuccess) void refreshVoucherList(generation);
+      }
     }
   }
 
   async function handleRemoveVoucher() {
-    if (
-      !bookingCode ||
-      !accessToken ||
-      !isMemberSession ||
-      !session?.appliedVoucherCode ||
-      isApplyingVoucher ||
-      isRemovingVoucher ||
-      isPaymentClosed
-    ) {
-      return;
-    }
-
+    const guard = paymentGuardRef.current;
+    if (!bookingCode || !accessToken || !isMemberSession || !session?.appliedVoucherCode ||
+      voucherActionsDisabled || guard.operation || guard.blocked) return;
+    const previous = session, generation = ++guard.generation;
+    guard.operation = "voucher";
+    setSession(null);
+    setIsLoading(false);
+    setIsLoadingVouchers(false);
+    setErrorMessage(null);
     setIsRemovingVoucher(true);
     setVoucherErrorMessage(null);
     setVoucherNotice(null);
-
+    let confirmed = false;
+    let refreshListAfterSuccess = false;
+    setVoucherListErrorMessage(null);
     try {
-      const removedVoucherCode = session.appliedVoucherCode;
-      await removeVoucherFromBooking(bookingCode, accessToken);
-
-      const [nextSession, nextVouchers] = await Promise.all([
-        createPaymentSession(bookingCode, accessToken),
-        fetchMyVouchers(accessToken)
-      ]);
-
+      const overview = await removeVoucherFromBooking(bookingCode, accessToken);
+      if (generation !== guard.generation) return;
+      confirmed = true;
+      guard.blocked = true;
+      setPaymentNeedsVerification(true);
+      setVoucherCode(overview.priceSummary.appliedVoucherCode ?? "");
+      setMemberVouchers([]);
+      setVoucherListConfirmed(false);
+      const nextSession = await createPaymentSession(bookingCode, accessToken);
+      if (generation !== guard.generation) return;
       setSession(nextSession);
-      setMemberVouchers(nextVouchers);
-      setVoucherCode("");
-      setVoucherNotice(`Đã bỏ voucher ${removedVoucherCode} khỏi booking này.`);
-      if (isClosedPaymentStatus(nextSession.paymentStatus)) {
-        setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+      guard.blocked = false;
+      setPaymentNeedsVerification(false);
+      if (isClosedPaymentStatus(nextSession.paymentStatus)) setHoldExpiredMessage(HOLD_EXPIRED_NOTICE);
+      else {
+        setVoucherNotice("Đã bỏ voucher " + previous.appliedVoucherCode + " khỏi booking này.");
+        pushToast({ message: "Voucher đã được gỡ khỏi tổng thanh toán.", title: "Đã bỏ voucher", tone: "success" });
       }
-
-      pushToast({
-        message: "Voucher đã được gỡ khỏi tổng thanh toán.",
-        title: "Đã bỏ voucher",
-        tone: "success"
-      });
+      refreshListAfterSuccess = true;
     } catch (error) {
-      setVoucherErrorMessage(
-        resolveApiClientErrorMessage(error, "Không thể bỏ voucher khỏi booking này.")
-      );
+      handleVoucherFailure(error, confirmed, generation);
     } finally {
-      setIsRemovingVoucher(false);
+      if (generation === guard.generation) {
+        guard.operation = null;
+        setIsRemovingVoucher(false);
+        if (refreshListAfterSuccess) void refreshVoucherList(generation);
+      }
     }
   }
 
@@ -487,14 +545,14 @@ export default function BookingCheckoutPage() {
           </div>
           <div className="booking-summary-card">
             <span className="pill booking-reference-pill">Bước thanh toán</span>
-            <h3>{session?.paymentStatus === "paid" ? "Đã thanh toán" : "Chờ thanh toán"}</h3>
+            <h3>{isUpdatingPayment ? "Đang cập nhật thanh toán" : paymentNeedsVerification ? "Chưa xác minh thanh toán" : session?.paymentStatus === "paid" ? "Đã thanh toán" : "Chờ thanh toán"}</h3>
             <p>
               {session
                 ? `Hết hạn lúc ${formatDateTime(session.expiresAt)}`
-                : "Đang chuẩn bị mã thanh toán cho booking này."}
+                : paymentNeedsVerification ? "Vui lòng kiểm tra đặt chỗ trước khi tiếp tục." : "Đang chuẩn bị mã thanh toán cho booking này."}
             </p>
             <strong>
-              {session ? formatCurrency(session.amount) : "Đang chuẩn bị thông tin thanh toán"}
+              {session ? formatCurrency(session.amount) : paymentNeedsVerification ? "Chưa xác minh số tiền thanh toán" : "Đang chuẩn bị thông tin thanh toán"}
             </strong>
             {session?.discountAmount ? (
               <small>
@@ -514,7 +572,11 @@ export default function BookingCheckoutPage() {
               description="Dùng đúng mã thanh toán để SePay xác nhận giao dịch và phát hành vé cho từng hành khách trong mã đặt chỗ."
             />
             <article className="surface-card booking-payment-card">
-              {isLoading ? (
+              {isUpdatingPayment ? (
+                <><span className="section-eyebrow">Đang cập nhật</span><h3>Đang xác minh thông tin thanh toán mới...</h3><p>Thông tin thanh toán trước đó đã được tạm ẩn.</p></>
+              ) : paymentNeedsVerification ? (
+                <div role="alert"><h3>Chưa xác minh được thông tin thanh toán</h3><p>{voucherErrorMessage}</p><Link href={"/manage-booking?bookingCode=" + encodeURIComponent(bookingCode)} className="button button-secondary">Kiểm tra đặt chỗ</Link></div>
+              ) : isLoading ? (
                 <>
                   <span className="section-eyebrow">Đang tải</span>
                   <h3>Đang chuẩn bị thông tin thanh toán...</h3>
@@ -632,7 +694,7 @@ export default function BookingCheckoutPage() {
                           type="button"
                           className="button button-primary"
                           onClick={() => void handleLocalPaymentConfirmation()}
-                          disabled={isPaying || isPaymentClosed}
+                          disabled={isPaying || isUpdatingPayment || paymentNeedsVerification || isPaymentClosed}
                         >
                           {isPaying ? "Đang xác nhận..." : "Tôi đã hoàn tất thanh toán"}
                         </button>
@@ -668,12 +730,13 @@ export default function BookingCheckoutPage() {
                 <div className="auth-note-head">
                   <h3>Voucher hội viên</h3>
                   <span className="pill">
-                    {isLoadingVouchers ? "Đang tải" : `${availableVouchers.length} voucher khả dụng`}
+                    {isLoadingVouchers ? "Đang tải" : !voucherListConfirmed || paymentNeedsVerification ? "Chưa xác minh danh sách voucher" : `${availableVouchers.length} voucher có thể chọn`}
                   </span>
                 </div>
                 <p>
                   Áp voucher ngay ở bước thanh toán để cập nhật tổng tiền trước khi mở mã
-                  QR hoặc xác nhận chuyển khoản.
+                  QR hoặc xác nhận chuyển khoản. Voucher chưa sử dụng chưa chắc phù hợp với booking;
+                  hệ thống sẽ kiểm tra điều kiện khi bạn áp mã.
                 </p>
                 <label className="field">
                   <span>Mã voucher</span>
@@ -681,6 +744,7 @@ export default function BookingCheckoutPage() {
                     value={voucherCode}
                     onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
                     placeholder="VNA-MEMBER-01"
+                    disabled={voucherActionsDisabled}
                   />
                 </label>
                 <div className="auth-action-row">
@@ -689,11 +753,7 @@ export default function BookingCheckoutPage() {
                     className="button button-primary"
                     onClick={() => void handleApplyVoucher()}
                     disabled={
-                      !voucherCode.trim() ||
-                      isApplyingVoucher ||
-                      isRemovingVoucher ||
-                      isLoading ||
-                      isPaymentClosed
+                      !voucherCode.trim() || voucherActionsDisabled
                     }
                   >
                     {isApplyingVoucher ? "Đang áp dụng..." : "Áp voucher"}
@@ -703,22 +763,31 @@ export default function BookingCheckoutPage() {
                       type="button"
                       className="button button-secondary"
                       onClick={() => void handleRemoveVoucher()}
-                      disabled={isApplyingVoucher || isRemovingVoucher || isLoading || isPaymentClosed}
+                      disabled={voucherActionsDisabled}
                     >
                       {isRemovingVoucher ? "Đang bỏ..." : "Bỏ voucher"}
                     </button>
                   ) : null}
                 </div>
                 {voucherErrorMessage ? (
-                  <div className="auth-note-card">
+                  <div className="auth-note-card" role="alert">
                     <div className="auth-note-head">
-                      <h3>Không thể áp voucher</h3>
+                      <h3>Cần kiểm tra voucher</h3>
                       <span className="pill">Cần kiểm tra lại</span>
                     </div>
                     <p>{voucherErrorMessage}</p>
                   </div>
                 ) : null}
-                {voucherNotice ? (
+                {voucherListErrorMessage ? (
+                  <div className="auth-note-card" role="alert">
+                    <div className="auth-note-head">
+                      <h3>Chưa cập nhật danh sách voucher</h3>
+                      <span className="pill">Danh sách chưa xác minh</span>
+                    </div>
+                    <p>{voucherListErrorMessage}</p>
+                  </div>
+                ) : null}
+                {voucherNotice && !paymentNeedsVerification && !isUpdatingPayment ? (
                   <div className="auth-note-card">
                     <div className="auth-note-head">
                       <h3>Đã cập nhật ưu đãi</h3>
@@ -733,8 +802,9 @@ export default function BookingCheckoutPage() {
                       <div key={voucher.voucherCode} className="support-compact-item">
                         <strong>{voucher.title}</strong>
                         <p>{voucher.description}</p>
+                        <VoucherConditionSummary voucher={voucher} />
                         <small>
-                          {formatCurrency(voucher.discountAmount)} •{" "}
+                          {new Intl.NumberFormat("vi-VN").format(voucher.discountAmount)} {voucher.currency} •{" "}
                           {formatVoucherStatus(voucher.status)} • Hết hạn{" "}
                           {formatDateTime(voucher.expiresAt)}
                         </small>
@@ -743,7 +813,7 @@ export default function BookingCheckoutPage() {
                             type="button"
                             className="button button-secondary"
                             onClick={() => void handleApplyVoucher(voucher.voucherCode)}
-                            disabled={isApplyingVoucher || isRemovingVoucher || isLoading || isPaymentClosed}
+                            disabled={voucher.conditionsValid !== true || voucherActionsDisabled || !voucherListConfirmed}
                           >
                             Dùng {voucher.voucherCode}
                           </button>
@@ -752,7 +822,7 @@ export default function BookingCheckoutPage() {
                     ))
                   ) : (
                     <div className="support-compact-item">
-                      <strong>Chưa có voucher khả dụng</strong>
+                      <strong>{isLoadingVouchers || isUpdatingPayment ? "Đang tải voucher..." : !voucherListConfirmed || paymentNeedsVerification ? "Chưa xác minh danh sách voucher" : "Chưa có voucher có thể chọn"}</strong>
                       <p>
                         Khi tài khoản hội viên có ưu đãi mới hoặc voucher đang được giữ cho
                         booking này, danh sách sẽ hiển thị tại đây.
