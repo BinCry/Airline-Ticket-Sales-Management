@@ -27,7 +27,8 @@ public record BackofficeVoucherResponse(
       VoucherConditions conditions,
       String conditionSummary,
       boolean conditionsValid,
-      String source
+      String source,
+      String effectiveStatus
   ) {
   }
 }

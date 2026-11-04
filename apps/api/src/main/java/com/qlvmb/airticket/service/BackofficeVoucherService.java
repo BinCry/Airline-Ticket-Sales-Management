@@ -17,14 +17,12 @@ import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import com.qlvmb.airticket.security.RoleCode;
 import java.time.OffsetDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,14 +64,14 @@ public class BackofficeVoucherService {
     String normalizedCode = normalizeOptional(code);
     String normalizedStatus = normalizeStatusFilter(status);
 
-    List<MemberVoucherEntity> vouchers = loadVoucherCandidates(normalizedEmail).stream()
-        .filter(voucher -> normalizedCode == null
-            || voucher.getVoucherCode().toLowerCase(Locale.ROOT).contains(normalizedCode.toLowerCase(Locale.ROOT)))
-        .filter(voucher -> normalizedStatus == null || voucher.getStatus().equals(normalizedStatus))
-        .sorted(Comparator
-            .comparing(MemberVoucherEntity::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
-            .thenComparing(MemberVoucherEntity::getExpiresAt, Comparator.nullsLast(Comparator.naturalOrder())))
-        .toList();
+    Long userId = normalizedEmail == null ? null : userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
+        .map(UserAccountEntity::getId).orElse(null);
+    if (normalizedEmail != null && userId == null) {
+      return new BackofficeVoucherResponse(normalizedEmail, normalizedCode, normalizedStatus, List.of());
+    }
+    OffsetDateTime asOf = OffsetDateTime.now();
+    List<MemberVoucherEntity> vouchers = memberVoucherRepository.findOperationsVouchers(
+        userId, normalizedCode, normalizedStatus, asOf);
 
     Map<Long, UserAccountEntity> userAccounts = userAccountRepository.findAllById(
             vouchers.stream().map(MemberVoucherEntity::getUserId).distinct().toList()
@@ -85,7 +83,7 @@ public class BackofficeVoucherService {
         normalizedEmail,
         normalizedCode,
         normalizedStatus,
-        vouchers.stream().map(voucher -> mapVoucher(voucher, userAccounts.get(voucher.getUserId()))).toList()
+        vouchers.stream().map(voucher -> mapVoucher(voucher, userAccounts.get(voucher.getUserId()), asOf)).toList()
     );
   }
 
@@ -253,22 +251,6 @@ public class BackofficeVoucherService {
     ));
   }
 
-  private List<MemberVoucherEntity> loadVoucherCandidates(String normalizedEmail) {
-    if (normalizedEmail == null) {
-      return memberVoucherRepository.findAll(Sort.by(Sort.Direction.DESC, "updatedAt")).stream()
-          .filter(voucher -> !voucher.isHiddenForOperations())
-          .toList();
-    }
-
-    return userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
-        .map(UserAccountEntity::getId)
-        .map(memberVoucherRepository::findByUserIdOrderByExpiresAtAscCreatedAtDesc)
-        .map(vouchers -> vouchers.stream()
-            .filter(voucher -> !voucher.isHiddenForOperations())
-            .toList())
-        .orElse(List.of());
-  }
-
   private UserAccountEntity loadActorAccount(AuthenticatedUser actor) {
     return userAccountRepository.findOneWithRolesById(actor.userId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy tài khoản nội bộ đang thao tác."));
@@ -298,6 +280,11 @@ public class BackofficeVoucherService {
   }
 
   private BackofficeVoucherResponse.VoucherItem mapVoucher(MemberVoucherEntity voucher, UserAccountEntity userAccount) {
+    return mapVoucher(voucher, userAccount, OffsetDateTime.now());
+  }
+
+  private BackofficeVoucherResponse.VoucherItem mapVoucher(
+      MemberVoucherEntity voucher, UserAccountEntity userAccount, OffsetDateTime asOf) {
     VoucherConditionService.Presentation presentation = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
     return new BackofficeVoucherResponse.VoucherItem(
         voucher.getId(),
@@ -316,7 +303,8 @@ public class BackofficeVoucherService {
         presentation.conditions(),
         presentation.conditionSummary(),
         presentation.conditionsValid(),
-        voucher.getSource()
+        voucher.getSource(),
+        VoucherStatusSupport.effectiveStatus(voucher.getStatus(), voucher.getExpiresAt(), asOf)
     );
   }
 
