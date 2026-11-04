@@ -53,8 +53,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(60)
 class VoucherConditionsPostgresIntegrationTest {
-  private static final String SCHEMA = "voucher_it_20261029_6b01";
-  private static final String URL = "jdbc:postgresql://127.0.0.1:55432/airline_audit_test";
+  private static final String SCHEMA = "voucher_it_20261103_6b03d";
+  private static final String URL = "jdbc:postgresql://127.0.0.1:55432/airline_birthday_foundation_test";
   private static final String RUNNER = "airline_audit_runner";
   private static final Path PASSWORD = Path.of(
       "C:\\Users\\WIN10PRO\\AppData\\Local\\CodexTools\\AirlineAuditPostgres15\\airline-audit-runner-password.txt");
@@ -96,7 +96,7 @@ class VoucherConditionsPostgresIntegrationTest {
                   + "(select rolsuper from pg_roles where rolname=current_user), "
                   + "(select pg_get_userbyid(nspowner) from pg_namespace where nspname=current_schema())")) {
         assertThat(rows.next()).isTrue();
-        assertThat(rows.getString(1)).isEqualTo("airline_audit_test");
+        assertThat(rows.getString(1)).isEqualTo("airline_birthday_foundation_test");
         assertThat(rows.getString(2)).isEqualTo(SCHEMA);
         assertThat(rows.getString(3)).isEqualTo(RUNNER);
         assertThat(rows.getBoolean(4)).isFalse();
@@ -105,7 +105,7 @@ class VoucherConditionsPostgresIntegrationTest {
     }
     assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_schema=?",
         Long.class, SCHEMA)).isZero();
-    Path migrations = Path.of("target/voucher-pg-migrations").toAbsolutePath().normalize();
+    Path migrations = Path.of("target/birthday-pg-migrations-6b03d").toAbsolutePath().normalize();
     assertThat(Files.isRegularFile(migrations.resolve("V36__add_audit_log_filter_indexes.sql"))).isTrue();
     assertThat(Files.isRegularFile(migrations.resolve("V37__add_voucher_conditions.sql"))).isTrue();
     Flyway.configure().dataSource(dataSource).schemas(SCHEMA).defaultSchema(SCHEMA).createSchemas(false)
@@ -118,6 +118,10 @@ class VoucherConditionsPostgresIntegrationTest {
     legacyBefore = jdbc.queryForMap("select * from member_voucher where voucher_code='V6LEGACY'");
     Flyway.configure().dataSource(dataSource).schemas(SCHEMA).defaultSchema(SCHEMA).createSchemas(false)
         .cleanDisabled(true).locations("filesystem:" + migrations).target("37").load().migrate();
+    verifyLegacyDataAndHistoryV1ThroughV37();
+    assertThat(Files.isRegularFile(migrations.resolve("V38__add_member_voucher_source.sql"))).isTrue();
+    Flyway.configure().dataSource(dataSource).schemas(SCHEMA).defaultSchema(SCHEMA).createSchemas(false)
+        .cleanDisabled(true).locations("filesystem:" + migrations).target("38").load().migrate();
     context = new AnnotationConfigApplicationContext(Config.class);
     em = context.getBean(EntityManager.class);
     transaction = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
@@ -134,8 +138,7 @@ class VoucherConditionsPostgresIntegrationTest {
     // Giữ schema fixture mới để đối chiếu; không clean/drop hoặc sửa schema Audit.
   }
 
-  @Test
-  void upgradePreservesLegacyDataAndHistoryV1ThroughV37() {
+  private void verifyLegacyDataAndHistoryV1ThroughV37() {
     Map<String, Object> after = jdbc.queryForMap("select * from member_voucher where voucher_code='V6LEGACY'");
     for (var entry : legacyBefore.entrySet()) {
       assertThat(after.get(entry.getKey())).isEqualTo(entry.getValue());
@@ -147,6 +150,38 @@ class VoucherConditionsPostgresIntegrationTest {
         + "order by installed_rank desc limit 1", String.class)).isEqualTo("37");
     assertThat(jdbc.queryForObject("select count(*) from pg_indexes where schemaname=? and tablename='audit_log' "
         + "and indexname in ('idx_audit_log_action','idx_audit_log_target')", Long.class, SCHEMA)).isEqualTo(2);
+  }
+
+  @Test
+  void upgradeToV38PreservesLegacyAndDefaultsSource() {
+    var after = jdbc.queryForMap("select * from member_voucher where voucher_code='V6LEGACY'");
+    legacyBefore.forEach((key, value) -> assertThat(after.get(key)).isEqualTo(value));
+    assertThat(after.get("condition_json")).isNull();
+    assertThat(after.get("source")).isEqualTo("MANUAL");
+    assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history "
+        + "where success and version is not null", Long.class)).isEqualTo(38);
+    transaction.executeWithoutResult(status -> {
+      em.clear();
+      var voucher = em.createQuery("select v from MemberVoucherEntity v where v.voucherCode = :code",
+          MemberVoucherEntity.class).setParameter("code", "V6LEGACY").getSingleResult();
+      assertThat(voucher.getSource()).isEqualTo("MANUAL");
+    });
+  }
+
+  @Test
+  void sourceConstraintAndBirthdayMappingAreReal() {
+    Long id = jdbc.queryForObject("insert into member_voucher(user_id,voucher_code,title,description,"
+        + "discount_amount,currency,status,expires_at,source,condition_json) values "
+        + "(?,'V6SOURCE','Quà sinh nhật','Kiểm thử nguồn',100000,'VND','AVAILABLE',?,'BIRTHDAY',"
+        + "'{\"minAmount\":200000}'::jsonb) returning id", Long.class, memberId, now.plusDays(30));
+    assertThatThrownBy(() -> jdbc.update("update member_voucher set source='OTHER' where id=?", id))
+        .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    assertThatThrownBy(() -> jdbc.update("update member_voucher set source=null where id=?", id))
+        .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    transaction.executeWithoutResult(status -> {
+      em.clear();
+      assertThat(em.find(MemberVoucherEntity.class, id).isBirthday()).isTrue();
+    });
   }
 
   @Test

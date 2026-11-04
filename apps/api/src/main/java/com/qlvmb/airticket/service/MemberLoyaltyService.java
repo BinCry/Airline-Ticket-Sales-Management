@@ -187,7 +187,8 @@ public class MemberLoyaltyService {
         voucher.getBookingCode(),
         presentation.conditions(),
         presentation.conditionSummary(),
-        presentation.conditionsValid()
+        presentation.conditionsValid(),
+        voucher.getSource()
     );
   }
 

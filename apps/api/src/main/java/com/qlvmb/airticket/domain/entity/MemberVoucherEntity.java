@@ -14,6 +14,20 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "member_voucher")
 public class MemberVoucherEntity {
 
+  public static final String SOURCE_MANUAL = "MANUAL";
+  public static final String SOURCE_BIRTHDAY = "BIRTHDAY";
+
+  @Column(nullable = false, length = 16, updatable = false)
+  private String source = SOURCE_MANUAL;
+
+  public String getSource() {
+    return source;
+  }
+
+  public boolean isBirthday() {
+    return SOURCE_BIRTHDAY.equals(source);
+  }
+
   public static final String STATUS_AVAILABLE = "AVAILABLE";
   public static final String STATUS_RESERVED = "RESERVED";
   public static final String STATUS_USED = "USED";

@@ -14,6 +14,7 @@ public record MyVoucherResponse(
     String bookingCode,
     VoucherConditions conditions,
     String conditionSummary,
-    boolean conditionsValid
+    boolean conditionsValid,
+    String source
 ) {
 }

@@ -151,6 +151,7 @@ public class BackofficeVoucherService {
 
     String nextConditions = request.conditions() == null ? voucher.getConditionJson()
         : conditions.validateAndEncode(request.conditions());
+    requireBirthdayPolicyUnchanged(voucher, request, nextConditions);
     String nextStatus = normalizeBackofficeStatus(request.status());
     OffsetDateTime currentTime = OffsetDateTime.now();
     String oldStatus = voucher.getStatus();
@@ -166,7 +167,9 @@ public class BackofficeVoucherService {
         request.expiresAt(),
         currentTime
     );
-    voucher.updateConditions(nextConditions);
+    if (!voucher.isBirthday()) {
+      voucher.updateConditions(nextConditions);
+    }
     voucher.applyBackofficeStatus(nextStatus, currentTime);
 
     auditLogRepository.save(AuditLogEntity.create(
@@ -312,8 +315,29 @@ public class BackofficeVoucherService {
         voucher.getBookingCode(),
         presentation.conditions(),
         presentation.conditionSummary(),
-        presentation.conditionsValid()
+        presentation.conditionsValid(),
+        voucher.getSource()
     );
+  }
+
+  private void requireBirthdayPolicyUnchanged(
+      MemberVoucherEntity voucher,
+      BackofficeVoucherUpdateRequest request,
+      String nextConditions
+  ) {
+    if (!voucher.isBirthday()) {
+      return;
+    }
+    var before = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
+    var after = conditions.present(nextConditions, voucher.getCurrency());
+    if (voucher.getDiscountAmount() != request.discountAmount()
+        || !voucher.getCurrency().equals(normalizeCurrency(request.currency()))
+        || request.expiresAt() == null || !voucher.getExpiresAt().isEqual(request.expiresAt())
+        || !before.conditionsValid() || !after.conditionsValid()
+        || !java.util.Objects.equals(before.conditions(), after.conditions())) {
+      throw new BadRequestException(
+          "Không thể sửa mức giảm, tiền tệ, điều kiện hoặc hạn dùng của quà sinh nhật đã cấp.");
+    }
   }
 
   private String normalizeVoucherCode(String voucherCode) {
