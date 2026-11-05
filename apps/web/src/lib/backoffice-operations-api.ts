@@ -103,6 +103,7 @@ export interface BackofficeVoucherItem extends VoucherConditionInfo {
   discountAmount: number;
   currency: string;
   status: string;
+  effectiveStatus?: string | null;
   expiresAt: string;
   usedAt: string | null;
   bookingCode: string | null;
@@ -195,6 +196,7 @@ function laVoucherItem(value: unknown): value is BackofficeVoucherItem {
     laSo(value.discountAmount) &&
     laChuoi(value.currency) &&
     laChuoi(value.status) &&
+    (value.effectiveStatus === undefined || value.effectiveStatus === null || laChuoi(value.effectiveStatus)) &&
     laChuoi(value.expiresAt) &&
     (value.usedAt === null || laChuoi(value.usedAt)) &&
     (value.bookingCode === null || laChuoi(value.bookingCode))

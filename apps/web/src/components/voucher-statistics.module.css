@@ -1,0 +1,39 @@
+.panel { min-width: 0; overflow-wrap: anywhere; margin-bottom: 1.5rem; }
+.filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1rem; }
+.filters > *, .metrics > *, .source { min-width: 0; }
+.actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .75rem; }
+.content { display: grid; gap: 1.25rem; }
+.note { color: var(--text-muted); font-size: .9rem; line-height: 1.65; }
+.note p { margin-block: .4rem; }
+.metrics, .statuses { display: grid; gap: 1rem; margin: 0; }
+.metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.statuses { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.metrics > div, .statuses > div, .source { padding: 1rem; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; }
+.metrics dt, .statuses dt { color: var(--text-muted); }
+.metrics dd, .statuses dd { margin: .5rem 0; font-size: 1.25rem; font-weight: 700; }
+.metrics small { line-height: 1.5; }
+.money { display: flex; flex-direction: column; gap: .5rem; }
+.money p { margin: 0; }
+.warning { color: #97331d; background: #fff2e8; padding: .75rem; border-radius: 8px; line-height: 1.6; }
+.sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.chart { max-height: 24rem; overflow: auto; padding: .25rem; }
+.chart:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 3px; }
+.chart ul { display: grid; gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.chart li { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) minmax(0, 12rem); gap: .75rem; align-items: center; font-size: .9rem; }
+.track { display: block; height: .75rem; border-radius: 6px; background: var(--brand-primary-soft); }
+.track > span { display: block; height: 100%; border-radius: inherit; background: var(--brand-primary); }
+@media (max-width: 640px) {
+  .filters, .metrics, .sources { grid-template-columns: minmax(0, 1fr); }
+  .filters input { min-width: 0; max-width: 100%; }
+  .actions :global(.button) { max-width: 100%; white-space: normal; }
+  .chart li { grid-template-columns: minmax(0, 1fr); gap: .35rem; }
+}
+@media (max-width: 480px) {
+  /* Bù menu bốn hàng khi cuộn tới bảng thống kê. */
+  .panel:global(.backoffice-operations-anchor) {
+    scroll-margin-top: calc(
+      var(--header-height, 64px) +
+      var(--backoffice-module-nav-offset, 62px) + 222px
+    );
+  }
+}

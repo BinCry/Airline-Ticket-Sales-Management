@@ -6,6 +6,8 @@ import type { AirportOption } from "@qlvmb/shared-types";
 
 import { VoucherConditionEditor } from "@/components/voucher-condition-editor";
 import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
+import { VoucherStatisticsPanel } from "@/components/voucher-statistics-panel";
+import { getVoucherDisplayStatus } from "@/lib/voucher-stats";
 import { buildVoucherConditions, createVoucherConditionDraft, type VoucherConditionDraft } from "@/lib/voucher-conditions";
 import { DateField } from "@/components/date-field";
 import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
@@ -48,7 +50,8 @@ const OPERATIONS_NAV_ITEMS = [
   { id: "operations-aircraft", label: "Tàu bay và sơ đồ ghế" },
   { id: "operations-baggage", label: "Hành lý ký gửi" },
   { id: "operations-create-voucher", label: "Tạo voucher mới" },
-  { id: "operations-voucher-lookup", label: "Tra cứu voucher" }
+  { id: "operations-voucher-lookup", label: "Tra cứu voucher" },
+  { id: "operations-voucher-statistics", label: "Thống kê voucher" }
 ] as const;
 
 type OperationsNavId = (typeof OPERATIONS_NAV_ITEMS)[number]["id"];
@@ -240,7 +243,7 @@ function capNhatSoTienHopLe(value: string, giaMacDinh: number): number {
   return Math.round(giaDaNhap);
 }
 
-function buildVoucherDraft(voucher: BackofficeVoucherItem): BackofficeVoucherUpdateInput {
+export function buildVoucherDraft(voucher: BackofficeVoucherItem): BackofficeVoucherUpdateInput {
   return {
     title: voucher.title,
     description: voucher.description,
@@ -1276,6 +1279,8 @@ export function BackofficeOperationsPageClient() {
           description="Voucher đã dùng chỉ ẩn khỏi màn operations khi bạn dọn lịch sử, còn hội viên tự quyết định xóa lịch sử bên phía tài khoản của họ."
         />
 
+        <VoucherStatisticsPanel accessToken={accessToken} />
+
         {voucherErrorMessage ? (
           <article className="booking-inline-error" role="alert">
             <strong>Không thể xử lý voucher</strong>
@@ -1446,6 +1451,7 @@ export function BackofficeOperationsPageClient() {
           {vouchers.length > 0 ? (
             vouchers.map((voucher) => {
               const draft = voucherDrafts[voucher.voucherId];
+              const displayStatus = getVoucherDisplayStatus(voucher);
               const isWorking = pendingVoucherAction?.endsWith(`-${voucher.voucherId}`) ?? false;
               const isUsedVoucher = voucher.status === "USED";
               const isReservedVoucher = voucher.status === "RESERVED";
@@ -1463,7 +1469,7 @@ export function BackofficeOperationsPageClient() {
                         {voucher.memberDisplayName} · {voucher.memberEmail}
                       </p>
                     </div>
-                    <StatusChip tone={resolveVoucherTone(voucher.status)} label={formatVoucherStatus(voucher.status)} />
+                    <StatusChip tone={resolveVoucherTone(displayStatus)} label={formatVoucherStatus(displayStatus)} />
                   </div>
 
                   <div className="result-grid result-grid-rich">
@@ -1581,7 +1587,7 @@ export function BackofficeOperationsPageClient() {
                           ))}
                         </select>
                       ) : (
-                        <input value={formatVoucherStatus(voucher.status)} disabled />
+                        <input value={formatVoucherStatus(displayStatus)} disabled />
                       )}
                     </label>
                     <label className="field">
@@ -1605,8 +1611,8 @@ export function BackofficeOperationsPageClient() {
                   <div className="booking-action-list">
                     <div className="result-grid result-grid-rich">
                       <div>
-                        <span>Trạng thái hiện tại</span>
-                        <strong>{formatVoucherStatus(voucher.status)}</strong>
+                        <span>Trạng thái hiệu lực</span>
+                        <strong>{formatVoucherStatus(displayStatus)}</strong>
                       </div>
                       <div>
                         <span>Đã dùng lúc</span>
