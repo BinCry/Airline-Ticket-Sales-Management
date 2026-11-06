@@ -86,6 +86,4 @@ export function voucherStatusLabel(status: string): string {
   return ({ AVAILABLE: "Khả dụng", RESERVED: "Đang giữ chỗ", USED: "Đã sử dụng",
     EXPIRED: "Hết hạn", REVOKED: "Đã thu hồi" } as Record<string, string>)[status] ?? status;
 }
-export function getVoucherDisplayStatus(voucher: { status: string; effectiveStatus?: string | null }): string {
-  return voucher.effectiveStatus ?? voucher.status;
-}
+export { getVoucherDisplayStatus } from "@/lib/voucher-presentation";

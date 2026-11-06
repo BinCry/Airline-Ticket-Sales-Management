@@ -7,7 +7,8 @@ import type { AirportOption } from "@qlvmb/shared-types";
 import { VoucherConditionEditor } from "@/components/voucher-condition-editor";
 import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
 import { VoucherStatisticsPanel } from "@/components/voucher-statistics-panel";
-import { getVoucherDisplayStatus } from "@/lib/voucher-stats";
+import { VoucherOriginSummary, useVoucherPresentationTime } from "@/components/voucher-origin-summary";
+import { canEditVoucherMetadata, canEditVoucherPolicy, getEffectiveVoucherStatus, getVoucherSource, voucherExpiryMillis } from "@/lib/voucher-presentation";
 import { buildVoucherConditions, createVoucherConditionDraft, type VoucherConditionDraft } from "@/lib/voucher-conditions";
 import { DateField } from "@/components/date-field";
 import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
@@ -19,6 +20,7 @@ import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { fetchAirportOptions } from "@/lib/airport-api";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
+  buildBackofficeVoucherUpdatePayload,
   cancelBackofficeOperationsFlight,
   createBackofficeOperationsFlight,
   createBackofficeOperationsVoucher,
@@ -113,6 +115,8 @@ function formatCurrency(value: number, currency = "VND") {
 
 function formatVoucherStatus(status: string) {
   switch (status) {
+    case "UNVERIFIED":
+      return "Chưa xác minh hạn dùng";
     case "AVAILABLE":
       return "Khả dụng";
     case "RESERVED":
@@ -280,6 +284,7 @@ export function BackofficeOperationsPageClient() {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState("ALL");
   const [vouchers, setVouchers] = useState<BackofficeVoucherItem[]>([]);
+  const voucherPresentationTime = useVoucherPresentationTime(vouchers);
   const [conditionForm, setConditionForm] = useState(createVoucherConditionDraft);
   const [conditionDrafts, setConditionDrafts] = useState<Record<number, { value: VoucherConditionDraft; changed: boolean }>>({});
   const [voucherForm, setVoucherForm] = useState<BackofficeVoucherCreateInput>(createEmptyVoucherForm);
@@ -665,7 +670,8 @@ export function BackofficeOperationsPageClient() {
       return;
     }
     const draft = voucherDrafts[voucherId];
-    if (!draft) {
+    const voucher = vouchers.find(item => item.voucherId === voucherId);
+    if (!draft || !voucher) {
       return;
     }
 
@@ -674,14 +680,17 @@ export function BackofficeOperationsPageClient() {
     try {
       await updateBackofficeOperationsVoucher(
         voucherId,
-        {
-          ...draft,
-          ...(conditionDrafts[voucherId]?.changed ? { conditions: buildVoucherConditions(conditionDrafts[voucherId].value) } : {}),
-          title: draft.title.trim(),
-          description: draft.description.trim(),
-          currency: draft.currency.trim().toUpperCase(),
-          expiresAt: toApiDateTimeValue(draft.expiresAt)
-        },
+        buildBackofficeVoucherUpdatePayload(voucher, {
+          title: draft.title,
+          description: draft.description,
+          discountAmount: draft.discountAmount,
+          currency: draft.currency,
+          status: draft.status,
+          expiresAt: getVoucherSource(voucher.source) === "BIRTHDAY" ? voucher.expiresAt : toApiDateTimeValue(draft.expiresAt),
+          ...(getVoucherSource(voucher.source) === "BIRTHDAY" ? {}
+            : conditionDrafts[voucherId]?.changed ? { conditions: buildVoucherConditions(conditionDrafts[voucherId].value) }
+            : draft.conditions === undefined ? {} : { conditions: draft.conditions })
+        }),
         accessToken
       );
       await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
@@ -1451,13 +1460,15 @@ export function BackofficeOperationsPageClient() {
           {vouchers.length > 0 ? (
             vouchers.map((voucher) => {
               const draft = voucherDrafts[voucher.voucherId];
-              const displayStatus = getVoucherDisplayStatus(voucher);
+              const displayStatus = getEffectiveVoucherStatus(voucher, voucherPresentationTime);
               const isWorking = pendingVoucherAction?.endsWith(`-${voucher.voucherId}`) ?? false;
               const isUsedVoucher = voucher.status === "USED";
               const isReservedVoucher = voucher.status === "RESERVED";
               const isRevokedVoucher = voucher.status === "REVOKED";
               const canHideVoucher = isUsedVoucher || isRevokedVoucher;
-              const isEditableVoucher = !isUsedVoucher && !isReservedVoucher;
+              const isBirthdayVoucher = getVoucherSource(voucher.source) === "BIRTHDAY";
+              const isEditableVoucher = canEditVoucherMetadata(voucher);
+              const isPolicyEditableVoucher = canEditVoucherPolicy(voucher);
 
               return (
                 <article key={voucher.voucherId} className="surface-card result-card">
@@ -1479,7 +1490,7 @@ export function BackofficeOperationsPageClient() {
                     </div>
                     <div>
                       <span>Hết hạn</span>
-                      <strong>{formatDateTime(voucher.expiresAt)}</strong>
+                      <strong>{isBirthdayVoucher && voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
                     </div>
                     <div>
                       <span>Booking liên kết</span>
@@ -1487,10 +1498,18 @@ export function BackofficeOperationsPageClient() {
                     </div>
                   </div>
 
+                  <VoucherOriginSummary voucher={voucher} showDescription={false} />
+                  {isBirthdayVoucher && !isEditableVoucher && !isUsedVoucher && !isReservedVoucher ? <p role="status">
+                    Chưa xác minh được chính sách quà sinh nhật để lưu chỉnh sửa. Vui lòng kiểm tra cấu hình voucher.
+                  </p> : null}
                   <VoucherConditionSummary voucher={voucher} />
-                  <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
-                    onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
-                    disabled={pendingVoucherAction !== null} readOnly={!isEditableVoucher} currency={draft?.currency ?? voucher.currency} />
+                  {isBirthdayVoucher ? (
+                    <p>Chính sách quà sinh nhật do hệ thống quản lý; không thể chỉnh sửa thủ công mức giảm, tiền tệ, điều kiện và hạn sử dụng.</p>
+                  ) : (
+                    <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
+                      onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
+                      disabled={pendingVoucherAction !== null} readOnly={!isPolicyEditableVoucher} currency={draft?.currency ?? voucher.currency} />
+                  )}
                   <div className="field-grid compact-grid">
                     <label className="field result-grid-span-full">
                       <span>Tiêu đề</span>
@@ -1532,7 +1551,7 @@ export function BackofficeOperationsPageClient() {
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={draft?.discountAmount ?? voucher.discountAmount}
+                        value={isBirthdayVoucher ? voucher.discountAmount : draft?.discountAmount ?? voucher.discountAmount}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({
                             ...current,
@@ -1545,13 +1564,13 @@ export function BackofficeOperationsPageClient() {
                             }
                           }))
                         }
-                        disabled={isWorking || !isEditableVoucher}
+                        disabled={isWorking || !isPolicyEditableVoucher}
                       />
                     </label>
                     <label className="field">
                       <span>Tiền tệ</span>
                       <input
-                        value={draft?.currency ?? voucher.currency}
+                        value={isBirthdayVoucher ? voucher.currency : draft?.currency ?? voucher.currency}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({
                             ...current,
@@ -1561,7 +1580,7 @@ export function BackofficeOperationsPageClient() {
                             }
                           }))
                         }
-                        disabled={isWorking || !isEditableVoucher}
+                        disabled={isWorking || !isPolicyEditableVoucher}
                       />
                     </label>
                     <label className="field">
@@ -1590,22 +1609,29 @@ export function BackofficeOperationsPageClient() {
                         <input value={formatVoucherStatus(displayStatus)} disabled />
                       )}
                     </label>
-                    <label className="field">
-                      <span>Hết hạn lúc</span>
-                      <DateTimeField
-                        value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
-                        onChange={(nextValue) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              expiresAt: nextValue
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isEditableVoucher}
-                      />
-                    </label>
+                    {isBirthdayVoucher ? (
+                      <div className="field">
+                        <span>Hết hạn lúc (giờ Việt Nam)</span>
+                        <strong>{voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
+                      </div>
+                    ) : (
+                      <label className="field">
+                        <span>Hết hạn lúc</span>
+                        <DateTimeField
+                          value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
+                          onChange={(nextValue) =>
+                            setVoucherDrafts((current) => ({
+                              ...current,
+                              [voucher.voucherId]: {
+                                ...(draft ?? buildVoucherDraft(voucher)),
+                                expiresAt: nextValue
+                              }
+                            }))
+                          }
+                          disabled={isWorking || !isPolicyEditableVoucher}
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <div className="booking-action-list">

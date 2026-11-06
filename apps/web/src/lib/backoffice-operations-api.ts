@@ -1,4 +1,5 @@
 import { ApiClientError, requestApi } from "@/lib/api-client";
+import { canEditVoucherMetadata, getVoucherSource } from "@/lib/voucher-presentation";
 import { normalizeVoucherConditionInfo, type VoucherConditionInfo, type VoucherConditions } from "@/lib/voucher-conditions";
 import { presentUserDisplayName } from "@/lib/present-user-label";
 
@@ -93,6 +94,7 @@ export interface BackofficeVoucherUpdateInput {
 }
 
 export interface BackofficeVoucherItem extends VoucherConditionInfo {
+  source?: string | null;
   voucherId: number;
   userId: number;
   memberEmail: string;
@@ -107,6 +109,23 @@ export interface BackofficeVoucherItem extends VoucherConditionInfo {
   expiresAt: string;
   usedAt: string | null;
   bookingCode: string | null;
+}
+
+export function buildBackofficeVoucherUpdatePayload(
+  voucher: BackofficeVoucherItem, input: BackofficeVoucherUpdateInput
+): BackofficeVoucherUpdateInput {
+  const metadata = { title: input.title.trim(), description: input.description.trim(), status: input.status };
+  if (getVoucherSource(voucher.source) === "BIRTHDAY") {
+    if (!canEditVoucherMetadata(voucher)) {
+      throw new ApiClientError("Chưa xác minh được chính sách quà sinh nhật để lưu chỉnh sửa.", 400);
+    }
+    // Thay policy từ draft bằng snapshot Backend; không gửi conditions: null.
+    return { ...metadata, discountAmount: voucher.discountAmount,
+      currency: voucher.currency, expiresAt: voucher.expiresAt };
+  }
+  return { ...metadata, discountAmount: input.discountAmount,
+    currency: input.currency.trim().toUpperCase(), expiresAt: input.expiresAt,
+    ...(input.conditions === undefined ? {} : { conditions: input.conditions }) };
 }
 
 export interface BackofficeVoucherResponse {
@@ -196,6 +215,7 @@ function laVoucherItem(value: unknown): value is BackofficeVoucherItem {
     laSo(value.discountAmount) &&
     laChuoi(value.currency) &&
     laChuoi(value.status) &&
+    (value.source === undefined || value.source === null || laChuoi(value.source)) &&
     (value.effectiveStatus === undefined || value.effectiveStatus === null || laChuoi(value.effectiveStatus)) &&
     laChuoi(value.expiresAt) &&
     (value.usedAt === null || laChuoi(value.usedAt)) &&

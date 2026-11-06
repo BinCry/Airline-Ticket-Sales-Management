@@ -59,6 +59,7 @@ export interface MyLoyalty {
 }
 
 export interface MyVoucher extends VoucherConditionInfo {
+  source?: string | null;
   voucherCode: string;
   title: string;
   description: string;
@@ -225,6 +226,7 @@ function isMyVoucher(value: unknown): value is MyVoucher {
     typeof voucher.discountAmount === "number" &&
     typeof voucher.currency === "string" &&
     typeof voucher.status === "string" &&
+    (voucher.source === undefined || voucher.source === null || typeof voucher.source === "string") &&
     typeof voucher.expiresAt === "string" &&
     (voucher.usedAt === null || typeof voucher.usedAt === "string" || typeof voucher.usedAt === "undefined") &&
     (voucher.bookingCode === null ||

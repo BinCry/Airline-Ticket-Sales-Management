@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ApiPaymentSessionResponse } from "@qlvmb/shared-types";
 
 import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
+import { VoucherOriginSummary, useVoucherPresentationTime } from "@/components/voucher-origin-summary";
+import { canOfferVoucher, getEffectiveVoucherStatus, voucherExpiryMillis } from "@/lib/voucher-presentation";
 import { HoldCountdown } from "@/components/hold-countdown";
 import { SectionHeading } from "@/components/section-heading";
 import { Stepper } from "@/components/ui/primitives";
@@ -48,6 +50,7 @@ function isHoldExpiredError(error: unknown) {
 }
 
 function formatVoucherStatus(status: string) {
+  if (status === "UNVERIFIED") return "Chưa xác minh hạn dùng";
   if (status === "AVAILABLE") {
     return "Chưa sử dụng";
   }
@@ -118,6 +121,7 @@ export default function BookingCheckoutPage() {
   const [bookingCode, setBookingCode] = useState("");
   const [session, setSession] = useState<ApiPaymentSessionResponse | null>(null);
   const [memberVouchers, setMemberVouchers] = useState<MyVoucher[]>([]);
+  const voucherPresentationTime = useVoucherPresentationTime(memberVouchers);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingVouchers, setIsLoadingVouchers] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -338,9 +342,7 @@ export default function BookingCheckoutPage() {
 
   const isUpdatingPayment = isApplyingVoucher || isRemovingVoucher;
   const availableVouchers = (voucherListConfirmed && !paymentNeedsVerification && !isUpdatingPayment ? memberVouchers : []).filter(
-    (voucher) =>
-      voucher.status === "AVAILABLE" ||
-      (voucher.status === "RESERVED" && voucher.bookingCode === bookingCode)
+    (voucher) => canOfferVoucher(voucher, bookingCode, voucherPresentationTime)
   );
   const isPaymentClosed = Boolean(holdExpiredMessage) || isClosedPaymentStatus(session?.paymentStatus);
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
@@ -801,12 +803,12 @@ export default function BookingCheckoutPage() {
                     availableVouchers.map((voucher) => (
                       <div key={voucher.voucherCode} className="support-compact-item">
                         <strong>{voucher.title}</strong>
-                        <p>{voucher.description}</p>
+                        <VoucherOriginSummary voucher={voucher} />
                         <VoucherConditionSummary voucher={voucher} />
                         <small>
                           {new Intl.NumberFormat("vi-VN").format(voucher.discountAmount)} {voucher.currency} •{" "}
-                          {formatVoucherStatus(voucher.status)} • Hết hạn{" "}
-                          {formatDateTime(voucher.expiresAt)}
+                          {formatVoucherStatus(getEffectiveVoucherStatus(voucher, voucherPresentationTime))} • Hết hạn{" "}
+                          {voucherExpiryMillis(voucher.expiresAt) === null ? "chưa xác minh" : formatDateTime(voucher.expiresAt)}
                         </small>
                         <div className="auth-action-row">
                           <button
