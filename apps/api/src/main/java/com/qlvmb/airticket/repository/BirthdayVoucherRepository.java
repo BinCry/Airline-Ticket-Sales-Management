@@ -1,5 +1,7 @@
 package com.qlvmb.airticket.repository;
 
+import com.qlvmb.airticket.config.BirthdayVoucherPolicy;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Repository;
 public class BirthdayVoucherRepository {
   private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
   private final NamedParameterJdbcTemplate jdbc;
+  private final BirthdayVoucherPolicy policy;
   private static final String ELIGIBLE = """
       from user_account u join saved_passenger p on p.user_id=u.id and p.is_primary
       where u.status='active' and u.locked_at is null
@@ -35,7 +38,14 @@ public class BirthdayVoucherRepository {
       """;
 
   public BirthdayVoucherRepository(JdbcTemplate jdbc) {
+    this(jdbc, new BirthdayVoucherPolicy(BirthdayVoucherPolicy.DEFAULT_DISCOUNT_AMOUNT,
+        BirthdayVoucherPolicy.DEFAULT_VALID_DAYS));
+  }
+
+  @Autowired
+  public BirthdayVoucherRepository(JdbcTemplate jdbc, BirthdayVoucherPolicy policy) {
     this.jdbc = new NamedParameterJdbcTemplate(jdbc);
+    this.policy = java.util.Objects.requireNonNull(policy, "Thiếu cấu hình quà sinh nhật.");
   }
 
   public List<Candidate> findCandidates(long afterId, LocalDate today, int limit) {
@@ -56,19 +66,21 @@ public class BirthdayVoucherRepository {
   public Outcome issue(long userId, LocalDate birthday, Instant now) {
     LocalDate today = now.atZone(ZONE).toLocalDate();
     if (userId <= 0 || birthday == null || birthday.isAfter(today)
-        || birthday.isBefore(today.minusDays(3)) || !expiresAt(birthday).toInstant().isAfter(now)) {
+        || birthday.isBefore(today.minusDays(3)) || !expiresAt(birthday, policy.validDays()).toInstant().isAfter(now)) {
       return Outcome.SKIPPED;
     }
     String code = "BDAY-" + userId + "-" + birthday.getYear();
     var params = new MapSqlParameterSource().addValue("userId", userId)
         .addValue("today", today).addValue("birthday", birthday).addValue("code", code)
-        .addValue("expires", expiresAt(birthday)).addValue("now", now.atOffset(java.time.ZoneOffset.UTC));
+        .addValue("expires", expiresAt(birthday, policy.validDays()))
+        .addValue("discountAmount", policy.discountAmount())
+        .addValue("now", now.atOffset(java.time.ZoneOffset.UTC));
     String insert = """
         insert into member_voucher(user_id,voucher_code,title,description,discount_amount,
           currency,status,expires_at,source,condition_json,created_at,updated_at)
         select u.id,:code,'Quà sinh nhật',
           'Quà sinh nhật dựa trên ngày sinh tự khai của hồ sơ hành khách chính tại thời điểm xét cấp.',
-          100000,'VND','AVAILABLE',:expires,'BIRTHDAY','{"minAmount":200000}'::jsonb,:now,:now
+          :discountAmount,'VND','AVAILABLE',:expires,'BIRTHDAY','{"minAmount":200000}'::jsonb,:now,:now
         """ + ELIGIBLE + """
         and u.id=:userId and :expires>:now
         and exists (select 1 from (values (cast(:birthday as date))) d(birthday) where
@@ -96,7 +108,11 @@ public class BirthdayVoucherRepository {
   }
 
   public static OffsetDateTime expiresAt(LocalDate birthday) {
-    return birthday.plusDays(30).atStartOfDay(ZONE).toOffsetDateTime();
+    return expiresAt(birthday, BirthdayVoucherPolicy.DEFAULT_VALID_DAYS);
+  }
+
+  private static OffsetDateTime expiresAt(LocalDate birthday, int validDays) {
+    return birthday.plusDays(validDays).atStartOfDay(ZONE).toOffsetDateTime();
   }
 
   public record Candidate(long userId, LocalDate dateOfBirth) {}

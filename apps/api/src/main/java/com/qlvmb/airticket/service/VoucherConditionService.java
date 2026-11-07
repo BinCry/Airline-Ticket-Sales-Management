@@ -10,6 +10,10 @@ import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.MemberVoucherEntity;
 import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.repository.AirportRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -20,10 +24,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class VoucherConditionService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(VoucherConditionService.class);
+  private final Set<String> loggedInvalidConditions = new LinkedHashSet<>();
   private static final ZoneId ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final DateTimeFormatter DISPLAY_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
   private static final Set<String> FIELDS = Set.of(
@@ -130,8 +138,32 @@ public class VoucherConditionService {
       }
       return decode(node, false);
     } catch (java.io.IOException | IllegalArgumentException | BadRequestException exception) {
+      warnInvalidStoredConditions(json, exception);
       throw new BadRequestException(CONFIGURATION_ERROR);
     }
+  }
+
+  private void warnInvalidStoredConditions(String json, Exception cause) {
+    final String fingerprint;
+    try {
+      fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+          .digest(json.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException exception) {
+      return;
+    }
+    // Không ghi JSON hoặc thông điệp lỗi; giới hạn 256 dấu vết để tránh spam và tăng bộ nhớ.
+    synchronized (loggedInvalidConditions) {
+      if (!loggedInvalidConditions.add(fingerprint)) {
+        return;
+      }
+      if (loggedInvalidConditions.size() > 256) {
+        var oldest = loggedInvalidConditions.iterator();
+        oldest.next();
+        oldest.remove();
+      }
+    }
+    LOGGER.warn("Điều kiện voucher lưu trữ không hợp lệ; mã đối chiếu {}, loại lỗi {}.",
+        fingerprint, cause.getClass().getSimpleName());
   }
 
   private VoucherConditions decode(JsonNode node, boolean validateAirports) {
