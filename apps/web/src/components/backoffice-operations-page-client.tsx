@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AirportOption } from "@qlvmb/shared-types";
 
@@ -290,6 +290,8 @@ export function BackofficeOperationsPageClient() {
   const [voucherForm, setVoucherForm] = useState<BackofficeVoucherCreateInput>(createEmptyVoucherForm);
   const [voucherDrafts, setVoucherDrafts] = useState<Record<number, BackofficeVoucherUpdateInput>>({});
   const [pendingVoucherAction, setPendingVoucherAction] = useState<string | null>(null);
+  const operationsRootRef = useRef<HTMLElement>(null);
+  const operationsNavRef = useRef<HTMLElement>(null);
   const [activeOperationsSection, setActiveOperationsSection] = useState<OperationsNavId>(
     "operations-create-flight"
   );
@@ -319,40 +321,59 @@ export function BackofficeOperationsPageClient() {
   }
 
   useEffect(() => {
-    const sections = OPERATIONS_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
-      (section): section is HTMLElement => section !== null
-    );
-
-    if (sections.length === 0 || typeof IntersectionObserver === "undefined") {
+    const nav = operationsNavRef.current;
+    const root = operationsRootRef.current;
+    if (!nav || !root) {
       return;
     }
 
-    const initialHash = window.location.hash.slice(1) as OperationsNavId;
-    if (OPERATIONS_NAV_ITEMS.some((item) => item.id === initialHash)) {
-      setActiveOperationsSection(initialHash);
-    }
+    const sections = OPERATIONS_NAV_ITEMS.map((item) => root.querySelector<HTMLElement>(`#${item.id}`))
+      .filter((section): section is HTMLElement => section !== null);
+    const previousMargins = sections.map((section) => section.style.scrollMarginTop);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleSection = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
-
-        if (visibleSection?.target.id && OPERATIONS_NAV_ITEMS.some((item) => item.id === visibleSection.target.id)) {
-          setActiveOperationsSection(visibleSection.target.id as OperationsNavId);
-        }
-      },
-      {
-        rootMargin: window.matchMedia("(max-width: 820px)").matches
-          ? "-188px 0px -55% 0px"
-          : "-210px 0px -55% 0px",
-        threshold: [0.1, 0.35, 0.65]
+    let frame = 0;
+    let clearance = 0;
+    const updateActiveSection = () => {
+      frame = 0;
+      const positions = sections.map((section) => ({ section, top: section.getBoundingClientRect().top }));
+      const passed = positions.filter(({ top }) => top <= clearance + 2);
+      const nearest = passed[passed.length - 1] ?? positions[0];
+      if (!nearest) {
+        return;
       }
-    );
+      // Giữ lựa chọn khi hai mục cùng hàng; các mục khác theo vị trí cuộn thực.
+      const peers = positions.filter(({ top }) => Math.abs(top - nearest.top) <= 2);
+      setActiveOperationsSection((current) => peers.some(({ section }) => section.id === current)
+        ? current
+        : nearest.section.id as OperationsNavId);
+    };
+    const scheduleActiveSection = () => {
+      if (!frame) {
+        frame = window.requestAnimationFrame(updateActiveSection);
+      }
+    };
 
-    sections.forEach((section) => observer.observe(section));
+    const updateClearance = () => {
+      // Thay khoảng bù cố định bằng chiều cao thực của menu Operations.
+      const stickyTop = Number.parseFloat(window.getComputedStyle(nav).top) || 0;
+      clearance = Math.ceil(stickyTop + nav.getBoundingClientRect().height + 16);
+      const margin = `${clearance}px`;
+      sections.forEach((section) => { section.style.scrollMarginTop = margin; });
+      scheduleActiveSection();
+    };
 
-    return () => observer.disconnect();
+    updateClearance();
+    const observer = new ResizeObserver(updateClearance);
+    observer.observe(nav);
+    window.addEventListener("resize", updateClearance);
+    window.addEventListener("scroll", scheduleActiveSection, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateClearance);
+      window.removeEventListener("scroll", scheduleActiveSection);
+      window.cancelAnimationFrame(frame);
+      sections.forEach((section, index) => { section.style.scrollMarginTop = previousMargins[index]; });
+    };
   }, []);
 
   function handleOperationsSectionNavigation(event: React.MouseEvent<HTMLAnchorElement>, sectionId: OperationsNavId) {
@@ -781,7 +802,7 @@ export function BackofficeOperationsPageClient() {
   }
 
   return (
-    <section className="section">
+    <section ref={operationsRootRef} className="section">
       <div className="container">
         <div id="operations-overview" className="backoffice-operations-intro">
           <SectionHeading
@@ -792,7 +813,7 @@ export function BackofficeOperationsPageClient() {
           />
         </div>
 
-        <nav className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
+        <nav ref={operationsNavRef} className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
           <div className="backoffice-local-nav-links">
             {OPERATIONS_NAV_ITEMS.map((item) => (
               <a
@@ -1288,8 +1309,6 @@ export function BackofficeOperationsPageClient() {
           description="Voucher đã dùng chỉ ẩn khỏi màn operations khi bạn dọn lịch sử, còn hội viên tự quyết định xóa lịch sử bên phía tài khoản của họ."
         />
 
-        <VoucherStatisticsPanel accessToken={accessToken} />
-
         {voucherErrorMessage ? (
           <article className="booking-inline-error" role="alert">
             <strong>Không thể xử lý voucher</strong>
@@ -1711,6 +1730,7 @@ export function BackofficeOperationsPageClient() {
             </article>
           )}
         </div>
+        <VoucherStatisticsPanel accessToken={accessToken} />
       </div>
     </section>
   );
