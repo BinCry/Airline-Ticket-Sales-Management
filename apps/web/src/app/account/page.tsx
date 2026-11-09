@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
+import { VoucherOriginSummary, useVoucherPresentationTime } from "@/components/voucher-origin-summary";
+import { getEffectiveVoucherStatus, getReadyVoucherCount, voucherExpiryMillis } from "@/lib/voucher-presentation";
 import { DateField } from "@/components/date-field";
 import { PasswordChecklist } from "@/components/password-checklist";
 import { PasswordField } from "@/components/password-field";
@@ -223,6 +226,7 @@ function formatDateTime(value: string) {
 }
 
 function formatVoucherStatus(status: string) {
+  if (status === "UNVERIFIED") return "Chưa xác minh hạn dùng";
   if (status === "AVAILABLE") {
     return "Sẵn sàng sử dụng";
   }
@@ -287,6 +291,8 @@ export default function AccountPage() {
   const [customerProfile, setCustomerProfile] = useState<MyProfile | null>(null);
   const [memberLoyalty, setMemberLoyalty] = useState<MyLoyalty | null>(null);
   const [memberVouchers, setMemberVouchers] = useState<MyVoucher[]>([]);
+  const [voucherListToken, setVoucherListToken] = useState<string | null>(null);
+  const voucherPresentationTime = useVoucherPresentationTime(memberVouchers);
   const [myNotifications, setMyNotifications] = useState<MyNotification[]>([]);
   useEffect(()=>{
     const refresh=()=>{const token=loadActiveAuthSession()?.accessToken;
@@ -332,10 +338,12 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
+    setVoucherListToken(null);
     if (!authSession?.accessToken) {
       setCustomerProfile(null);
       setMemberLoyalty(null);
       setMemberVouchers([]);
+      setVoucherListToken(null);
       setMyNotifications([]);
       setProfileForm(EMPTY_PROFILE_FORM);
       setPassengers([]);
@@ -458,11 +466,13 @@ export default function AccountPage() {
             if (!isCancelled) {
               setMemberLoyalty(nextLoyalty);
               setMemberVouchers(nextVouchers);
+              setVoucherListToken(accessToken);
             }
           } catch (error) {
             if (!isCancelled) {
               setMemberLoyalty(null);
               setMemberVouchers([]);
+          setVoucherListToken(null);
               setLoyaltyError(
                 resolveAccountError(error, "Không thể tải dữ liệu hội viên lúc này.")
               );
@@ -475,6 +485,7 @@ export default function AccountPage() {
         } else if (!isCancelled) {
           setMemberLoyalty(null);
           setMemberVouchers([]);
+          setVoucherListToken(null);
           setLoyaltyError(null);
         }
       } catch (error) {
@@ -515,6 +526,10 @@ export default function AccountPage() {
   const isOperationsStaffProfile = hasAnyRole(activeRoles, ["operations_staff"]);
   const canUsePassengerSelfService = hasAnyRole(activeRoles, PASSENGER_SELF_SERVICE_ROLES);
   const allowedBackofficeModules = getAllowedBackofficeModulesByPermissions(activePermissions);
+  const memberVouchersConfirmed = Boolean(authSession?.accessToken && voucherListToken === authSession.accessToken &&
+    !isLoadingLoyalty && !loyaltyError);
+  const readyVoucherCount = getReadyVoucherCount(memberVouchers, memberVouchersConfirmed, voucherPresentationTime);
+  const readyVoucherLabel = readyVoucherCount === null ? "Chưa xác minh" : `${readyVoucherCount} ưu đãi`;
   const loyaltyStats = memberLoyalty
     ? [
         {
@@ -527,7 +542,7 @@ export default function AccountPage() {
         },
         {
           label: "Voucher sẵn sàng",
-          value: `${memberLoyalty.availableVoucherCount} ưu đãi`
+          value: readyVoucherLabel
         }
       ]
     : [
@@ -541,7 +556,7 @@ export default function AccountPage() {
         },
         {
           label: "Voucher sẵn sàng",
-          value: "0 ưu đãi"
+          value: readyVoucherLabel
         }
       ];
   const passwordBlockedFragments = [
@@ -1762,16 +1777,17 @@ export default function AccountPage() {
                 <article className="surface-card">
                   <div className="auth-note-head">
                     <h3>Voucher hiện có</h3>
-                    <span className="pill">{memberVouchers.length} voucher</span>
+                    <span className="pill">{memberVouchersConfirmed ? `${memberVouchers.length} voucher` : "Chưa xác minh"}</span>
                   </div>
                   <div className="stack-list">
-                    {memberVouchers.length ? (
+                    {memberVouchersConfirmed && memberVouchers.length ? (
                       memberVouchers.map((voucher) => (
                         <div key={voucher.voucherCode} className="support-compact-item">
                           <strong>{voucher.title}</strong>
-                          <p>{voucher.description}</p>
+                          <VoucherOriginSummary voucher={voucher} />
+                          <VoucherConditionSummary voucher={voucher} />
                           <small>
-                            {formatVoucherAmount(voucher.discountAmount, voucher.currency)} • {formatVoucherStatus(voucher.status)} • Hết hạn {formatDateTime(voucher.expiresAt)}
+                            {formatVoucherAmount(voucher.discountAmount, voucher.currency)} • {formatVoucherStatus(getEffectiveVoucherStatus(voucher, voucherPresentationTime))} • Hết hạn {voucherExpiryMillis(voucher.expiresAt) === null ? "chưa xác minh" : formatDateTime(voucher.expiresAt)}
                             {voucher.status === "RESERVED" && voucher.bookingCode ? ` • Giữ cho ${voucher.bookingCode}` : ""}
                             {voucher.status === "USED" && voucher.usedAt ? ` • Đã dùng lúc ${formatDateTime(voucher.usedAt)}` : ""}
                           </small>
@@ -1793,8 +1809,9 @@ export default function AccountPage() {
                       ))
                     ) : (
                       <div className="support-compact-item">
-                        <strong>Chưa có voucher khả dụng</strong>
-                        <p>Voucher mới sẽ xuất hiện tại đây khi tài khoản được cấp ưu đãi hoặc hoàn tất điều kiện tích lũy.</p>
+                        <strong>{!memberVouchersConfirmed ? "Chưa xác minh danh sách voucher" : "Chưa có voucher"}</strong>
+                        <p>{!memberVouchersConfirmed ? "Vui lòng đợi tải xong hoặc tải lại khi có lỗi; số voucher sẵn sàng chưa được xác nhận."
+                          : "Voucher mới sẽ xuất hiện tại đây khi tài khoản được cấp ưu đãi. Điều kiện áp dụng được kiểm tra khi sử dụng."}</p>
                       </div>
                     )}
                   </div>

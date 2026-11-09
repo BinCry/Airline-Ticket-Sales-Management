@@ -17,14 +17,12 @@ import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import com.qlvmb.airticket.security.RoleCode;
 import java.time.OffsetDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,17 +39,23 @@ public class BackofficeVoucherService {
   private final UserAccountRepository userAccountRepository;
   private final BookingRepository bookingRepository;
   private final AuditLogRepository auditLogRepository;
+  private final VoucherConditionService conditions;
+  private final VoucherLockService locks;
 
   public BackofficeVoucherService(
       MemberVoucherRepository memberVoucherRepository,
       UserAccountRepository userAccountRepository,
       BookingRepository bookingRepository,
-      AuditLogRepository auditLogRepository
+      AuditLogRepository auditLogRepository,
+      VoucherConditionService conditions,
+      VoucherLockService locks
   ) {
     this.memberVoucherRepository = memberVoucherRepository;
     this.userAccountRepository = userAccountRepository;
     this.bookingRepository = bookingRepository;
     this.auditLogRepository = auditLogRepository;
+    this.conditions = conditions;
+    this.locks = locks;
   }
 
   @Transactional(readOnly = true)
@@ -60,14 +64,14 @@ public class BackofficeVoucherService {
     String normalizedCode = normalizeOptional(code);
     String normalizedStatus = normalizeStatusFilter(status);
 
-    List<MemberVoucherEntity> vouchers = loadVoucherCandidates(normalizedEmail).stream()
-        .filter(voucher -> normalizedCode == null
-            || voucher.getVoucherCode().toLowerCase(Locale.ROOT).contains(normalizedCode.toLowerCase(Locale.ROOT)))
-        .filter(voucher -> normalizedStatus == null || voucher.getStatus().equals(normalizedStatus))
-        .sorted(Comparator
-            .comparing(MemberVoucherEntity::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
-            .thenComparing(MemberVoucherEntity::getExpiresAt, Comparator.nullsLast(Comparator.naturalOrder())))
-        .toList();
+    Long userId = normalizedEmail == null ? null : userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
+        .map(UserAccountEntity::getId).orElse(null);
+    if (normalizedEmail != null && userId == null) {
+      return new BackofficeVoucherResponse(normalizedEmail, normalizedCode, normalizedStatus, List.of());
+    }
+    OffsetDateTime asOf = OffsetDateTime.now();
+    List<MemberVoucherEntity> vouchers = memberVoucherRepository.findOperationsVouchers(
+        userId, normalizedCode, normalizedStatus, asOf);
 
     Map<Long, UserAccountEntity> userAccounts = userAccountRepository.findAllById(
             vouchers.stream().map(MemberVoucherEntity::getUserId).distinct().toList()
@@ -79,7 +83,7 @@ public class BackofficeVoucherService {
         normalizedEmail,
         normalizedCode,
         normalizedStatus,
-        vouchers.stream().map(voucher -> mapVoucher(voucher, userAccounts.get(voucher.getUserId()))).toList()
+        vouchers.stream().map(voucher -> mapVoucher(voucher, userAccounts.get(voucher.getUserId()), asOf)).toList()
     );
   }
 
@@ -107,6 +111,7 @@ public class BackofficeVoucherService {
         request.expiresAt(),
         currentTime
     );
+    voucher.updateConditions(conditions.validateAndEncode(request.conditions()));
     memberVoucherRepository.save(voucher);
 
     auditLogRepository.save(AuditLogEntity.create(
@@ -128,8 +133,7 @@ public class BackofficeVoucherService {
       BackofficeVoucherUpdateRequest request
   ) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần cập nhật."));
+    MemberVoucherEntity voucher = locks.lockId(voucherId);
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -143,6 +147,9 @@ public class BackofficeVoucherService {
       );
     }
 
+    String nextConditions = request.conditions() == null ? voucher.getConditionJson()
+        : conditions.validateAndEncode(request.conditions());
+    requireBirthdayPolicyUnchanged(voucher, request, nextConditions);
     String nextStatus = normalizeBackofficeStatus(request.status());
     OffsetDateTime currentTime = OffsetDateTime.now();
     String oldStatus = voucher.getStatus();
@@ -158,6 +165,9 @@ public class BackofficeVoucherService {
         request.expiresAt(),
         currentTime
     );
+    if (!voucher.isBirthday()) {
+      voucher.updateConditions(nextConditions);
+    }
     voucher.applyBackofficeStatus(nextStatus, currentTime);
 
     auditLogRepository.save(AuditLogEntity.create(
@@ -179,8 +189,8 @@ public class BackofficeVoucherService {
   @Transactional
   public BackofficeVoucherResponse.VoucherItem revokeVoucher(AuthenticatedUser actor, Long voucherId) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần thu hồi."));
+    VoucherLockService.Reservation reservation = locks.lockForRevocation(voucherId);
+    MemberVoucherEntity voucher = reservation.voucher();
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -190,7 +200,7 @@ public class BackofficeVoucherService {
 
     OffsetDateTime currentTime = OffsetDateTime.now();
     if (voucher.isReserved()) {
-      releaseReservedBooking(voucher, currentTime);
+      releaseReservedBooking(voucher, reservation.booking(), currentTime);
     }
     voucher.revoke(currentTime);
 
@@ -209,8 +219,7 @@ public class BackofficeVoucherService {
   @Transactional
   public void hideVoucherFromOperations(AuthenticatedUser actor, Long voucherId) {
     UserAccountEntity actorAccount = loadActorAccount(actor);
-    MemberVoucherEntity voucher = memberVoucherRepository.findById(voucherId)
-        .orElseThrow(() -> new NotFoundException("Không tìm thấy voucher cần ẩn khỏi giao diện."));
+    MemberVoucherEntity voucher = locks.lockId(voucherId);
     UserAccountEntity memberAccount = userAccountRepository.findById(voucher.getUserId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy hội viên sở hữu voucher này."));
 
@@ -242,22 +251,6 @@ public class BackofficeVoucherService {
     ));
   }
 
-  private List<MemberVoucherEntity> loadVoucherCandidates(String normalizedEmail) {
-    if (normalizedEmail == null) {
-      return memberVoucherRepository.findAll(Sort.by(Sort.Direction.DESC, "updatedAt")).stream()
-          .filter(voucher -> !voucher.isHiddenForOperations())
-          .toList();
-    }
-
-    return userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
-        .map(UserAccountEntity::getId)
-        .map(memberVoucherRepository::findByUserIdOrderByExpiresAtAscCreatedAtDesc)
-        .map(vouchers -> vouchers.stream()
-            .filter(voucher -> !voucher.isHiddenForOperations())
-            .toList())
-        .orElse(List.of());
-  }
-
   private UserAccountEntity loadActorAccount(AuthenticatedUser actor) {
     return userAccountRepository.findOneWithRolesById(actor.userId())
         .orElseThrow(() -> new NotFoundException("Không tìm thấy tài khoản nội bộ đang thao tác."));
@@ -278,21 +271,21 @@ public class BackofficeVoucherService {
     return userAccount;
   }
 
-  private void releaseReservedBooking(MemberVoucherEntity voucher, OffsetDateTime currentTime) {
-    String linkedBookingCode = voucher.getBookingCode();
-    if (linkedBookingCode == null || linkedBookingCode.isBlank()) {
-      return;
+  private void releaseReservedBooking(MemberVoucherEntity voucher, BookingEntity booking, OffsetDateTime currentTime) {
+    if (booking != null && booking.isHold()
+        && voucher.getBookingCode().equalsIgnoreCase(booking.getBookingCode())
+        && voucher.getVoucherCode().equalsIgnoreCase(booking.getAppliedVoucherCode())) {
+      booking.clearAppliedVoucher(currentTime);
     }
-
-    bookingRepository.findDetailedByBookingCode(linkedBookingCode)
-        .ifPresent(booking -> {
-          if (booking.isHold() && linkedBookingCode.equalsIgnoreCase(booking.getBookingCode())) {
-            booking.clearAppliedVoucher(currentTime);
-          }
-        });
   }
 
   private BackofficeVoucherResponse.VoucherItem mapVoucher(MemberVoucherEntity voucher, UserAccountEntity userAccount) {
+    return mapVoucher(voucher, userAccount, OffsetDateTime.now());
+  }
+
+  private BackofficeVoucherResponse.VoucherItem mapVoucher(
+      MemberVoucherEntity voucher, UserAccountEntity userAccount, OffsetDateTime asOf) {
+    VoucherConditionService.Presentation presentation = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
     return new BackofficeVoucherResponse.VoucherItem(
         voucher.getId(),
         voucher.getUserId(),
@@ -306,8 +299,33 @@ public class BackofficeVoucherService {
         voucher.getStatus(),
         voucher.getExpiresAt(),
         voucher.getUsedAt(),
-        voucher.getBookingCode()
+        voucher.getBookingCode(),
+        presentation.conditions(),
+        presentation.conditionSummary(),
+        presentation.conditionsValid(),
+        voucher.getSource(),
+        VoucherStatusSupport.effectiveStatus(voucher.getStatus(), voucher.getExpiresAt(), asOf)
     );
+  }
+
+  private void requireBirthdayPolicyUnchanged(
+      MemberVoucherEntity voucher,
+      BackofficeVoucherUpdateRequest request,
+      String nextConditions
+  ) {
+    if (!voucher.isBirthday()) {
+      return;
+    }
+    var before = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
+    var after = conditions.present(nextConditions, voucher.getCurrency());
+    if (voucher.getDiscountAmount() != request.discountAmount()
+        || !voucher.getCurrency().equals(normalizeCurrency(request.currency()))
+        || request.expiresAt() == null || !voucher.getExpiresAt().isEqual(request.expiresAt())
+        || !before.conditionsValid() || !after.conditionsValid()
+        || !java.util.Objects.equals(before.conditions(), after.conditions())) {
+      throw new BadRequestException(
+          "Không thể sửa mức giảm, tiền tệ, điều kiện hoặc hạn dùng của quà sinh nhật đã cấp.");
+    }
   }
 
   private String normalizeVoucherCode(String voucherCode) {

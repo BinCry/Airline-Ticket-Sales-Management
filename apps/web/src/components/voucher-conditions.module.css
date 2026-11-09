@@ -1,0 +1,25 @@
+.editor, .summary {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #d3dce2);
+  border-radius: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.editor summary { cursor: pointer; font-weight: 650; }
+.editor summary:focus-visible { outline: 2px solid #006b85; outline-offset: 4px; }
+.fields { border: 0; padding: 0; margin: 1rem 0 0; min-width: 0; display: grid; gap: 1rem; }
+.route { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: .75rem; align-items: end; }
+.fares { display: flex; flex-wrap: wrap; gap: .75rem; border: 0; padding: 0; min-width: 0; }
+.fares label { display: flex; align-items: center; gap: .4rem; }
+.fares input { width: auto; }
+.note { font-size: .9rem; line-height: 1.6; }
+.summary p { white-space: pre-wrap; line-height: 1.65; margin-bottom: 0; }
+.error { color: #a52222; }
+@media (max-width: 640px) {
+  .fields > :global(.field-grid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .route { grid-template-columns: minmax(0, 1fr); }
+  .fields input { min-width: 0; max-width: 100%; }
+}

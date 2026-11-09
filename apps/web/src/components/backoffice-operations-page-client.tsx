@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AirportOption } from "@qlvmb/shared-types";
 
+import { VoucherConditionEditor } from "@/components/voucher-condition-editor";
+import { VoucherConditionSummary } from "@/components/voucher-condition-summary";
+import { VoucherStatisticsPanel } from "@/components/voucher-statistics-panel";
+import { VoucherOriginSummary, useVoucherPresentationTime } from "@/components/voucher-origin-summary";
+import { canEditVoucherMetadata, canEditVoucherPolicy, getEffectiveVoucherStatus, getVoucherSource, voucherExpiryMillis } from "@/lib/voucher-presentation";
+import { buildVoucherConditions, createVoucherConditionDraft, type VoucherConditionDraft } from "@/lib/voucher-conditions";
 import { DateField } from "@/components/date-field";
 import { OperationsAircraftPanel } from "@/components/operations-aircraft-panel";
 import {BackofficeBaggagePanel} from "@/components/backoffice-baggage-panel";
@@ -14,6 +20,7 @@ import { resolveApiClientErrorMessage } from "@/lib/api-client";
 import { fetchAirportOptions } from "@/lib/airport-api";
 import { loadActiveAuthSession } from "@/lib/auth-session";
 import {
+  buildBackofficeVoucherUpdatePayload,
   cancelBackofficeOperationsFlight,
   createBackofficeOperationsFlight,
   createBackofficeOperationsVoucher,
@@ -45,7 +52,8 @@ const OPERATIONS_NAV_ITEMS = [
   { id: "operations-aircraft", label: "Tàu bay và sơ đồ ghế" },
   { id: "operations-baggage", label: "Hành lý ký gửi" },
   { id: "operations-create-voucher", label: "Tạo voucher mới" },
-  { id: "operations-voucher-lookup", label: "Tra cứu voucher" }
+  { id: "operations-voucher-lookup", label: "Tra cứu voucher" },
+  { id: "operations-voucher-statistics", label: "Thống kê voucher" }
 ] as const;
 
 type OperationsNavId = (typeof OPERATIONS_NAV_ITEMS)[number]["id"];
@@ -107,6 +115,8 @@ function formatCurrency(value: number, currency = "VND") {
 
 function formatVoucherStatus(status: string) {
   switch (status) {
+    case "UNVERIFIED":
+      return "Chưa xác minh hạn dùng";
     case "AVAILABLE":
       return "Khả dụng";
     case "RESERVED":
@@ -237,7 +247,7 @@ function capNhatSoTienHopLe(value: string, giaMacDinh: number): number {
   return Math.round(giaDaNhap);
 }
 
-function buildVoucherDraft(voucher: BackofficeVoucherItem): BackofficeVoucherUpdateInput {
+export function buildVoucherDraft(voucher: BackofficeVoucherItem): BackofficeVoucherUpdateInput {
   return {
     title: voucher.title,
     description: voucher.description,
@@ -274,9 +284,14 @@ export function BackofficeOperationsPageClient() {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherStatus, setVoucherStatus] = useState("ALL");
   const [vouchers, setVouchers] = useState<BackofficeVoucherItem[]>([]);
+  const voucherPresentationTime = useVoucherPresentationTime(vouchers);
+  const [conditionForm, setConditionForm] = useState(createVoucherConditionDraft);
+  const [conditionDrafts, setConditionDrafts] = useState<Record<number, { value: VoucherConditionDraft; changed: boolean }>>({});
   const [voucherForm, setVoucherForm] = useState<BackofficeVoucherCreateInput>(createEmptyVoucherForm);
   const [voucherDrafts, setVoucherDrafts] = useState<Record<number, BackofficeVoucherUpdateInput>>({});
   const [pendingVoucherAction, setPendingVoucherAction] = useState<string | null>(null);
+  const operationsRootRef = useRef<HTMLElement>(null);
+  const operationsNavRef = useRef<HTMLElement>(null);
   const [activeOperationsSection, setActiveOperationsSection] = useState<OperationsNavId>(
     "operations-create-flight"
   );
@@ -306,40 +321,59 @@ export function BackofficeOperationsPageClient() {
   }
 
   useEffect(() => {
-    const sections = OPERATIONS_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
-      (section): section is HTMLElement => section !== null
-    );
-
-    if (sections.length === 0 || typeof IntersectionObserver === "undefined") {
+    const nav = operationsNavRef.current;
+    const root = operationsRootRef.current;
+    if (!nav || !root) {
       return;
     }
 
-    const initialHash = window.location.hash.slice(1) as OperationsNavId;
-    if (OPERATIONS_NAV_ITEMS.some((item) => item.id === initialHash)) {
-      setActiveOperationsSection(initialHash);
-    }
+    const sections = OPERATIONS_NAV_ITEMS.map((item) => root.querySelector<HTMLElement>(`#${item.id}`))
+      .filter((section): section is HTMLElement => section !== null);
+    const previousMargins = sections.map((section) => section.style.scrollMarginTop);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleSection = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
-
-        if (visibleSection?.target.id && OPERATIONS_NAV_ITEMS.some((item) => item.id === visibleSection.target.id)) {
-          setActiveOperationsSection(visibleSection.target.id as OperationsNavId);
-        }
-      },
-      {
-        rootMargin: window.matchMedia("(max-width: 820px)").matches
-          ? "-188px 0px -55% 0px"
-          : "-210px 0px -55% 0px",
-        threshold: [0.1, 0.35, 0.65]
+    let frame = 0;
+    let clearance = 0;
+    const updateActiveSection = () => {
+      frame = 0;
+      const positions = sections.map((section) => ({ section, top: section.getBoundingClientRect().top }));
+      const passed = positions.filter(({ top }) => top <= clearance + 2);
+      const nearest = passed[passed.length - 1] ?? positions[0];
+      if (!nearest) {
+        return;
       }
-    );
+      // Giữ lựa chọn khi hai mục cùng hàng; các mục khác theo vị trí cuộn thực.
+      const peers = positions.filter(({ top }) => Math.abs(top - nearest.top) <= 2);
+      setActiveOperationsSection((current) => peers.some(({ section }) => section.id === current)
+        ? current
+        : nearest.section.id as OperationsNavId);
+    };
+    const scheduleActiveSection = () => {
+      if (!frame) {
+        frame = window.requestAnimationFrame(updateActiveSection);
+      }
+    };
 
-    sections.forEach((section) => observer.observe(section));
+    const updateClearance = () => {
+      // Thay khoảng bù cố định bằng chiều cao thực của menu Operations.
+      const stickyTop = Number.parseFloat(window.getComputedStyle(nav).top) || 0;
+      clearance = Math.ceil(stickyTop + nav.getBoundingClientRect().height + 16);
+      const margin = `${clearance}px`;
+      sections.forEach((section) => { section.style.scrollMarginTop = margin; });
+      scheduleActiveSection();
+    };
 
-    return () => observer.disconnect();
+    updateClearance();
+    const observer = new ResizeObserver(updateClearance);
+    observer.observe(nav);
+    window.addEventListener("resize", updateClearance);
+    window.addEventListener("scroll", scheduleActiveSection, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateClearance);
+      window.removeEventListener("scroll", scheduleActiveSection);
+      window.cancelAnimationFrame(frame);
+      sections.forEach((section, index) => { section.style.scrollMarginTop = previousMargins[index]; });
+    };
   }, []);
 
   function handleOperationsSectionNavigation(event: React.MouseEvent<HTMLAnchorElement>, sectionId: OperationsNavId) {
@@ -453,6 +487,9 @@ export function BackofficeOperationsPageClient() {
         status: nextStatus === "ALL" ? null : nextStatus
       });
       setVouchers(payload.vouchers);
+      setConditionDrafts(Object.fromEntries(payload.vouchers.map((voucher) => [voucher.voucherId, {
+        value: createVoucherConditionDraft(voucher.conditions), changed: false
+      }])));
       setVoucherDrafts(
         Object.fromEntries(payload.vouchers.map((voucher) => [voucher.voucherId, buildVoucherDraft(voucher)]))
       );
@@ -624,6 +661,7 @@ export function BackofficeOperationsPageClient() {
       await createBackofficeOperationsVoucher(
         {
           ...voucherForm,
+          conditions: buildVoucherConditions(conditionForm),
           memberEmail: voucherForm.memberEmail.trim(),
           voucherCode: voucherForm.voucherCode.trim().toUpperCase(),
           title: voucherForm.title.trim(),
@@ -635,6 +673,7 @@ export function BackofficeOperationsPageClient() {
       );
       await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
       setVoucherForm(createEmptyVoucherForm());
+      setConditionForm(createVoucherConditionDraft());
       pushToast({
         title: "Đã cấp voucher",
         message: "Voucher mới đã được cấp cho hội viên.",
@@ -652,7 +691,8 @@ export function BackofficeOperationsPageClient() {
       return;
     }
     const draft = voucherDrafts[voucherId];
-    if (!draft) {
+    const voucher = vouchers.find(item => item.voucherId === voucherId);
+    if (!draft || !voucher) {
       return;
     }
 
@@ -661,13 +701,17 @@ export function BackofficeOperationsPageClient() {
     try {
       await updateBackofficeOperationsVoucher(
         voucherId,
-        {
-          ...draft,
-          title: draft.title.trim(),
-          description: draft.description.trim(),
-          currency: draft.currency.trim().toUpperCase(),
-          expiresAt: toApiDateTimeValue(draft.expiresAt)
-        },
+        buildBackofficeVoucherUpdatePayload(voucher, {
+          title: draft.title,
+          description: draft.description,
+          discountAmount: draft.discountAmount,
+          currency: draft.currency,
+          status: draft.status,
+          expiresAt: getVoucherSource(voucher.source) === "BIRTHDAY" ? voucher.expiresAt : toApiDateTimeValue(draft.expiresAt),
+          ...(getVoucherSource(voucher.source) === "BIRTHDAY" ? {}
+            : conditionDrafts[voucherId]?.changed ? { conditions: buildVoucherConditions(conditionDrafts[voucherId].value) }
+            : draft.conditions === undefined ? {} : { conditions: draft.conditions })
+        }),
         accessToken
       );
       await loadVouchers(voucherEmail.trim(), voucherCode.trim().toUpperCase(), voucherStatus, accessToken);
@@ -706,6 +750,9 @@ export function BackofficeOperationsPageClient() {
         ...current,
         [voucherId]: buildVoucherDraft(updatedVoucher)
       }));
+      setConditionDrafts((current) => ({ ...current, [voucherId]: {
+        value: createVoucherConditionDraft(updatedVoucher.conditions), changed: false
+      } }));
       pushToast({
         title: "Đã thu hồi voucher",
         message: "Voucher đã được chuyển về trạng thái thu hồi an toàn.",
@@ -755,7 +802,7 @@ export function BackofficeOperationsPageClient() {
   }
 
   return (
-    <section className="section">
+    <section ref={operationsRootRef} className="section">
       <div className="container">
         <div id="operations-overview" className="backoffice-operations-intro">
           <SectionHeading
@@ -766,7 +813,7 @@ export function BackofficeOperationsPageClient() {
           />
         </div>
 
-        <nav className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
+        <nav ref={operationsNavRef} className="backoffice-local-nav" aria-label="Điều hướng phân khu điều hành">
           <div className="backoffice-local-nav-links">
             {OPERATIONS_NAV_ITEMS.map((item) => (
               <a
@@ -1369,6 +1416,8 @@ export function BackofficeOperationsPageClient() {
                 />
               </label>
             </div>
+            <VoucherConditionEditor value={conditionForm} onChange={setConditionForm}
+              disabled={pendingVoucherAction !== null} currency={voucherForm.currency} />
             <div className="booking-action-list booking-action-list-spacious">
               <button
                 type="button"
@@ -1430,12 +1479,15 @@ export function BackofficeOperationsPageClient() {
           {vouchers.length > 0 ? (
             vouchers.map((voucher) => {
               const draft = voucherDrafts[voucher.voucherId];
+              const displayStatus = getEffectiveVoucherStatus(voucher, voucherPresentationTime);
               const isWorking = pendingVoucherAction?.endsWith(`-${voucher.voucherId}`) ?? false;
               const isUsedVoucher = voucher.status === "USED";
               const isReservedVoucher = voucher.status === "RESERVED";
               const isRevokedVoucher = voucher.status === "REVOKED";
               const canHideVoucher = isUsedVoucher || isRevokedVoucher;
-              const isEditableVoucher = !isUsedVoucher && !isReservedVoucher;
+              const isBirthdayVoucher = getVoucherSource(voucher.source) === "BIRTHDAY";
+              const isEditableVoucher = canEditVoucherMetadata(voucher);
+              const isPolicyEditableVoucher = canEditVoucherPolicy(voucher);
 
               return (
                 <article key={voucher.voucherId} className="surface-card result-card">
@@ -1447,7 +1499,7 @@ export function BackofficeOperationsPageClient() {
                         {voucher.memberDisplayName} · {voucher.memberEmail}
                       </p>
                     </div>
-                    <StatusChip tone={resolveVoucherTone(voucher.status)} label={formatVoucherStatus(voucher.status)} />
+                    <StatusChip tone={resolveVoucherTone(displayStatus)} label={formatVoucherStatus(displayStatus)} />
                   </div>
 
                   <div className="result-grid result-grid-rich">
@@ -1457,7 +1509,7 @@ export function BackofficeOperationsPageClient() {
                     </div>
                     <div>
                       <span>Hết hạn</span>
-                      <strong>{formatDateTime(voucher.expiresAt)}</strong>
+                      <strong>{isBirthdayVoucher && voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
                     </div>
                     <div>
                       <span>Booking liên kết</span>
@@ -1465,6 +1517,18 @@ export function BackofficeOperationsPageClient() {
                     </div>
                   </div>
 
+                  <VoucherOriginSummary voucher={voucher} showDescription={false} />
+                  {isBirthdayVoucher && !isEditableVoucher && !isUsedVoucher && !isReservedVoucher ? <p role="status">
+                    Chưa xác minh được chính sách quà sinh nhật để lưu chỉnh sửa. Vui lòng kiểm tra cấu hình voucher.
+                  </p> : null}
+                  <VoucherConditionSummary voucher={voucher} />
+                  {isBirthdayVoucher ? (
+                    <p>Chính sách quà sinh nhật do hệ thống quản lý; không thể chỉnh sửa thủ công mức giảm, tiền tệ, điều kiện và hạn sử dụng.</p>
+                  ) : (
+                    <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
+                      onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
+                      disabled={pendingVoucherAction !== null} readOnly={!isPolicyEditableVoucher} currency={draft?.currency ?? voucher.currency} />
+                  )}
                   <div className="field-grid compact-grid">
                     <label className="field result-grid-span-full">
                       <span>Tiêu đề</span>
@@ -1506,7 +1570,7 @@ export function BackofficeOperationsPageClient() {
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={draft?.discountAmount ?? voucher.discountAmount}
+                        value={isBirthdayVoucher ? voucher.discountAmount : draft?.discountAmount ?? voucher.discountAmount}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({
                             ...current,
@@ -1519,13 +1583,13 @@ export function BackofficeOperationsPageClient() {
                             }
                           }))
                         }
-                        disabled={isWorking || !isEditableVoucher}
+                        disabled={isWorking || !isPolicyEditableVoucher}
                       />
                     </label>
                     <label className="field">
                       <span>Tiền tệ</span>
                       <input
-                        value={draft?.currency ?? voucher.currency}
+                        value={isBirthdayVoucher ? voucher.currency : draft?.currency ?? voucher.currency}
                         onChange={(event) =>
                           setVoucherDrafts((current) => ({
                             ...current,
@@ -1535,7 +1599,7 @@ export function BackofficeOperationsPageClient() {
                             }
                           }))
                         }
-                        disabled={isWorking || !isEditableVoucher}
+                        disabled={isWorking || !isPolicyEditableVoucher}
                       />
                     </label>
                     <label className="field">
@@ -1561,32 +1625,39 @@ export function BackofficeOperationsPageClient() {
                           ))}
                         </select>
                       ) : (
-                        <input value={formatVoucherStatus(voucher.status)} disabled />
+                        <input value={formatVoucherStatus(displayStatus)} disabled />
                       )}
                     </label>
-                    <label className="field">
-                      <span>Hết hạn lúc</span>
-                      <DateTimeField
-                        value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
-                        onChange={(nextValue) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              expiresAt: nextValue
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isEditableVoucher}
-                      />
-                    </label>
+                    {isBirthdayVoucher ? (
+                      <div className="field">
+                        <span>Hết hạn lúc (giờ Việt Nam)</span>
+                        <strong>{voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
+                      </div>
+                    ) : (
+                      <label className="field">
+                        <span>Hết hạn lúc</span>
+                        <DateTimeField
+                          value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
+                          onChange={(nextValue) =>
+                            setVoucherDrafts((current) => ({
+                              ...current,
+                              [voucher.voucherId]: {
+                                ...(draft ?? buildVoucherDraft(voucher)),
+                                expiresAt: nextValue
+                              }
+                            }))
+                          }
+                          disabled={isWorking || !isPolicyEditableVoucher}
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <div className="booking-action-list">
                     <div className="result-grid result-grid-rich">
                       <div>
-                        <span>Trạng thái hiện tại</span>
-                        <strong>{formatVoucherStatus(voucher.status)}</strong>
+                        <span>Trạng thái hiệu lực</span>
+                        <strong>{formatVoucherStatus(displayStatus)}</strong>
                       </div>
                       <div>
                         <span>Đã dùng lúc</span>
@@ -1659,6 +1730,7 @@ export function BackofficeOperationsPageClient() {
             </article>
           )}
         </div>
+        <VoucherStatisticsPanel accessToken={accessToken} />
       </div>
     </section>
   );

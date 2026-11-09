@@ -7,10 +7,26 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "member_voucher")
 public class MemberVoucherEntity {
+
+  public static final String SOURCE_MANUAL = "MANUAL";
+  public static final String SOURCE_BIRTHDAY = "BIRTHDAY";
+
+  @Column(nullable = false, length = 16, updatable = false)
+  private String source = SOURCE_MANUAL;
+
+  public String getSource() {
+    return source;
+  }
+
+  public boolean isBirthday() {
+    return SOURCE_BIRTHDAY.equals(source);
+  }
 
   public static final String STATUS_AVAILABLE = "AVAILABLE";
   public static final String STATUS_RESERVED = "RESERVED";
@@ -39,6 +55,10 @@ public class MemberVoucherEntity {
 
   @Column(nullable = false, length = 8)
   private String currency;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "condition_json", columnDefinition = "jsonb")
+  private String conditionJson;
 
   @Column(nullable = false, length = 16)
   private String status;
@@ -93,6 +113,14 @@ public class MemberVoucherEntity {
 
   public String getCurrency() {
     return currency;
+  }
+
+  public String getConditionJson() {
+    return conditionJson;
+  }
+
+  public void updateConditions(String conditionJson) {
+    this.conditionJson = conditionJson;
   }
 
   public String getStatus() {

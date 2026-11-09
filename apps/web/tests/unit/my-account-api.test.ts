@@ -295,7 +295,10 @@ describe("my-account-api", () => {
             status: "AVAILABLE",
             expiresAt: "2026-05-31T16:59:59Z",
             usedAt: null,
-            bookingCode: null
+            bookingCode: null,
+            conditions: null,
+            conditionSummary: "Không có điều kiện bổ sung.",
+            conditionsValid: true
           }
         ]),
         {
@@ -319,7 +322,10 @@ describe("my-account-api", () => {
         status: "AVAILABLE",
         expiresAt: "2026-05-31T16:59:59Z",
         usedAt: null,
-        bookingCode: null
+        bookingCode: null,
+        conditions: null,
+        conditionSummary: "Không có điều kiện bổ sung.",
+        conditionsValid: true
       }
     ]);
   });
