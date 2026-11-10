@@ -235,7 +235,15 @@ jobs:
           --header "Authorization: Bearer $COOLIFY_TOKEN"
           "$API_WEBHOOK"
 
+      - name: Giữ triển khai Web theo kế hoạch cutover
+        if: ${{ vars.HOLD_WEB_CUTOVER == 'true' }}
+        shell: bash
+        run: |
+          echo "::notice::HOLD_WEB_CUTOVER=true: Chủ động giữ triển khai Web; chưa gọi webhook Web."
+          echo "Web được giữ có chủ đích. Chỉ triển khai Web sau khi xác minh đúng image API mới và Flyway thành công." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Triển khai image web qua Coolify
+        if: ${{ vars.HOLD_WEB_CUTOVER != 'true' }}
         shell: bash
         env:
           WEB_WEBHOOK: ${{ secrets.COOLIFY_WEB_PRODUCTION_WEBHOOK_URL }}

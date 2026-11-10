@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { SectionHeading } from "@/components/section-heading";
@@ -72,13 +73,16 @@ export function BackofficeAdminPageClient() {
   const [dashboard, setDashboard] = useState<BackofficeAdminDashboard | null>(null);
   const [users, setUsers] = useState<BackofficeAdminUser[]>([]);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [canViewAudit, setCanViewAudit] = useState(false);
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingAuditLogId, setPendingAuditLogId] = useState<number | null>(null);
   const [draftRoles, setDraftRoles] = useState<Record<number, string>>({});
   const [draftStatuses, setDraftStatuses] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    setAccessToken(loadActiveAuthSession()?.accessToken ?? null);
+    const session = loadActiveAuthSession();
+    setAccessToken(session?.accessToken ?? null);
+    setCanViewAudit(session?.user.permissions.includes("backoffice.admin") ?? false);
   }, []);
 
   useEffect(() => {
@@ -254,6 +258,7 @@ export function BackofficeAdminPageClient() {
               title="Các thay đổi nhạy cảm gần nhất"
               description="Giúp kiểm tra nhanh các thao tác đổi role, khóa tài khoản hoặc xử lý vận hành."
             />
+            {canViewAudit ? <p><Link href="/backoffice/audit" prefetch={false} className="button button-secondary">Xem toàn bộ nhật ký</Link></p> : null}
             <div className="stack-list">
               {auditTrail.length > 0 ? (
                 auditTrail.map((item) => (

@@ -38,6 +38,8 @@ public class MemberLoyaltyService {
   private final MemberVoucherRepository memberVoucherRepository;
   private final AuditLogRepository auditLogRepository;
   private final LoyaltyTierRuleRepository loyaltyTierRuleRepository;
+  private final VoucherConditionService conditions;
+  private final VoucherLockService locks;
 
   public MemberLoyaltyService(
       UserAccountRepository userAccountRepository,
@@ -45,7 +47,9 @@ public class MemberLoyaltyService {
       MemberLoyaltyLedgerRepository memberLoyaltyLedgerRepository,
       MemberVoucherRepository memberVoucherRepository,
       AuditLogRepository auditLogRepository,
-      LoyaltyTierRuleRepository loyaltyTierRuleRepository
+      LoyaltyTierRuleRepository loyaltyTierRuleRepository,
+      VoucherConditionService conditions,
+      VoucherLockService locks
   ) {
     this.userAccountRepository = userAccountRepository;
     this.memberLoyaltyAccountRepository = memberLoyaltyAccountRepository;
@@ -53,6 +57,8 @@ public class MemberLoyaltyService {
     this.memberVoucherRepository = memberVoucherRepository;
     this.auditLogRepository = auditLogRepository;
     this.loyaltyTierRuleRepository = loyaltyTierRuleRepository;
+    this.conditions = conditions;
+    this.locks = locks;
   }
 
   @Transactional(readOnly = true)
@@ -121,7 +127,8 @@ public class MemberLoyaltyService {
   @Transactional
   public void hideMyUsedVoucherHistory(AuthenticatedUser authenticatedUser, String voucherCode) {
     UserAccountEntity userAccount = loadMemberAccount(authenticatedUser);
-    MemberVoucherEntity voucher = memberVoucherRepository.findByVoucherCodeIgnoreCaseAndUserId(voucherCode, userAccount.getId())
+    MemberVoucherEntity voucher = locks.lockCodes(List.of(voucherCode)).stream()
+        .filter(candidate -> candidate.getUserId().equals(userAccount.getId())).findFirst()
         .orElseThrow(() -> new BadRequestException("Không tìm thấy voucher của hội viên theo mã đã nhập."));
 
     if (!voucher.isUsed()) {
@@ -167,6 +174,7 @@ public class MemberLoyaltyService {
   }
 
   private MyVoucherResponse toVoucherResponse(MemberVoucherEntity voucher) {
+    VoucherConditionService.Presentation presentation = conditions.present(voucher.getConditionJson(), voucher.getCurrency());
     return new MyVoucherResponse(
         voucher.getVoucherCode(),
         voucher.getTitle(),
@@ -176,7 +184,11 @@ public class MemberLoyaltyService {
         voucher.getStatus(),
         voucher.getExpiresAt(),
         voucher.getUsedAt(),
-        voucher.getBookingCode()
+        voucher.getBookingCode(),
+        presentation.conditions(),
+        presentation.conditionSummary(),
+        presentation.conditionsValid(),
+        voucher.getSource()
     );
   }
 

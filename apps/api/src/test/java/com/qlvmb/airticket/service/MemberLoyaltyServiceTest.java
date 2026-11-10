@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qlvmb.airticket.repository.AirportRepository;
 import com.qlvmb.airticket.domain.dto.MyVoucherResponse;
 import org.springframework.data.domain.PageRequest;
 import com.qlvmb.airticket.domain.entity.AuditLogEntity;
@@ -53,6 +55,9 @@ class MemberLoyaltyServiceTest {
   @Mock
   private LoyaltyTierRuleRepository loyaltyTierRuleRepository;
 
+  @Mock
+  private VoucherLockService locks;
+
   private MemberLoyaltyService memberLoyaltyService;
 
   @BeforeEach
@@ -63,7 +68,10 @@ class MemberLoyaltyServiceTest {
         memberLoyaltyLedgerRepository,
         memberVoucherRepository,
         auditLogRepository,
-        loyaltyTierRuleRepository
+        loyaltyTierRuleRepository,
+        new VoucherConditionService(new ObjectMapper().findAndRegisterModules(),
+            org.mockito.Mockito.mock(AirportRepository.class), new ProductCatalogService()),
+        locks
     );
   }
 
@@ -119,8 +127,7 @@ class MemberLoyaltyServiceTest {
     );
 
     when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(memberAccount));
-    when(memberVoucherRepository.findByVoucherCodeIgnoreCaseAndUserId("USED52026", 151L))
-        .thenReturn(Optional.of(usedVoucher));
+    when(locks.lockCodes(List.of("USED52026"))).thenReturn(List.of(usedVoucher));
     when(auditLogRepository.save(any(AuditLogEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     memberLoyaltyService.hideMyUsedVoucherHistory(authenticatedUser, "USED52026");

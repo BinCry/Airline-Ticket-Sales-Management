@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public record BackofficeVoucherCreateRequest(
     @NotBlank @Email String memberEmail,
@@ -14,6 +15,7 @@ public record BackofficeVoucherCreateRequest(
     @NotBlank @Size(max = 255) String description,
     @Min(1) long discountAmount,
     @NotBlank @Size(max = 8) String currency,
-    @NotNull OffsetDateTime expiresAt
+    @NotNull OffsetDateTime expiresAt,
+    JsonNode conditions
 ) {
 }

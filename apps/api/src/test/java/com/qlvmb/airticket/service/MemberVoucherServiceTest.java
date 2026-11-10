@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qlvmb.airticket.repository.AirportRepository;
 import com.qlvmb.airticket.domain.entity.BookingContactEntity;
 import com.qlvmb.airticket.domain.entity.BookingEntity;
 import com.qlvmb.airticket.domain.entity.MemberVoucherEntity;
@@ -37,11 +39,16 @@ class MemberVoucherServiceTest {
   @Mock
   private MemberVoucherRepository memberVoucherRepository;
 
+  @Mock
+  private VoucherLockService locks;
+
   private MemberVoucherService memberVoucherService;
 
   @BeforeEach
   void setUp() {
-    memberVoucherService = new MemberVoucherService(userAccountRepository, memberVoucherRepository);
+    memberVoucherService = new MemberVoucherService(userAccountRepository, memberVoucherRepository,
+        new VoucherConditionService(new ObjectMapper().findAndRegisterModules(),
+            org.mockito.Mockito.mock(AirportRepository.class), new ProductCatalogService()), locks);
   }
 
   @Test
@@ -66,8 +73,7 @@ class MemberVoucherServiceTest {
     );
 
     when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(memberAccount));
-    when(memberVoucherRepository.findByVoucherCodeIgnoreCaseAndUserId("MEM52026", 151L))
-        .thenReturn(Optional.of(voucher));
+    when(locks.lockCodes(List.of("MEM52026"))).thenReturn(List.of(voucher));
 
     memberVoucherService.applyVoucherToBooking(authenticatedUser, booking, "mem52026", currentTime);
 
@@ -92,7 +98,7 @@ class MemberVoucherServiceTest {
     );
 
     booking.applyVoucher("MEM52026", 120000L, currentTime);
-    when(memberVoucherRepository.findByVoucherCodeIgnoreCase("MEM52026")).thenReturn(Optional.of(voucher));
+    when(locks.lockCodes(List.of("MEM52026"))).thenReturn(List.of(voucher));
 
     memberVoucherService.finalizeVoucherForBooking(booking, currentTime.plusMinutes(3));
 
@@ -124,7 +130,7 @@ class MemberVoucherServiceTest {
     booking.applyVoucher("MEM52026", 180000L, currentTime.plusMinutes(1));
 
     when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(memberAccount));
-    when(memberVoucherRepository.findByVoucherCodeIgnoreCase("MEM52026")).thenReturn(Optional.of(voucher));
+    when(locks.lockCodes(List.of("MEM52026"))).thenReturn(List.of(voucher));
 
     memberVoucherService.removeVoucherFromBooking(authenticatedUser, booking, currentTime.plusMinutes(3));
 
@@ -155,6 +161,47 @@ class MemberVoucherServiceTest {
     )
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage("Tài khoản hiện tại chưa được kích hoạt quyền hội viên.");
+  }
+
+
+  @Test
+  void failedReplacementKeepsPreviousReservationAndTotals() {
+    var user = createUserAccount(151L, "member@example.test", RoleCode.MEMBER);
+    var auth = new AuthenticatedUser(151L, "member@example.test", "Hội viên", List.of("member"), List.of());
+    var now = OffsetDateTime.parse("2026-10-29T00:00:00Z");
+    var booking = createHeldBooking("VC0001", "member@example.test", 1000, 200, now);
+    var previous = createVoucher(151L, "OLD", 500, MemberVoucherEntity.STATUS_RESERVED, now.plusDays(5), "VC0001");
+    var candidate = createVoucher(151L, "NEW", 600, MemberVoucherEntity.STATUS_AVAILABLE, now.plusDays(5), null);
+    candidate.updateConditions("{\"minAmount\":1201}");
+    booking.applyVoucher("OLD", 500, now);
+    when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(user));
+    when(locks.lockCodes(List.of("OLD", "NEW"))).thenReturn(List.of(candidate, previous));
+
+    assertThatThrownBy(() -> memberVoucherService.applyVoucherToBooking(auth, booking, "NEW", now))
+        .isInstanceOf(com.qlvmb.airticket.exception.BadRequestException.class);
+    assertThat(booking.getAppliedVoucherCode()).isEqualTo("OLD");
+    assertThat(booking.getDiscountAmount()).isEqualTo(500);
+    assertThat(booking.getTotalAmount()).isEqualTo(700);
+    assertThat(previous.isReservedForBooking("VC0001")).isTrue();
+    assertThat(candidate.isAvailable()).isTrue();
+  }
+
+  @Test
+  void validReplacementReleasesOldAndReservesNewOnlyAfterValidation() {
+    var user = createUserAccount(151L, "member@example.test", RoleCode.MEMBER);
+    var auth = new AuthenticatedUser(151L, "member@example.test", "Hội viên", List.of("member"), List.of());
+    var now = OffsetDateTime.parse("2026-10-29T00:00:00Z");
+    var booking = createHeldBooking("VC0001", "member@example.test", 1000, 200, now);
+    var previous = createVoucher(151L, "OLD", 500, MemberVoucherEntity.STATUS_RESERVED, now.plusDays(5), "VC0001");
+    var candidate = createVoucher(151L, "NEW", 600, MemberVoucherEntity.STATUS_AVAILABLE, now.plusDays(5), null);
+    candidate.updateConditions("{\"minAmount\":1200}");
+    booking.applyVoucher("OLD", 500, now);
+    when(userAccountRepository.findOneWithRolesById(151L)).thenReturn(Optional.of(user));
+    when(locks.lockCodes(List.of("OLD", "NEW"))).thenReturn(List.of(candidate, previous));
+    memberVoucherService.applyVoucherToBooking(auth, booking, "NEW", now);
+    assertThat(previous.isAvailable()).isTrue();
+    assertThat(candidate.isReservedForBooking("VC0001")).isTrue();
+    assertThat(booking.getTotalAmount()).isEqualTo(600);
   }
 
   private BookingEntity createHeldBooking(

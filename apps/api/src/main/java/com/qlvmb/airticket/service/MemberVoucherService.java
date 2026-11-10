@@ -14,10 +14,15 @@ import com.qlvmb.airticket.security.AuthenticatedUser;
 import com.qlvmb.airticket.security.RoleCode;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
 @Service
+@Transactional
 public class MemberVoucherService {
 
   private static final String MEMBER_ACCOUNT_NOT_FOUND_MESSAGE =
@@ -37,13 +42,19 @@ public class MemberVoucherService {
 
   private final UserAccountRepository userAccountRepository;
   private final MemberVoucherRepository memberVoucherRepository;
+  private final VoucherConditionService conditions;
+  private final VoucherLockService locks;
 
   public MemberVoucherService(
       UserAccountRepository userAccountRepository,
-      MemberVoucherRepository memberVoucherRepository
+      MemberVoucherRepository memberVoucherRepository,
+      VoucherConditionService conditions,
+      VoucherLockService locks
   ) {
     this.userAccountRepository = userAccountRepository;
     this.memberVoucherRepository = memberVoucherRepository;
+    this.conditions = conditions;
+    this.locks = locks;
   }
 
   public void applyVoucherToBooking(
@@ -67,17 +78,14 @@ public class MemberVoucherService {
     }
 
     String normalizedVoucherCode = normalizeVoucherCode(voucherCode);
-    if (booking.getAppliedVoucherCode() != null
-        && !booking.getAppliedVoucherCode().equalsIgnoreCase(normalizedVoucherCode)) {
-      releaseVoucherForBooking(booking, currentTime);
-    }
-
-    MemberVoucherEntity voucher = memberVoucherRepository
-        .findByVoucherCodeIgnoreCaseAndUserId(normalizedVoucherCode, memberAccount.getId())
-        .orElseThrow(() -> new NotFoundException(VOUCHER_NOT_FOUND_MESSAGE));
+    List<MemberVoucherEntity> locked = locks.lockCodes(Stream.of(
+        booking.getAppliedVoucherCode(), normalizedVoucherCode).filter(Objects::nonNull).toList());
+    MemberVoucherEntity voucher = locked.stream()
+        .filter(candidate -> candidate.getVoucherCode().equalsIgnoreCase(normalizedVoucherCode)
+            && candidate.getUserId().equals(memberAccount.getId()))
+        .findFirst().orElseThrow(() -> new NotFoundException(VOUCHER_NOT_FOUND_MESSAGE));
 
     if (voucher.isExpired(currentTime)) {
-      voucher.markExpired(currentTime);
       throw new BadRequestException(VOUCHER_EXPIRED_MESSAGE);
     }
 
@@ -94,6 +102,14 @@ public class MemberVoucherService {
       throw new BadRequestException(VOUCHER_UNAVAILABLE_MESSAGE);
     }
 
+    conditions.requireEligible(voucher, booking);
+    // Kiểm tra mã mới trước khi thay reservation cũ; transaction vẫn bảo đảm rollback toàn bộ.
+    if (booking.getAppliedVoucherCode() != null
+        && !booking.getAppliedVoucherCode().equalsIgnoreCase(normalizedVoucherCode)) {
+      locked.stream().filter(previous -> previous.getVoucherCode().equalsIgnoreCase(booking.getAppliedVoucherCode()))
+          .filter(previous -> previous.isReservedForBooking(booking.getBookingCode()))
+          .forEach(previous -> previous.releaseReservation(currentTime));
+    }
     voucher.reserveForBooking(booking.getBookingCode(), currentTime);
     booking.applyVoucher(
         voucher.getVoucherCode(),
@@ -129,7 +145,7 @@ public class MemberVoucherService {
       return;
     }
 
-    memberVoucherRepository.findByVoucherCodeIgnoreCase(booking.getAppliedVoucherCode())
+    locks.lockCodes(List.of(booking.getAppliedVoucherCode())).stream().findFirst()
         .ifPresent(voucher -> {
           if (voucher.isReservedForBooking(booking.getBookingCode())) {
             voucher.releaseReservation(currentTime);
@@ -144,7 +160,7 @@ public class MemberVoucherService {
       return;
     }
 
-    memberVoucherRepository.findByVoucherCodeIgnoreCase(booking.getAppliedVoucherCode())
+    locks.lockCodes(List.of(booking.getAppliedVoucherCode())).stream().findFirst()
         .ifPresent(voucher -> {
           if (voucher.belongsToBooking(booking.getBookingCode())) {
             voucher.markUsed(booking.getBookingCode(), currentTime);

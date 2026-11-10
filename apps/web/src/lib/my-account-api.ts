@@ -3,6 +3,7 @@ import {
   requestApi,
   resolveApiClientErrorMessage
 } from "@/lib/api-client";
+import { normalizeVoucherConditionInfo, type VoucherConditionInfo } from "@/lib/voucher-conditions";
 import { presentUserDisplayName } from "@/lib/present-user-label";
 
 export interface MyProfile {
@@ -57,7 +58,8 @@ export interface MyLoyalty {
   progressPercent?: number;
 }
 
-export interface MyVoucher {
+export interface MyVoucher extends VoucherConditionInfo {
+  source?: string | null;
   voucherCode: string;
   title: string;
   description: string;
@@ -224,6 +226,7 @@ function isMyVoucher(value: unknown): value is MyVoucher {
     typeof voucher.discountAmount === "number" &&
     typeof voucher.currency === "string" &&
     typeof voucher.status === "string" &&
+    (voucher.source === undefined || voucher.source === null || typeof voucher.source === "string") &&
     typeof voucher.expiresAt === "string" &&
     (voucher.usedAt === null || typeof voucher.usedAt === "string" || typeof voucher.usedAt === "undefined") &&
     (voucher.bookingCode === null ||
@@ -412,7 +415,7 @@ export async function fetchMyVouchers(accessToken: string): Promise<MyVoucher[]>
     throw new MyAccountApiError("Dữ liệu voucher trả về không hợp lệ.", 500);
   }
 
-  return payload;
+  return payload.map((voucher) => ({ ...voucher, ...normalizeVoucherConditionInfo(voucher) }));
 }
 
 export async function fetchMyNotifications(accessToken: string): Promise<MyNotification[]> {
