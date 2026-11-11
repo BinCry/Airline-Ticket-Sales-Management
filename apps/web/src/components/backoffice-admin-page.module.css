@@ -1,0 +1,9 @@
+.auditTrail {
+  scroll-margin-top: calc(var(--site-header-height, 76px) + var(--backoffice-module-nav-offset, 72px) + 16px);
+}
+
+@media (max-width: 820px) {
+  .auditTrail {
+    scroll-margin-top: calc(var(--site-header-height-mobile, 65px) + var(--backoffice-module-nav-offset, 62px) + 16px);
+  }
+}

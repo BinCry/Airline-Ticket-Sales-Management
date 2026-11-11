@@ -4,13 +4,17 @@ import { BackofficeModuleNav } from "@/components/backoffice-module-nav";
 
 type BackofficeModuleShellProps = {
   children: ReactNode;
+  navigation?: ReactNode;
 };
 
-export function BackofficeModuleShell({ children }: BackofficeModuleShellProps) {
+export function BackofficeModuleShell({
+  children,
+  navigation = <BackofficeModuleNav />
+}: BackofficeModuleShellProps) {
   return (
     <div className="backoffice-module-shell">
       <div className="container backoffice-module-shell-nav">
-        <BackofficeModuleNav />
+        {navigation}
       </div>
       {children}
     </div>

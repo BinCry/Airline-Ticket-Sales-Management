@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import styles from "./backoffice-admin-page.module.css";
 
 import { SectionHeading } from "@/components/section-heading";
 import { resolveApiClientErrorMessage } from "@/lib/api-client";
@@ -69,6 +71,7 @@ function formatStatusLabel(status: string) {
 
 export function BackofficeAdminPageClient() {
   const [state, setState] = useState<AdminState>("idle");
+  const auditAnchorRestored = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<BackofficeAdminDashboard | null>(null);
   const [users, setUsers] = useState<BackofficeAdminUser[]>([]);
@@ -92,6 +95,18 @@ export function BackofficeAdminPageClient() {
 
     void loadAdminData(accessToken);
   }, [accessToken]);
+
+  useEffect(() => {
+    if (state !== "success" || auditAnchorRestored.current || window.location.hash !== "#admin-audit-trail") {
+      return;
+    }
+
+    const target = document.getElementById("admin-audit-trail");
+    if (target) {
+      target.scrollIntoView({ block: "start" });
+      auditAnchorRestored.current = true;
+    }
+  }, [state]);
 
   async function loadAdminData(nextAccessToken: string) {
     setState("loading");
@@ -252,7 +267,7 @@ export function BackofficeAdminPageClient() {
             </div>
           </article>
 
-          <article className="surface-card">
+          <article id="admin-audit-trail" className={`surface-card ${styles.auditTrail}`}>
             <SectionHeading
               eyebrow="Nhật ký thao tác"
               title="Các thay đổi nhạy cảm gần nhất"

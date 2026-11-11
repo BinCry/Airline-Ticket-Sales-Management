@@ -1303,434 +1303,437 @@ export function BackofficeOperationsPageClient() {
         <div className="section-gap" />
         <BackofficeBaggagePanel />
         <div className="section-gap" />
-        <SectionHeading
-          eyebrow="Voucher vận hành"
-          title="Cấp, chỉnh sửa, thu hồi và dọn lịch sử voucher"
-          description="Voucher đã dùng chỉ ẩn khỏi màn operations khi bạn dọn lịch sử, còn hội viên tự quyết định xóa lịch sử bên phía tài khoản của họ."
-        />
-
-        {voucherErrorMessage ? (
-          <article className="booking-inline-error" role="alert">
-            <strong>Không thể xử lý voucher</strong>
-            <p>{voucherErrorMessage}</p>
-          </article>
-        ) : null}
-
         <div className="section-split">
-          <article id="operations-create-voucher" className="surface-card backoffice-operations-anchor">
+          <article className="surface-card">
             <SectionHeading
-              eyebrow="Tạo voucher mới"
-              title="Cấp voucher trực tiếp cho hội viên"
-              description="Chỉ cấp cho tài khoản đang là hội viên. Mỗi voucher được theo dõi tới khi dùng hoặc thu hồi."
+              eyebrow="Voucher vận hành"
+              title="Cấp, chỉnh sửa, thu hồi và dọn lịch sử voucher"
+              description="Voucher đã dùng chỉ ẩn khỏi màn operations khi bạn dọn lịch sử, còn hội viên tự quyết định xóa lịch sử bên phía tài khoản của họ."
             />
-            <div className="field-grid compact-grid">
-              <label className="field">
-                <span>Email hội viên</span>
-                <input
-                  value={voucherForm.memberEmail}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      memberEmail: event.target.value
-                    }))
-                  }
-                  placeholder="hoi.vien@gmail.com"
-                />
-              </label>
-              <label className="field">
-                <span>Mã voucher</span>
-                <input
-                  value={voucherForm.voucherCode}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      voucherCode: event.target.value.toUpperCase()
-                    }))
-                  }
-                  placeholder="Ví dụ: OPS52026"
-                />
-              </label>
-              <label className="field">
-                <span>Giảm giá</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={voucherForm.discountAmount}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      discountAmount: capNhatSoTienHopLe(event.target.value, current.discountAmount)
-                    }))
-                  }
-                />
-              </label>
-              <label className="field result-grid-span-full">
-                <span>Tiêu đề</span>
-                <input
-                  value={voucherForm.title}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      title: event.target.value
-                    }))
-                  }
-                />
-              </label>
-              <label className="field result-grid-span-full">
-                <span>Mô tả</span>
-                <textarea
-                  className="booking-textarea"
-                  rows={3}
-                  value={voucherForm.description}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      description: event.target.value
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Tiền tệ</span>
-                <input
-                  value={voucherForm.currency}
-                  onChange={(event) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      currency: event.target.value.toUpperCase()
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Hết hạn lúc</span>
-                <DateTimeField
-                  value={voucherForm.expiresAt}
-                  onChange={(nextValue) =>
-                    setVoucherForm((current) => ({
-                      ...current,
-                      expiresAt: nextValue
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <VoucherConditionEditor value={conditionForm} onChange={setConditionForm}
-              disabled={pendingVoucherAction !== null} currency={voucherForm.currency} />
-            <div className="booking-action-list booking-action-list-spacious">
-              <button
-                type="button"
-                className="button button-primary"
-                onClick={() => void handleVoucherCreate()}
-                disabled={pendingVoucherAction !== null}
-              >
-                {pendingVoucherAction === "create-voucher" ? "Đang tạo voucher..." : "Cấp voucher cho hội viên"}
-              </button>
-            </div>
           </article>
 
-          <article id="operations-voucher-lookup" className="surface-card backoffice-operations-anchor">
-            <SectionHeading
-              eyebrow="Tra cứu voucher"
-              title="Lọc nhanh theo hội viên, mã hoặc trạng thái"
-              description="Dùng để tìm voucher khả dụng, đang giữ chỗ, đã dùng hoặc đã thu hồi."
-            />
-            <form className="stack-list" onSubmit={handleVoucherFilterSubmit}>
+          {voucherErrorMessage ? (
+            <article className="booking-inline-error" role="alert">
+              <strong>Không thể xử lý voucher</strong>
+              <p>{voucherErrorMessage}</p>
+            </article>
+          ) : null}
+
+          <div className="section-split">
+            <article id="operations-create-voucher" className="surface-card backoffice-operations-anchor">
+              <SectionHeading
+                eyebrow="Tạo voucher mới"
+                title="Cấp voucher trực tiếp cho hội viên"
+                description="Chỉ cấp cho tài khoản đang là hội viên. Mỗi voucher được theo dõi tới khi dùng hoặc thu hồi."
+              />
               <div className="field-grid compact-grid">
                 <label className="field">
                   <span>Email hội viên</span>
                   <input
-                    value={voucherEmail}
-                    onChange={(event) => setVoucherEmail(event.target.value)}
+                    value={voucherForm.memberEmail}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        memberEmail: event.target.value
+                      }))
+                    }
                     placeholder="hoi.vien@gmail.com"
                   />
                 </label>
                 <label className="field">
                   <span>Mã voucher</span>
                   <input
-                    value={voucherCode}
-                    onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
+                    value={voucherForm.voucherCode}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        voucherCode: event.target.value.toUpperCase()
+                      }))
+                    }
                     placeholder="Ví dụ: OPS52026"
                   />
                 </label>
                 <label className="field">
-                  <span>Trạng thái</span>
-                  <select value={voucherStatus} onChange={(event) => setVoucherStatus(event.target.value)}>
-                    {VOUCHER_STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <span>Giảm giá</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={voucherForm.discountAmount}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        discountAmount: capNhatSoTienHopLe(event.target.value, current.discountAmount)
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field result-grid-span-full">
+                  <span>Tiêu đề</span>
+                  <input
+                    value={voucherForm.title}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        title: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field result-grid-span-full">
+                  <span>Mô tả</span>
+                  <textarea
+                    className="booking-textarea"
+                    rows={3}
+                    value={voucherForm.description}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        description: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Tiền tệ</span>
+                  <input
+                    value={voucherForm.currency}
+                    onChange={(event) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        currency: event.target.value.toUpperCase()
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Hết hạn lúc</span>
+                  <DateTimeField
+                    value={voucherForm.expiresAt}
+                    onChange={(nextValue) =>
+                      setVoucherForm((current) => ({
+                        ...current,
+                        expiresAt: nextValue
+                      }))
+                    }
+                  />
                 </label>
               </div>
-              <div className="booking-action-list">
-                <button type="submit" className="button button-secondary" disabled={voucherState === "loading"}>
-                  {voucherState === "loading" ? "Đang tải voucher..." : "Tải danh sách voucher"}
+              <VoucherConditionEditor value={conditionForm} onChange={setConditionForm}
+                disabled={pendingVoucherAction !== null} currency={voucherForm.currency} />
+              <div className="booking-action-list booking-action-list-spacious">
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => void handleVoucherCreate()}
+                  disabled={pendingVoucherAction !== null}
+                >
+                  {pendingVoucherAction === "create-voucher" ? "Đang tạo voucher..." : "Cấp voucher cho hội viên"}
                 </button>
               </div>
-            </form>
-          </article>
-        </div>
+            </article>
 
-        <div className="section-gap" />
-        <div className="stack-list">
-          {vouchers.length > 0 ? (
-            vouchers.map((voucher) => {
-              const draft = voucherDrafts[voucher.voucherId];
-              const displayStatus = getEffectiveVoucherStatus(voucher, voucherPresentationTime);
-              const isWorking = pendingVoucherAction?.endsWith(`-${voucher.voucherId}`) ?? false;
-              const isUsedVoucher = voucher.status === "USED";
-              const isReservedVoucher = voucher.status === "RESERVED";
-              const isRevokedVoucher = voucher.status === "REVOKED";
-              const canHideVoucher = isUsedVoucher || isRevokedVoucher;
-              const isBirthdayVoucher = getVoucherSource(voucher.source) === "BIRTHDAY";
-              const isEditableVoucher = canEditVoucherMetadata(voucher);
-              const isPolicyEditableVoucher = canEditVoucherPolicy(voucher);
+            <article id="operations-voucher-lookup" className="surface-card backoffice-operations-anchor">
+              <SectionHeading
+                eyebrow="Tra cứu voucher"
+                title="Lọc nhanh theo hội viên, mã hoặc trạng thái"
+                description="Dùng để tìm voucher khả dụng, đang giữ chỗ, đã dùng hoặc đã thu hồi."
+              />
+              <form className="stack-list" onSubmit={handleVoucherFilterSubmit}>
+                <div className="field-grid compact-grid">
+                  <label className="field">
+                    <span>Email hội viên</span>
+                    <input
+                      value={voucherEmail}
+                      onChange={(event) => setVoucherEmail(event.target.value)}
+                      placeholder="hoi.vien@gmail.com"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Mã voucher</span>
+                    <input
+                      value={voucherCode}
+                      onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
+                      placeholder="Ví dụ: OPS52026"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Trạng thái</span>
+                    <select value={voucherStatus} onChange={(event) => setVoucherStatus(event.target.value)}>
+                      {VOUCHER_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="booking-action-list">
+                  <button type="submit" className="button button-secondary" disabled={voucherState === "loading"}>
+                    {voucherState === "loading" ? "Đang tải voucher..." : "Tải danh sách voucher"}
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
 
-              return (
-                <article key={voucher.voucherId} className="surface-card result-card">
-                  <div className="result-top">
-                    <div>
-                      <span className="section-eyebrow">Voucher {voucher.voucherCode}</span>
-                      <h3>{voucher.title}</h3>
-                      <p>
-                        {voucher.memberDisplayName} · {voucher.memberEmail}
-                      </p>
-                    </div>
-                    <StatusChip tone={resolveVoucherTone(displayStatus)} label={formatVoucherStatus(displayStatus)} />
-                  </div>
+          <div className="stack-list">
+            {vouchers.length > 0 ? (
+              vouchers.map((voucher) => {
+                const draft = voucherDrafts[voucher.voucherId];
+                const displayStatus = getEffectiveVoucherStatus(voucher, voucherPresentationTime);
+                const isWorking = pendingVoucherAction?.endsWith(`-${voucher.voucherId}`) ?? false;
+                const isUsedVoucher = voucher.status === "USED";
+                const isReservedVoucher = voucher.status === "RESERVED";
+                const isRevokedVoucher = voucher.status === "REVOKED";
+                const canHideVoucher = isUsedVoucher || isRevokedVoucher;
+                const isBirthdayVoucher = getVoucherSource(voucher.source) === "BIRTHDAY";
+                const isEditableVoucher = canEditVoucherMetadata(voucher);
+                const isPolicyEditableVoucher = canEditVoucherPolicy(voucher);
 
-                  <div className="result-grid result-grid-rich">
-                    <div>
-                      <span>Giảm giá</span>
-                      <strong>{formatCurrency(voucher.discountAmount, voucher.currency)}</strong>
+                return (
+                  <article key={voucher.voucherId} className="surface-card result-card">
+                    <div className="result-top">
+                      <div>
+                        <span className="section-eyebrow">Voucher {voucher.voucherCode}</span>
+                        <h3>{voucher.title}</h3>
+                        <p>
+                          {voucher.memberDisplayName} · {voucher.memberEmail}
+                        </p>
+                      </div>
+                      <StatusChip tone={resolveVoucherTone(displayStatus)} label={formatVoucherStatus(displayStatus)} />
                     </div>
-                    <div>
-                      <span>Hết hạn</span>
-                      <strong>{isBirthdayVoucher && voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Booking liên kết</span>
-                      <strong>{voucher.bookingCode ?? "Chưa liên kết"}</strong>
-                    </div>
-                  </div>
 
-                  <VoucherOriginSummary voucher={voucher} showDescription={false} />
-                  {isBirthdayVoucher && !isEditableVoucher && !isUsedVoucher && !isReservedVoucher ? <p role="status">
-                    Chưa xác minh được chính sách quà sinh nhật để lưu chỉnh sửa. Vui lòng kiểm tra cấu hình voucher.
-                  </p> : null}
-                  <VoucherConditionSummary voucher={voucher} />
-                  {isBirthdayVoucher ? (
-                    <p>Chính sách quà sinh nhật do hệ thống quản lý; không thể chỉnh sửa thủ công mức giảm, tiền tệ, điều kiện và hạn sử dụng.</p>
-                  ) : (
-                    <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
-                      onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
-                      disabled={pendingVoucherAction !== null} readOnly={!isPolicyEditableVoucher} currency={draft?.currency ?? voucher.currency} />
-                  )}
-                  <div className="field-grid compact-grid">
-                    <label className="field result-grid-span-full">
-                      <span>Tiêu đề</span>
-                      <input
-                        value={draft?.title ?? voucher.title}
-                        onChange={(event) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              title: event.target.value
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isEditableVoucher}
-                      />
-                    </label>
-                    <label className="field result-grid-span-full">
-                      <span>Mô tả</span>
-                      <textarea
-                        className="booking-textarea"
-                        rows={3}
-                        value={draft?.description ?? voucher.description}
-                        onChange={(event) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              description: event.target.value
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isEditableVoucher}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Giảm giá</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={isBirthdayVoucher ? voucher.discountAmount : draft?.discountAmount ?? voucher.discountAmount}
-                        onChange={(event) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              discountAmount: capNhatSoTienHopLe(
-                                event.target.value,
-                                draft?.discountAmount ?? voucher.discountAmount
-                              )
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isPolicyEditableVoucher}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Tiền tệ</span>
-                      <input
-                        value={isBirthdayVoucher ? voucher.currency : draft?.currency ?? voucher.currency}
-                        onChange={(event) =>
-                          setVoucherDrafts((current) => ({
-                            ...current,
-                            [voucher.voucherId]: {
-                              ...(draft ?? buildVoucherDraft(voucher)),
-                              currency: event.target.value.toUpperCase()
-                            }
-                          }))
-                        }
-                        disabled={isWorking || !isPolicyEditableVoucher}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>{isEditableVoucher ? "Trạng thái đích" : "Trạng thái hiện tại"}</span>
-                      {isEditableVoucher ? (
-                        <select
-                          value={draft?.status ?? voucher.status}
+                    <div className="result-grid result-grid-rich">
+                      <div>
+                        <span>Giảm giá</span>
+                        <strong>{formatCurrency(voucher.discountAmount, voucher.currency)}</strong>
+                      </div>
+                      <div>
+                        <span>Hết hạn</span>
+                        <strong>{isBirthdayVoucher && voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
+                      </div>
+                      <div>
+                        <span>Booking liên kết</span>
+                        <strong>{voucher.bookingCode ?? "Chưa liên kết"}</strong>
+                      </div>
+                    </div>
+
+                    <VoucherOriginSummary voucher={voucher} showDescription={false} />
+                    {isBirthdayVoucher && !isEditableVoucher && !isUsedVoucher && !isReservedVoucher ? <p role="status">
+                      Chưa xác minh được chính sách quà sinh nhật để lưu chỉnh sửa. Vui lòng kiểm tra cấu hình voucher.
+                    </p> : null}
+                    <VoucherConditionSummary voucher={voucher} />
+                    {isBirthdayVoucher ? (
+                      <p>Chính sách quà sinh nhật do hệ thống quản lý; không thể chỉnh sửa thủ công mức giảm, tiền tệ, điều kiện và hạn sử dụng.</p>
+                    ) : (
+                      <VoucherConditionEditor value={conditionDrafts[voucher.voucherId]?.value ?? createVoucherConditionDraft(voucher.conditions)}
+                        onChange={(value) => setConditionDrafts((current) => ({ ...current, [voucher.voucherId]: { value, changed: true } }))}
+                        disabled={pendingVoucherAction !== null} readOnly={!isPolicyEditableVoucher} currency={draft?.currency ?? voucher.currency} />
+                    )}
+                    <div className="field-grid compact-grid">
+                      <label className="field result-grid-span-full">
+                        <span>Tiêu đề</span>
+                        <input
+                          value={draft?.title ?? voucher.title}
                           onChange={(event) =>
                             setVoucherDrafts((current) => ({
                               ...current,
                               [voucher.voucherId]: {
                                 ...(draft ?? buildVoucherDraft(voucher)),
-                                status: event.target.value
+                                title: event.target.value
                               }
                             }))
                           }
-                          disabled={isWorking}
-                        >
-                          {VOUCHER_EDITABLE_STATUS_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input value={formatVoucherStatus(displayStatus)} disabled />
-                      )}
-                    </label>
-                    {isBirthdayVoucher ? (
-                      <div className="field">
-                        <span>Hết hạn lúc (giờ Việt Nam)</span>
-                        <strong>{voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
-                      </div>
-                    ) : (
-                      <label className="field">
-                        <span>Hết hạn lúc</span>
-                        <DateTimeField
-                          value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
-                          onChange={(nextValue) =>
+                          disabled={isWorking || !isEditableVoucher}
+                        />
+                      </label>
+                      <label className="field result-grid-span-full">
+                        <span>Mô tả</span>
+                        <textarea
+                          className="booking-textarea"
+                          rows={3}
+                          value={draft?.description ?? voucher.description}
+                          onChange={(event) =>
                             setVoucherDrafts((current) => ({
                               ...current,
                               [voucher.voucherId]: {
                                 ...(draft ?? buildVoucherDraft(voucher)),
-                                expiresAt: nextValue
+                                description: event.target.value
+                              }
+                            }))
+                          }
+                          disabled={isWorking || !isEditableVoucher}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Giảm giá</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={isBirthdayVoucher ? voucher.discountAmount : draft?.discountAmount ?? voucher.discountAmount}
+                          onChange={(event) =>
+                            setVoucherDrafts((current) => ({
+                              ...current,
+                              [voucher.voucherId]: {
+                                ...(draft ?? buildVoucherDraft(voucher)),
+                                discountAmount: capNhatSoTienHopLe(
+                                  event.target.value,
+                                  draft?.discountAmount ?? voucher.discountAmount
+                                )
                               }
                             }))
                           }
                           disabled={isWorking || !isPolicyEditableVoucher}
                         />
                       </label>
-                    )}
-                  </div>
-
-                  <div className="booking-action-list">
-                    <div className="result-grid result-grid-rich">
-                      <div>
-                        <span>Trạng thái hiệu lực</span>
-                        <strong>{formatVoucherStatus(displayStatus)}</strong>
-                      </div>
-                      <div>
-                        <span>Đã dùng lúc</span>
-                        <strong>{voucher.usedAt ? formatDateTime(voucher.usedAt) : "Chưa sử dụng"}</strong>
-                      </div>
-                      <div>
-                        <span>Ghi chú vận hành</span>
-                        <strong>
-                          {isUsedVoucher
-                            ? "Có thể xóa lịch sử khỏi màn operations, hội viên vẫn tự quản lý lịch sử của họ."
-                            : isReservedVoucher
-                              ? "Voucher đang giữ chỗ, cần thu hồi rõ ràng trước khi chỉnh sửa."
-                              : isRevokedVoucher
-                                ? "Voucher đã thu hồi, hội viên không còn thấy trong tài khoản."
-                                : "Có thể cập nhật hoặc thu hồi theo chính sách hiện hành."}
-                        </strong>
-                      </div>
+                      <label className="field">
+                        <span>Tiền tệ</span>
+                        <input
+                          value={isBirthdayVoucher ? voucher.currency : draft?.currency ?? voucher.currency}
+                          onChange={(event) =>
+                            setVoucherDrafts((current) => ({
+                              ...current,
+                              [voucher.voucherId]: {
+                                ...(draft ?? buildVoucherDraft(voucher)),
+                                currency: event.target.value.toUpperCase()
+                              }
+                            }))
+                          }
+                          disabled={isWorking || !isPolicyEditableVoucher}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>{isEditableVoucher ? "Trạng thái đích" : "Trạng thái hiện tại"}</span>
+                        {isEditableVoucher ? (
+                          <select
+                            value={draft?.status ?? voucher.status}
+                            onChange={(event) =>
+                              setVoucherDrafts((current) => ({
+                                ...current,
+                                [voucher.voucherId]: {
+                                  ...(draft ?? buildVoucherDraft(voucher)),
+                                  status: event.target.value
+                                }
+                              }))
+                            }
+                            disabled={isWorking}
+                          >
+                            {VOUCHER_EDITABLE_STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input value={formatVoucherStatus(displayStatus)} disabled />
+                        )}
+                      </label>
+                      {isBirthdayVoucher ? (
+                        <div className="field">
+                          <span>Hết hạn lúc (giờ Việt Nam)</span>
+                          <strong>{voucherExpiryMillis(voucher.expiresAt) === null ? "Chưa xác minh được hạn sử dụng" : formatDateTime(voucher.expiresAt)}</strong>
+                        </div>
+                      ) : (
+                        <label className="field">
+                          <span>Hết hạn lúc</span>
+                          <DateTimeField
+                            value={draft?.expiresAt ?? toDateTimeLocalValue(voucher.expiresAt)}
+                            onChange={(nextValue) =>
+                              setVoucherDrafts((current) => ({
+                                ...current,
+                                [voucher.voucherId]: {
+                                  ...(draft ?? buildVoucherDraft(voucher)),
+                                  expiresAt: nextValue
+                                }
+                              }))
+                            }
+                            disabled={isWorking || !isPolicyEditableVoucher}
+                          />
+                        </label>
+                      )}
                     </div>
-                    <div className="finance-action-row">
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        onClick={() => void handleVoucherSave(voucher.voucherId)}
-                        disabled={isWorking || !isEditableVoucher}
-                      >
-                        {pendingVoucherAction === `save-voucher-${voucher.voucherId}`
-                          ? "Đang lưu voucher..."
-                          : "Lưu chỉnh sửa voucher"}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        onClick={() => void handleVoucherRevoke(voucher.voucherId)}
-                        disabled={isWorking || isUsedVoucher || isRevokedVoucher}
-                      >
-                        {pendingVoucherAction === `revoke-voucher-${voucher.voucherId}` ? "Đang thu hồi..." : "Thu hồi voucher"}
-                      </button>
-                      {canHideVoucher ? (
+
+                    <div className="booking-action-list">
+                      <div className="result-grid result-grid-rich">
+                        <div>
+                          <span>Trạng thái hiệu lực</span>
+                          <strong>{formatVoucherStatus(displayStatus)}</strong>
+                        </div>
+                        <div>
+                          <span>Đã dùng lúc</span>
+                          <strong>{voucher.usedAt ? formatDateTime(voucher.usedAt) : "Chưa sử dụng"}</strong>
+                        </div>
+                        <div>
+                          <span>Ghi chú vận hành</span>
+                          <strong>
+                            {isUsedVoucher
+                              ? "Có thể xóa lịch sử khỏi màn operations, hội viên vẫn tự quản lý lịch sử của họ."
+                              : isReservedVoucher
+                                ? "Voucher đang giữ chỗ, cần thu hồi rõ ràng trước khi chỉnh sửa."
+                                : isRevokedVoucher
+                                  ? "Voucher đã thu hồi, hội viên không còn thấy trong tài khoản."
+                                  : "Có thể cập nhật hoặc thu hồi theo chính sách hiện hành."}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="finance-action-row">
                         <button
                           type="button"
                           className="button button-secondary"
-                          onClick={() => void handleVoucherHide(voucher)}
-                          disabled={isWorking}
+                          onClick={() => void handleVoucherSave(voucher.voucherId)}
+                          disabled={isWorking || !isEditableVoucher}
                         >
-                          {pendingVoucherAction === `hide-voucher-${voucher.voucherId}`
-                            ? "Đang xử lý..."
-                            : isRevokedVoucher
-                              ? "Xóa khỏi danh sách"
-                              : "Xóa lịch sử voucher"}
+                          {pendingVoucherAction === `save-voucher-${voucher.voucherId}`
+                            ? "Đang lưu voucher..."
+                            : "Lưu chỉnh sửa voucher"}
                         </button>
-                      ) : null}
+                        <button
+                          type="button"
+                          className="button button-primary"
+                          onClick={() => void handleVoucherRevoke(voucher.voucherId)}
+                          disabled={isWorking || isUsedVoucher || isRevokedVoucher}
+                        >
+                          {pendingVoucherAction === `revoke-voucher-${voucher.voucherId}` ? "Đang thu hồi..." : "Thu hồi voucher"}
+                        </button>
+                        {canHideVoucher ? (
+                          <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={() => void handleVoucherHide(voucher)}
+                            disabled={isWorking}
+                          >
+                            {pendingVoucherAction === `hide-voucher-${voucher.voucherId}`
+                              ? "Đang xử lý..."
+                              : isRevokedVoucher
+                                ? "Xóa khỏi danh sách"
+                                : "Xóa lịch sử voucher"}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
-            <article className="surface-card">
-              <span className="section-eyebrow">
-                {voucherState === "loading" ? "Đang tải" : "Chưa có voucher"}
-              </span>
-              <h3>
-                {voucherState === "loading" ? "Đang tải dữ liệu voucher" : "Không có voucher phù hợp"}
-              </h3>
-              <p>
-                {voucherState === "loading"
-                  ? "Vui lòng chờ trong giây lát để tải dữ liệu voucher vận hành."
-                  : "Hãy đổi bộ lọc hoặc tạo voucher mới để bắt đầu theo dõi quyền lợi hội viên."}
-              </p>
-            </article>
-          )}
+                  </article>
+                );
+              })
+            ) : (
+              <article className="surface-card">
+                <span className="section-eyebrow">
+                  {voucherState === "loading" ? "Đang tải" : "Chưa có voucher"}
+                </span>
+                <h3>
+                  {voucherState === "loading" ? "Đang tải dữ liệu voucher" : "Không có voucher phù hợp"}
+                </h3>
+                <p>
+                  {voucherState === "loading"
+                    ? "Vui lòng chờ trong giây lát để tải dữ liệu voucher vận hành."
+                    : "Hãy đổi bộ lọc hoặc tạo voucher mới để bắt đầu theo dõi quyền lợi hội viên."}
+                </p>
+              </article>
+            )}
+          </div>
+          <VoucherStatisticsPanel accessToken={accessToken} />
         </div>
-        <VoucherStatisticsPanel accessToken={accessToken} />
       </div>
     </section>
   );
