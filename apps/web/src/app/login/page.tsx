@@ -23,17 +23,17 @@ const loginStats = [
   {
     label: "Đặt chỗ sắp bay",
     value: "Tra cứu",
-    detail: "Xem các đặt chỗ gắn với tài khoản sau khi đăng nhập."
+    detail: "Xem đặt chỗ sau khi đăng nhập."
   },
   {
     label: "Hồ sơ hành khách",
     value: "Theo tài khoản",
-    detail: "Quản lý hồ sơ hành khách đã lưu trong tài khoản của bạn."
+    detail: "Quản lý hồ sơ đã lưu."
   },
   {
     label: "Thông báo cá nhân",
     value: "Cập nhật",
-    detail: "Theo dõi thông báo và thay đổi liên quan đến hành trình của bạn."
+    detail: "Nhận cập nhật hành trình."
   }
 ];
 
@@ -51,9 +51,9 @@ const supportItems = [
 ];
 
 const trustPoints = [
-  "Lưu lịch sử đặt chỗ, hóa đơn và thông báo chuyến bay trong cùng một nơi.",
-  "Đồng bộ hồ sơ hành khách thường dùng để đặt vé nhanh hơn trên cả điện thoại lẫn máy tính.",
-  "Nhận nhắc việc trước ngày khởi hành, email vé và các cập nhật mới nhất về hành trình."
+  "Xem đặt chỗ, hóa đơn và thông báo.",
+  "Đồng bộ hồ sơ hành khách.",
+  "Nhận nhắc việc trước chuyến bay."
 ];
 
 function resolveSafeRedirectTarget(value: string | null | undefined) {
@@ -143,11 +143,11 @@ function LoginPageContent() {
     <AuthShell
       activeTab="login"
       eyebrow="Tài khoản hành khách"
-      title="Đăng nhập để theo dõi hành trình và các cập nhật dành riêng cho bạn."
-      description="Khách hàng có tài khoản có thể xem lại đặt chỗ, lưu hồ sơ hành khách, nhận thông báo trước giờ bay và quản lý tiện ích sau khi mua vé. Nếu chưa có tài khoản, bạn vẫn có thể tiếp tục xem website và đặt vé với vai trò khách."
+      title="Đăng nhập để quản lý hành trình"
+      description="Xem đặt chỗ, lưu hồ sơ và nhận cập nhật chuyến bay."
       stats={loginStats}
-      sideTitle="Một tài khoản cho toàn bộ hành trình"
-      sideDescription="Thông tin đặt chỗ, hồ sơ hành khách và thông báo thay đổi chuyến bay được gom về cùng một luồng theo dõi để hành khách thao tác nhanh hơn sau khi đăng nhập."
+      sideTitle="Theo dõi mọi hành trình"
+      sideDescription="Đặt chỗ, hồ sơ và cập nhật chuyến bay ở cùng một nơi."
       trustPoints={trustPoints}
       supportItems={supportItems}
     >

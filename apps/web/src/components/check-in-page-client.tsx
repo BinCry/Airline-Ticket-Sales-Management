@@ -421,7 +421,7 @@ export function CheckInPageClient() {
             <span className="section-eyebrow">Làm thủ tục trực tuyến</span>
             <h1 className="page-title">Tra cứu PNR, chọn chặng bay và nhận thẻ lên máy bay.</h1>
             <p className="page-hero-copy">
-              Kiểm tra vé đủ điều kiện, làm thủ tục theo từng chiều bay và xem vị trí ghế ngay sau khi hoàn tất.
+              Kiểm tra điều kiện, chọn chặng bay và nhận thẻ lên máy bay.
             </p>
           </div>
           <div className="booking-summary-card">
@@ -437,7 +437,7 @@ export function CheckInPageClient() {
 
         <div className="section-gap" />
         <form className="lookup-card" onSubmit={handleLookup}>
-          <div className="field-grid compact-grid">
+          <div className="field-grid compact-grid booking-lookup-grid">
             <label className="field">
               <span>Mã đặt chỗ</span>
               <input
@@ -479,7 +479,7 @@ export function CheckInPageClient() {
                   <small>
                     {lookupToken
                       ? "Phiên OTP đã hợp lệ. Bạn có thể tra cứu trực tiếp."
-                      : "Nhấn tra cứu để nhận OTP, sau đó xác minh trước khi xem thông tin."}
+                      : "Tra cứu để nhận OTP, rồi xác minh."}
                   </small>
                 </label>
               </>
@@ -498,11 +498,11 @@ export function CheckInPageClient() {
                 </strong>
                 <p>
                   {lookupState === "idle"
-                    ? "Nhập PNR để xem hành khách và vé đủ điều kiện làm thủ tục."
+                    ? "Nhập mã đặt chỗ để xem vé."
                     : lookupState === "loading"
-                      ? "Đang tải thông tin đặt chỗ."
+                      ? "Đang tải đặt chỗ."
                       : lookupState === "success"
-                        ? "Đã sẵn sàng để chọn chặng và hành khách."
+                        ? "Sẵn sàng chọn chặng bay."
                         : lookupError}
                 </p>
               </div>
@@ -510,7 +510,7 @@ export function CheckInPageClient() {
             {!accessToken ? (
               <button
                 type="button"
-                className="button button-secondary"
+                className="button button-secondary booking-lookup-button"
                 onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
                 disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
               >
@@ -519,7 +519,7 @@ export function CheckInPageClient() {
             ) : null}
             <button
               type="submit"
-              className="button button-primary"
+              className="button button-primary booking-lookup-button"
               disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
             >
               {lookupState === "loading" ? "Đang tải..." : "Tra cứu Check-in"}
