@@ -19,17 +19,17 @@ const forgotStats = [
   {
     label: "Xác minh OTP",
     value: "06 số",
-    detail: "Mã xác thực được gửi về email đã đăng ký."
+    detail: "Gửi về email đăng ký."
   },
   {
     label: "Thời gian hiệu lực",
     value: "5 phút",
-    detail: "Nên hoàn tất đặt lại mật khẩu ngay sau khi nhận OTP."
+    detail: "Hoàn tất trong 5 phút."
   },
   {
     label: "Mật khẩu mới",
     value: "Đủ mạnh",
-    detail: "Mật khẩu mới phải đáp ứng cùng chính sách bảo mật của đăng ký."
+    detail: "Đạt yêu cầu bảo mật."
   }
 ];
 
@@ -47,9 +47,9 @@ const forgotSupportItems = [
 ];
 
 const forgotTrustPoints = [
-  "Kiểm tra email đã đăng ký trước khi gửi OTP.",
-  "Chặn OTP sai, hết hạn hoặc đã sử dụng.",
-  "Chặn mật khẩu mới yếu trước khi cập nhật tài khoản."
+  "Dùng email đã đăng ký.",
+  "OTP chỉ dùng một lần và có thời hạn.",
+  "Mật khẩu mới phải đạt yêu cầu bảo mật."
 ];
 
 function maskEmail(email: string) {
@@ -180,11 +180,11 @@ export default function ForgotPasswordPage() {
     <AuthShell
       activeTab="forgot-password"
       eyebrow="Khôi phục tài khoản"
-      title="Đặt lại mật khẩu bằng OTP gửi tới email đã đăng ký."
-      description="Nhập email, xác minh OTP và tạo mật khẩu mới đủ mạnh để tiếp tục đăng nhập."
+      title="Đặt lại mật khẩu qua OTP"
+      description="Xác minh email rồi tạo mật khẩu mới."
       stats={forgotStats}
-      sideTitle="Khôi phục theo từng bước"
-      sideDescription="Mỗi bước đều hiển thị trạng thái rõ ràng để bạn biết cần làm gì tiếp theo."
+      sideTitle="Khôi phục từng bước"
+      sideDescription="Làm theo hướng dẫn trên màn hình."
       trustPoints={forgotTrustPoints}
       supportItems={forgotSupportItems}
     >
@@ -199,23 +199,24 @@ export default function ForgotPasswordPage() {
         />
       </div>
 
-      <div className="auth-progress" aria-label="Tiến trình quên mật khẩu">
+      <ol className="auth-progress" aria-label="Tiến trình quên mật khẩu">
         {["Nhập email", "Xác minh OTP", "Đặt mật khẩu mới", "Hoàn tất"].map((label, index) => {
           const currentStep = index + 1;
           const state =
             currentStep < step ? "done" : currentStep === step ? "current" : "upcoming";
 
           return (
-            <div
+            <li
               key={label}
               className={`auth-progress-step auth-progress-step-${state}`}
+              aria-current={state === "current" ? "step" : undefined}
             >
               <strong>{currentStep}</strong>
               <span>{label}</span>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {submissionError ? (
         <div className="auth-note-card">
@@ -270,7 +271,7 @@ export default function ForgotPasswordPage() {
               <h3>Nhập mã OTP</h3>
               <span className="pill">{maskEmail(normalizedEmail)}</span>
             </div>
-            <p>Kiểm tra hộp thư đến hoặc thư rác rồi nhập mã gồm 6 chữ số.</p>
+            <p>Nhập mã 6 số đã gửi qua email.</p>
           </div>
 
           <div className="auth-field-grid">

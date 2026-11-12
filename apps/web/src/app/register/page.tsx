@@ -15,17 +15,17 @@ const registerStats = [
   {
     label: "Hồ sơ hành khách",
     value: "Lưu sẵn",
-    detail: "Giảm thao tác nhập lại giấy tờ và thông tin liên hệ ở lần đặt vé tiếp theo."
+    detail: "Lưu thông tin hành khách."
   },
   {
     label: "Thông báo chuyến bay",
-    value: "Theo thời gian thực",
-    detail: "Nhận nhắc làm thủ tục, thay đổi giờ bay và cập nhật cổng ra tàu."
+    value: "Cập nhật",
+    detail: "Nhận thông tin chuyến bay."
   },
   {
     label: "Ưu đãi cá nhân",
-    value: "Theo hành trình",
-    detail: "Lưu hồ sơ liên hệ và các nhắc việc cần thiết cho từng chuyến bay."
+    value: "Theo chuyến",
+    detail: "Theo dõi nhắc việc cần thiết."
   }
 ];
 
@@ -43,9 +43,9 @@ const registerSupportItems = [
 ];
 
 const registerTrustPoints = [
-  "Lưu người liên hệ và hành khách thường dùng cho các chặng nội địa tiếp theo.",
-  "Theo dõi thông báo, email vé và các bước chuẩn bị chuyến đi trong cùng một giao diện thân thiện với mobile.",
-  "Chuẩn bị trước cho các bước xác minh email, quên mật khẩu và hỗ trợ sau bán."
+  "Không cần nhập lại hồ sơ hành khách.",
+  "Theo dõi vé và cập nhật chuyến bay.",
+  "Khôi phục mật khẩu bằng OTP khi cần."
 ];
 
 export default function RegisterPage() {
@@ -107,18 +107,18 @@ export default function RegisterPage() {
     <AuthShell
       activeTab="register"
       eyebrow="Tạo tài khoản"
-      title="Tạo tài khoản khách hàng để lưu hồ sơ và theo dõi hành trình thuận tiện hơn."
-      description="Tài khoản Vietnam Airlines phù hợp với hành khách thường xuyên bay nội địa, cần lưu thông tin liên hệ, hồ sơ hành khách và các cập nhật trước ngày khởi hành. Bạn vẫn có thể xem website với vai trò khách nếu chưa muốn đăng ký ngay."
+      title="Tạo tài khoản khách hàng"
+      description="Lưu hồ sơ hành khách và theo dõi hành trình thuận tiện hơn."
       stats={registerStats}
-      sideTitle="Tạo nền tảng cho những lần đặt vé tiếp theo"
-      sideDescription="Ngay từ bước đăng ký, bạn sẽ được gợi ý mật khẩu an toàn để chuẩn bị hồ sơ khách hàng gọn gàng và giảm rủi ro khi cần khôi phục tài khoản."
+      sideTitle="Tiện ích cho lần đặt vé sau"
+      sideDescription="Lưu thông tin liên hệ để đặt vé nhanh hơn."
       trustPoints={registerTrustPoints}
       supportItems={registerSupportItems}
     >
       <div className="auth-form-head">
         <div>
           <span className="section-eyebrow">Đăng ký</span>
-          <h2>Chuẩn bị tài khoản khách hàng mới</h2>
+          <h2>Tạo tài khoản khách hàng</h2>
         </div>
         <StatusChip
           tone={
@@ -132,12 +132,12 @@ export default function RegisterPage() {
           }
           label={
             isPrepared
-              ? "Sẵn sàng sử dụng"
+              ? "Đã tạo tài khoản"
               : isSubmitting
-                ? "Đang tạo tài khoản"
+                ? "Đang tạo..."
                 : isFormValid
-                  ? "Mật khẩu đạt chuẩn"
-                  : "Cần bổ sung thông tin"
+                  ? "Thông tin hợp lệ"
+                  : "Thiếu thông tin"
           }
         />
       </div>

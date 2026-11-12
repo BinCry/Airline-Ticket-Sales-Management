@@ -1088,20 +1088,22 @@ img {
 
 .auth-page-title {
   max-width: 660px;
+  text-wrap: balance;
 }
 
 .auth-page-copy {
-  margin: 14px 0 0;
+  max-width: 54ch;
+  margin: 10px 0 0;
 }
 
 .auth-stat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .auth-stat-card {
-  min-height: 142px;
+  min-height: 128px;
   padding: 16px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.88);
@@ -1238,17 +1240,31 @@ img {
 
 .auth-form-head {
   align-items: center;
+  gap: 12px;
   margin-bottom: 22px;
+}
+
+.auth-form-head > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .auth-form-head h2 {
   margin-top: 8px;
   font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1.2;
+  overflow-wrap: normal;
+  text-wrap: balance;
+}
+
+.auth-form-head > .status-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .auth-form {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .auth-social-box {
@@ -1310,11 +1326,69 @@ img {
 
 .auth-field-grid {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .auth-field-grid-double {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.auth-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-progress-step {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(18, 61, 105, 0.1);
+  border-radius: 14px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.auth-progress-step strong {
+  display: inline-grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(18, 61, 105, 0.08);
+  color: var(--primary);
+  font-size: 0.75rem;
+}
+
+.auth-progress-step span {
+  min-width: 0;
+  text-wrap: balance;
+}
+
+.auth-progress-step-current {
+  border-color: rgba(18, 61, 105, 0.28);
+  background: var(--brand-primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.auth-progress-step-current strong,
+.auth-progress-step-done strong {
+  background: var(--primary);
+  color: #fff;
+}
+
+.auth-progress-step-done {
+  border-color: rgba(15, 139, 96, 0.2);
+  color: var(--success);
 }
 
 .auth-field input:focus {
@@ -1519,6 +1593,13 @@ img {
 
   .auth-intro-header {
     max-width: 760px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .auth-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 }
 
@@ -2084,14 +2165,28 @@ img {
   align-items: center;
 }
 
-.lookup-card .manage-booking-lookup-grid {
+.lookup-card .booking-lookup-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
+  gap: 20px;
 }
 
-.manage-booking-lookup-grid > .field {
+.booking-lookup-grid > .field {
   min-width: 0;
   align-content: start;
+}
+
+.booking-lookup-grid > .field-inline,
+.booking-lookup-grid > .booking-lookup-button,
+.booking-lookup-grid > .manage-booking-lookup-action {
+  align-self: center;
+}
+
+.booking-lookup-grid > .booking-lookup-button {
+  min-height: 48px;
+  padding-inline: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .manage-booking-status-card {
@@ -2104,15 +2199,17 @@ img {
 }
 
 .manage-booking-lookup-action {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 
-.manage-booking-lookup-label-spacer {
-  visibility: hidden;
+.manage-booking-lookup-action .manage-booking-lookup-button {
+  width: 100%;
 }
 
 .manage-booking-lookup-button {
-  min-height: 52px;
+  min-height: 48px;
 }
 
 .operations-fare-grid {
@@ -6585,8 +6682,12 @@ thead th {
     width: 100%;
   }
 
-  .manage-booking-lookup-label-spacer {
-    display: none;
+  .lookup-card .booking-lookup-grid {
+    gap: 16px;
+  }
+
+  .booking-lookup-grid > .manage-booking-lookup-action {
+    width: 100%;
   }
 
   table[data-mobile-stack="true"],

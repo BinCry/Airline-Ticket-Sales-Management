@@ -409,9 +409,9 @@ export function ManageBookingPageClient() {
         <div className="page-hero-card">
           <div>
             <span className="section-eyebrow">Quản lý đặt chỗ</span>
-            <h1 className="page-title">Tra cứu mã đặt chỗ, theo dõi vé và xử lý nhu cầu sau chuyến bay.</h1>
+            <h1 className="page-title">Tra cứu và quản lý đặt chỗ</h1>
             <p className="page-hero-copy">
-              Nhập mã đặt chỗ để xem trạng thái thanh toán, ticket theo từng chặng, boarding pass và yêu cầu hoàn vé.
+              Theo dõi vé, thẻ lên máy bay và yêu cầu hoàn vé.
             </p>
           </div>
           <div className="booking-summary-card">
@@ -439,7 +439,7 @@ export function ManageBookingPageClient() {
 
         <div className="section-gap" />
         <form className="lookup-card" onSubmit={handleLookup}>
-          <div className="field-grid compact-grid manage-booking-lookup-grid">
+          <div className="field-grid compact-grid booking-lookup-grid">
             <label className="field">
               <span>Mã đặt chỗ</span>
               <input
@@ -453,7 +453,7 @@ export function ManageBookingPageClient() {
                 }}
                 placeholder="Ví dụ: A6C2P1"
               />
-              <small>Bạn có thể tra cứu mà không cần đăng nhập.</small>
+              <small>Tra cứu được cả khi chưa đăng nhập.</small>
             </label>
             {!accessToken ? (
               <>
@@ -469,7 +469,7 @@ export function ManageBookingPageClient() {
                     placeholder="tenban@gmail.com"
                     autoComplete="email"
                   />
-                  <small>Dùng đúng email liên hệ đã lưu trong booking.</small>
+                  <small>Dùng email đã lưu trong đặt chỗ.</small>
                 </label>
                 <label className="field">
                   <span>Mã OTP tra cứu</span>
@@ -483,7 +483,7 @@ export function ManageBookingPageClient() {
                   <small>
                     {lookupToken
                       ? "Phiên OTP đã hợp lệ. Bạn có thể tra cứu trực tiếp."
-                      : "Nhấn tra cứu để nhận OTP, sau đó xác minh trước khi xem thông tin."}
+                      : "Tra cứu để nhận OTP, rồi xác minh."}
                   </small>
                 </label>
               </>
@@ -502,7 +502,7 @@ export function ManageBookingPageClient() {
                 </strong>
                 <p>
                   {lookupState === "idle"
-                    ? "Nhập mã đặt chỗ để bắt đầu tra cứu."
+                    ? "Nhập mã đặt chỗ để bắt đầu."
                     : lookupState === "loading"
                       ? "Đang tải thông tin đặt chỗ."
                       : lookupState === "success"
@@ -514,20 +514,17 @@ export function ManageBookingPageClient() {
             {!accessToken ? (
               <button
                 type="button"
-                className="button button-secondary manage-booking-lookup-button"
+                className="button button-secondary booking-lookup-button manage-booking-lookup-button"
                 onClick={() => void handleVerifyLookupOtp(bookingCode.trim().toUpperCase())}
                 disabled={isVerifyingLookupOtp || lookupOtp.trim().length !== 6 || bookingCode.trim().length === 0}
               >
                 {isVerifyingLookupOtp ? "Đang xác minh..." : "Xác minh OTP"}
               </button>
             ) : null}
-            <div className="field manage-booking-lookup-action">
-              <span className="manage-booking-lookup-label-spacer" aria-hidden="true">
-                {"\u00a0"}
-              </span>
+            <div className="manage-booking-lookup-action">
               <button
                 type="submit"
-                className="button button-primary manage-booking-lookup-button"
+                className="button button-primary booking-lookup-button manage-booking-lookup-button"
                 disabled={lookupState === "loading" || isSendingLookupOtp || isVerifyingLookupOtp}
               >
                 {lookupState === "loading" ? "Đang tải..." : "Tra cứu đặt chỗ"}
