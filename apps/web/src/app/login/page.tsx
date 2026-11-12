@@ -22,18 +22,18 @@ import {
 const loginStats = [
   {
     label: "Đặt chỗ sắp bay",
-    value: "02 hành trình",
-    detail: "Xem lại lịch bay, dịch vụ đã chọn và thời hạn làm thủ tục."
+    value: "Tra cứu",
+    detail: "Xem các đặt chỗ gắn với tài khoản sau khi đăng nhập."
   },
   {
     label: "Hồ sơ hành khách",
-    value: "Lưu sẵn",
-    detail: "Giảm thao tác nhập lại thông tin liên hệ và giấy tờ ở lần đặt vé tiếp theo."
+    value: "Theo tài khoản",
+    detail: "Quản lý hồ sơ hành khách đã lưu trong tài khoản của bạn."
   },
   {
     label: "Thông báo cá nhân",
-    value: "24/7",
-    detail: "Nhận cảnh báo thay đổi giờ bay, cổng ra tàu và trạng thái thanh toán."
+    value: "Cập nhật",
+    detail: "Theo dõi thông báo và thay đổi liên quan đến hành trình của bạn."
   }
 ];
 
@@ -70,7 +70,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [shouldRemember, setShouldRemember] = useState(true);
+  const [shouldRemember, setShouldRemember] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

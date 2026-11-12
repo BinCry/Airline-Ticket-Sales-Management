@@ -261,7 +261,7 @@ export function buildVoucherDraft(voucher: BackofficeVoucherItem): BackofficeVou
 export function BackofficeOperationsPageClient() {
   const [code, setCode] = useState("");
   const [date, setDate] = useState("");
-  const [state, setState] = useState<OperationsState>("idle");
+  const [state, setState] = useState<OperationsState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [aircraft, setAircraft] = useState<AircraftItem[]>([]);
@@ -278,7 +278,7 @@ export function BackofficeOperationsPageClient() {
   const [dangTaiSanBayDi, setDangTaiSanBayDi] = useState(false);
   const [dangTaiSanBayDen, setDangTaiSanBayDen] = useState(false);
 
-  const [voucherState, setVoucherState] = useState<OperationsState>("idle");
+  const [voucherState, setVoucherState] = useState<OperationsState>("loading");
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
   const [voucherEmail, setVoucherEmail] = useState("");
   const [voucherCode, setVoucherCode] = useState("");

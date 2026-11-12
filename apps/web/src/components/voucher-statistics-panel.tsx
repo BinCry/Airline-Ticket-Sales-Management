@@ -33,7 +33,8 @@ export function VoucherStatsView({ state, data, error }: {
     <strong>Không thể tải thống kê voucher</strong><p>{error}</p>
     <p>Chỉnh bộ lọc hoặc chọn “Xem thống kê” để tải lại.</p>
   </div>;
-  if (state !== "success" || !data) return <p>Đăng nhập bằng tài khoản có quyền vận hành để xem thống kê.</p>;
+  if (state === "idle") return <p role="status">Đang xác định phiên làm việc trước khi tải thống kê voucher…</p>;
+  if (!data) return <p role="status">Chưa có dữ liệu thống kê để hiển thị.</p>;
   const total = data.summary;
   const maximum = data.byMonth.reduce((value, item) => Math.max(value, item.summary.totalVouchers), 1);
   return <div className={styles.content}>

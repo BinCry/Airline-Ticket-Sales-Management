@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 import { VoucherStatsView } from "@/components/voucher-statistics-panel";
-import { buildVoucherDraft } from "@/components/backoffice-operations-page-client";
+import { BackofficeOperationsPageClient, buildVoucherDraft } from "@/components/backoffice-operations-page-client";
 import { fetchBackofficeOperationsVouchers, updateBackofficeOperationsVoucher, type BackofficeVoucherItem } from "@/lib/backoffice-operations-api";
 import { fetchVoucherStats, formatVoucherStatsMoney, formatVoucherUsageRate, getVoucherDisplayStatus, type VoucherStatsResponse } from "@/lib/voucher-stats";
 
@@ -71,6 +71,19 @@ it.each(["loading", "error"] as const)("%s không hiện lại tiền cũ", stat
   expect(html).not.toContain("80.000");
   expect(html).toContain(state === "loading" ? "Đang tải" : "Không đủ quyền");
   expect(html).toContain(state === "loading" ? 'role="status"' : 'role="alert"');
+});
+it("idle không kết luận nhầm người dùng chưa có quyền vận hành", () => {
+  const html = renderToStaticMarkup(createElement(VoucherStatsView, { state: "idle", data: null, error: null }));
+  expect(html).toContain("Đang xác định phiên làm việc");
+  expect(html).toContain('role="status"');
+  expect(html).not.toContain("Đăng nhập bằng tài khoản có quyền vận hành");
+});
+it("backoffice hiển thị trạng thái tải trước khi có kết quả API", () => {
+  const html = renderToStaticMarkup(createElement(BackofficeOperationsPageClient));
+  expect(html).toContain("Đang tải dữ liệu chuyến bay");
+  expect(html).toContain("Đang tải dữ liệu voucher");
+  expect(html).not.toContain("Không có chuyến bay phù hợp");
+  expect(html).not.toContain("Không có voucher phù hợp");
 });
 it("empty và tỷ lệ null không bịa số liệu", () => {
   const html = view({ ...data, bySource: [], byMonth: [], summary: { ...summary, totalVouchers: 0,

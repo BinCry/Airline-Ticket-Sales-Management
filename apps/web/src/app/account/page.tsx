@@ -46,6 +46,7 @@ import {
   type UpsertMyPassengerPayload
 } from "@/lib/my-account-api";
 import { formatDate, formatDateTime as formatDateTimeText } from "@/lib/format";
+import { maskPassengerDocumentNumber } from "@/lib/my-account-presentation";
 import { pushToast } from "@/lib/toast";
 import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
@@ -117,7 +118,7 @@ function formatPassengerDate(dateOfBirth: string) {
 }
 
 function buildPassengerMeta(passenger: MyPassenger) {
-  return `${getPassengerTypeLabel(passenger.passengerType)} · ${passenger.documentType} ${passenger.documentNumber}`;
+  return `${getPassengerTypeLabel(passenger.passengerType)} · ${passenger.documentType} ${maskPassengerDocumentNumber(passenger.documentNumber)}`;
 }
 
 function buildPassengerNote(passenger: MyPassenger) {

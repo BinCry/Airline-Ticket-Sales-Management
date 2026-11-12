@@ -39,21 +39,21 @@ const travelServiceMetrics = [
   { label: "Giữ chỗ", value: "15 phút", detail: "Sau khi chọn chuyến bay và trước khi hoàn tất thanh toán" }
 ];
 
-const servicePerformanceMetrics = [
+const serviceHighlights = [
   {
-    label: "Tỷ lệ lấp đầy trên tuyến trực tuyến",
-    value: "92%",
-    detail: "Cập nhật theo tình hình khai thác trong ngày"
+    label: "Tìm chuyến bay",
+    value: "Theo chặng bay",
+    detail: "Chọn điểm đi, điểm đến và ngày để xem các lựa chọn hiện có."
   },
   {
-    label: "Tốc độ xuất vé",
-    value: "Dưới 60 giây",
-    detail: "Sau khi phản hồi thanh toán thành công"
+    label: "Quản lý đặt chỗ",
+    value: "Tự phục vụ",
+    detail: "Tra cứu hành trình và các tiện ích sau bán trên website."
   },
   {
-    label: "Yêu cầu hỗ trợ đang mở",
-    value: "18",
-    detail: "Ưu tiên phản hồi trong ngày đối với các tình huống cần hỗ trợ gấp"
+    label: "Hỗ trợ hành khách",
+    value: "FAQ & liên hệ",
+    detail: "Tìm hướng dẫn về hành lý, điều kiện vé và kênh hỗ trợ."
   }
 ];
 
@@ -418,9 +418,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section home-service-metrics-section" aria-label="Thông số dịch vụ">
+      <section className="section home-service-metrics-section" aria-label="Tiện ích dịch vụ">
         <div className="container home-service-metrics">
-          {servicePerformanceMetrics.map((metric) => (
+          {serviceHighlights.map((metric) => (
             <article key={metric.label} className="home-service-metric-card">
               <span className="home-service-metric-label">{metric.label}</span>
               <strong className="home-service-metric-value">{metric.value}</strong>
