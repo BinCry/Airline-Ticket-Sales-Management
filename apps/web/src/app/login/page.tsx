@@ -18,6 +18,7 @@ import {
   persistAuthSession,
   type AuthSession
 } from "@/lib/auth-session";
+import { resolveSafeRedirectTarget } from "@/lib/safe-redirect";
 
 const loginStats = [
   {
@@ -55,16 +56,6 @@ const trustPoints = [
   "Đồng bộ hồ sơ hành khách thường dùng để đặt vé nhanh hơn trên cả điện thoại lẫn máy tính.",
   "Nhận nhắc việc trước ngày khởi hành, email vé và các cập nhật mới nhất về hành trình."
 ];
-
-function resolveSafeRedirectTarget(value: string | null | undefined) {
-  const redirectTo = value?.trim();
-
-  if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
-    return "/";
-  }
-
-  return redirectTo;
-}
 
 function LoginPageContent() {
   const searchParams = useSearchParams();
