@@ -97,6 +97,11 @@ export function SiteHeader() {
   },[authSession?.accessToken]);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
+  function closeMobileMenu() {
+    setIsMobileOpen(false);
+    setIsAccountPanelOpen(false);
+  }
+
   useEffect(() => {
     setIsMobileOpen(false);
     setIsAccountPanelOpen(false);
@@ -112,7 +117,11 @@ export function SiteHeader() {
         return;
       }
 
-      if (isAccountPanelOpen && !event.target.closest(".account-menu-wrap")) {
+      if (
+        isAccountPanelOpen &&
+        !event.target.closest(".account-menu-wrap") &&
+        !(isMobileOpen && event.target.closest(".ui-overlay-surface"))
+      ) {
         setIsAccountPanelOpen(false);
       }
 
@@ -120,9 +129,10 @@ export function SiteHeader() {
         isMobileOpen &&
         !event.target.closest(".nav-cluster") &&
         !event.target.closest(".mobile-drawer-shell") &&
+        !event.target.closest(".ui-overlay-surface") &&
         !event.target.closest(".mobile-menu-button")
       ) {
-        setIsMobileOpen(false);
+        closeMobileMenu();
       }
     }
 
@@ -131,8 +141,7 @@ export function SiteHeader() {
         return;
       }
 
-      setIsAccountPanelOpen(false);
-      setIsMobileOpen(false);
+      closeMobileMenu();
     }
 
     document.addEventListener("pointerdown", handleDocumentPointerDown);
@@ -413,7 +422,13 @@ export function SiteHeader() {
             ref={menuButtonRef}
             type="button"
             className="mobile-menu-button"
-            onClick={() => setIsMobileOpen((value) => !value)}
+            onClick={() => {
+              if (isMobileOpen) {
+                closeMobileMenu();
+              } else {
+                setIsMobileOpen(true);
+              }
+            }}
             aria-expanded={isMobileOpen}
             aria-controls="site-mobile-drawer"
             aria-label={isMobileOpen ? "Đóng menu điều hướng" : "Mở menu điều hướng"}
@@ -426,7 +441,7 @@ export function SiteHeader() {
 
       <Drawer
         open={isMobileOpen}
-        onClose={() => setIsMobileOpen(false)}
+        onClose={closeMobileMenu}
         labelId="site-mobile-menu-title"
         returnFocusRef={menuButtonRef}
       >
@@ -439,7 +454,7 @@ export function SiteHeader() {
             <button
               type="button"
               className="icon-button mobile-drawer-close"
-              onClick={() => setIsMobileOpen(false)}
+              onClick={closeMobileMenu}
               aria-label="Đóng menu điều hướng"
             >
               <MenuIcon open />
@@ -462,7 +477,7 @@ export function SiteHeader() {
             })}
             <HoloCraftLink
               className="mobile-drawer-link mobile-drawer-link-holocraft"
-              onClick={() => setIsMobileOpen(false)}
+              onClick={closeMobileMenu}
             />
           </nav>
 
@@ -480,11 +495,6 @@ export function SiteHeader() {
                 <Link href="/register" className="button button-secondary">Tạo tài khoản</Link>
               </>
             )}
-            {canOpenBackoffice ? (
-              <Link href="/backoffice" prefetch={false} className="button button-secondary">
-                Backoffice
-              </Link>
-            ) : null}
             <Link href="/search" className="button button-primary">Đặt vé</Link>
           </div>
         </div>

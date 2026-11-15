@@ -57,8 +57,8 @@ export default function RootLayout({
           <RouteFocusManager />
           <SiteHeader />
           <main id="main-content" className="page-main" tabIndex={-1}>{children}</main>
-          <SiteFooter />
           <ChatbotWidget />
+          <SiteFooter />
         </div>
       </body>
     </html>

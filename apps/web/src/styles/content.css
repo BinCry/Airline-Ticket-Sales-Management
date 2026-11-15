@@ -314,3 +314,72 @@
     --backoffice-module-nav-offset: 62px;
   }
 }
+
+/* Phone landscape needs the same compact, scrollable module navigation as portrait. */
+@media (max-width: 880px) {
+  .backoffice-module-shell {
+    --backoffice-module-nav-offset: 76px;
+  }
+
+  .backoffice-module-shell-nav {
+    top: var(--site-header-height-mobile, 65px);
+    padding: 8px 12px 0;
+  }
+
+  .backoffice-module-nav {
+    gap: 6px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .backoffice-module-nav-home,
+  .backoffice-module-nav-link {
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 0.78rem;
+  }
+
+  .backoffice-module-nav-home {
+    flex: 0 0 44px;
+    padding-inline: 0;
+    font-size: 0;
+  }
+
+  .backoffice-module-nav-links {
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 2px 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(18, 61, 105, 0.35) transparent;
+  }
+
+  .backoffice-module-nav-links::-webkit-scrollbar {
+    display: block;
+    height: 3px;
+  }
+
+  .backoffice-module-nav-links::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(18, 61, 105, 0.35);
+  }
+
+  .backoffice-module-nav-link.active {
+    order: -1;
+    flex: 0 0 auto;
+    max-width: min(220px, 100%);
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@media (max-width: 880px) {
+  .backoffice-operations-anchor .compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .backoffice-operations-anchor .compact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

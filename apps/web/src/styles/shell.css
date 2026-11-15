@@ -35,15 +35,15 @@
   align-items: center;
   justify-content: space-between;
   min-height: var(--header-height);
-  gap: 12px;
-  padding: 8px 0;
+  gap: 10px;
+  padding: 7px 0;
 }
 
 .nav-brand-stack {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  width: 190px;
+  width: 175px;
   max-width: 210px;
 }
 
@@ -64,7 +64,7 @@
   align-items: center;
   justify-content: center;
   flex: 0 1 auto;
-  gap: 2px;
+  gap: 1px;
   margin: 0;
   padding: 4px 6px;
   border: 1px solid rgba(18, 61, 105, 0.12);
@@ -76,8 +76,8 @@
 }
 
 .desktop-main-nav .nav-link {
-  padding: 6px 11px;
-  font-size: 0.82rem;
+  padding: 5px 8px;
+  font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -139,7 +139,7 @@
   align-items: center;
   justify-content: flex-end;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 6px;
 }
 
 .nav-language-control {
@@ -148,12 +148,12 @@
   justify-content: center;
   min-height: 36px;
   margin: 0;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid rgba(18, 61, 105, 0.1);
   border-radius: 999px;
   background: var(--brand-primary-soft);
   color: var(--brand-primary);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
@@ -169,8 +169,8 @@
 }
 
 .nav-row-compact .nav-action-button {
-  padding-inline: 13px;
-  font-size: 0.84rem;
+  padding-inline: 10px;
+  font-size: 0.82rem;
 }
 
 .mobile-menu-button {
@@ -403,8 +403,8 @@
   bottom: max(20px, env(safe-area-inset-bottom));
 }
 
-/* Tối ưu hiển thị thanh điều hướng trên màn hình laptop vừa và nhỏ (1101px - 1300px) */
-@media (max-width: 1300px) and (min-width: 1101px) {
+/* Tối ưu hiển thị thanh điều hướng trên màn hình laptop vừa và nhỏ (1101px - 1400px) */
+@media (max-width: 1400px) and (min-width: 1101px) {
   .nav-row.nav-row-compact {
     gap: 10px;
   }
@@ -472,7 +472,7 @@
   }
 }
 
-@media (max-width: 1200px) and (min-width: 881px) {
+@media (max-width: 1400px) and (min-width: 881px) {
   .desktop-main-nav .nav-link-holocraft {
     gap: 4px;
     min-width: 42px;
@@ -486,6 +486,55 @@
 
   .desktop-main-nav .nav-link-holocraft .holocraft-link-copy {
     gap: 0;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 881px) {
+  .site-header > .container {
+    max-width: min(100% - 24px, 1240px);
+  }
+
+  .nav-row.nav-row-compact {
+    gap: 8px;
+    padding: 6px 0;
+  }
+
+  .nav-brand-stack {
+    width: min(160px, 100%);
+    max-width: 100%;
+  }
+
+  .desktop-main-nav,
+  .nav-row-compact .nav-action-button,
+  .nav-row-compact .account-menu-wrap {
+    display: none;
+  }
+
+  .nav-row-compact > .nav-row-actions {
+    display: flex;
+    width: auto;
+    gap: 6px;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .nav-language-control {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+  }
+
+  .nav-language-full {
+    display: none;
+  }
+
+  .nav-language-short {
+    display: inline;
   }
 }
 
@@ -529,8 +578,8 @@
   }
 
   .nav-language-control {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 0.72rem;
   }
@@ -544,7 +593,7 @@
   }
 
   .mobile-menu-button {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 12px;
   }
 
@@ -621,6 +670,7 @@
 
   .mobile-menu-button {
     width: 44px;
+    min-height: 44px;
     padding: 0;
   }
 
