@@ -403,8 +403,8 @@
   bottom: max(20px, env(safe-area-inset-bottom));
 }
 
-/* Tối ưu hiển thị thanh điều hướng trên màn hình laptop vừa và nhỏ (1101px - 1300px) */
-@media (max-width: 1300px) and (min-width: 1101px) {
+/* Tối ưu hiển thị thanh điều hướng trên màn hình laptop vừa và nhỏ (1101px - 1400px) */
+@media (max-width: 1400px) and (min-width: 1101px) {
   .nav-row.nav-row-compact {
     gap: 10px;
   }
