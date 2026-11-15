@@ -12,6 +12,7 @@ apps/api/local-mail.properties
 # Node
 node_modules/
 .next/
+apps/web/.next-e2e/
 out/
 dist/
 coverage/

@@ -36,7 +36,7 @@
   justify-content: space-between;
   min-height: var(--header-height);
   gap: 12px;
-  padding: 8px 0;
+  padding: 7px 0;
 }
 
 .nav-brand-stack {
@@ -489,6 +489,55 @@
   }
 }
 
+@media (max-width: 1160px) and (min-width: 881px) {
+  .site-header > .container {
+    max-width: min(100% - 24px, 1240px);
+  }
+
+  .nav-row.nav-row-compact {
+    gap: 8px;
+    padding: 6px 0;
+  }
+
+  .nav-brand-stack {
+    width: min(160px, 100%);
+    max-width: 100%;
+  }
+
+  .desktop-main-nav,
+  .nav-row-compact .nav-action-button,
+  .nav-row-compact .account-menu-wrap {
+    display: none;
+  }
+
+  .nav-row-compact > .nav-row-actions {
+    display: flex;
+    width: auto;
+    gap: 6px;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .nav-language-control {
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 8px;
+    font-size: 0.72rem;
+  }
+
+  .nav-language-full {
+    display: none;
+  }
+
+  .nav-language-short {
+    display: inline;
+  }
+}
+
 @media (max-width: 880px) {
   :root {
     --header-height: 64px;
@@ -529,8 +578,8 @@
   }
 
   .nav-language-control {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     padding-inline: 8px;
     font-size: 0.72rem;
   }
@@ -544,7 +593,7 @@
   }
 
   .mobile-menu-button {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 12px;
   }
 
@@ -621,6 +670,7 @@
 
   .mobile-menu-button {
     width: 44px;
+    min-height: 44px;
     padding: 0;
   }
 
