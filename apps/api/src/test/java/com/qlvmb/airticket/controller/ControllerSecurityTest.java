@@ -19,6 +19,7 @@ import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.UserAccountRepository;
 import com.qlvmb.airticket.security.JwtAuthenticationFilter;
 import com.qlvmb.airticket.security.JwtTokenService;
+import com.qlvmb.airticket.security.RequestRateLimiter;
 import com.qlvmb.airticket.service.AdminDashboardService;
 import com.qlvmb.airticket.service.AuthService;
 import com.qlvmb.airticket.service.AuthSummaryService;
@@ -98,6 +99,9 @@ class ControllerSecurityTest {
 
   @MockitoBean
   private AuthService authService;
+
+  @MockitoBean
+  private RequestRateLimiter requestRateLimiter;
 
   @MockitoBean
   private AuthSummaryService authSummaryService;

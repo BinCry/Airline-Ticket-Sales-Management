@@ -11,10 +11,16 @@ import com.qlvmb.airticket.domain.dto.AuthRefreshRequest;
 import com.qlvmb.airticket.domain.dto.AuthRegisterRequest;
 import com.qlvmb.airticket.domain.dto.AuthSessionResponse;
 import com.qlvmb.airticket.domain.dto.AuthSummaryResponse;
+import com.qlvmb.airticket.exception.UnauthorizedException;
+import com.qlvmb.airticket.security.ClientIpResolver;
+import com.qlvmb.airticket.security.RequestRateLimiter;
 import com.qlvmb.airticket.service.AuthService;
 import com.qlvmb.airticket.service.AuthSummaryService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Duration;
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,12 +34,38 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+  private static final String LOGIN_LIMIT_MESSAGE =
+      "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút.";
+  private static final String OTP_REQUEST_LIMIT_MESSAGE =
+      "Bạn đã yêu cầu mã OTP quá nhiều lần. Vui lòng thử lại sau ít phút.";
+
   private final AuthService authService;
   private final AuthSummaryService authSummaryService;
+  private final RequestRateLimiter requestRateLimiter;
+  private final Duration rateLimitWindow;
+  private final int loginFailureLimitPerEmail;
+  private final int loginFailureLimitPerIp;
+  private final int otpRequestLimitPerEmail;
+  private final int otpRequestLimitPerIp;
 
-  public AuthController(AuthService authService, AuthSummaryService authSummaryService) {
+  public AuthController(
+      AuthService authService,
+      AuthSummaryService authSummaryService,
+      RequestRateLimiter requestRateLimiter,
+      @Value("${app.auth.rate-limit.window-seconds:900}") long rateLimitWindowSeconds,
+      @Value("${app.auth.rate-limit.login-failures-per-email:5}") int loginFailureLimitPerEmail,
+      @Value("${app.auth.rate-limit.login-failures-per-ip:20}") int loginFailureLimitPerIp,
+      @Value("${app.auth.rate-limit.otp-requests-per-email:3}") int otpRequestLimitPerEmail,
+      @Value("${app.auth.rate-limit.otp-requests-per-ip:10}") int otpRequestLimitPerIp
+  ) {
     this.authService = authService;
     this.authSummaryService = authSummaryService;
+    this.requestRateLimiter = requestRateLimiter;
+    this.rateLimitWindow = Duration.ofSeconds(rateLimitWindowSeconds);
+    this.loginFailureLimitPerEmail = loginFailureLimitPerEmail;
+    this.loginFailureLimitPerIp = loginFailureLimitPerIp;
+    this.otpRequestLimitPerEmail = otpRequestLimitPerEmail;
+    this.otpRequestLimitPerIp = otpRequestLimitPerIp;
   }
 
   @GetMapping("/roles")
@@ -57,7 +89,21 @@ public class AuthController {
       @RequestHeader(value = "User-Agent", required = false) String userAgent,
       HttpServletRequest servletRequest
   ) {
-    return authService.login(request, userAgent, resolveClientIp(servletRequest));
+    // Bổ sung: chặn dò mật khẩu bằng cách giới hạn số lần đăng nhập sai theo email và theo IP.
+    String clientIp = resolveClientIp(servletRequest);
+    String emailKey = "login-email:" + normalizeKey(request.email());
+    String ipKey = "login-ip:" + clientIp;
+    requestRateLimiter.assertAllowed(emailKey, loginFailureLimitPerEmail, rateLimitWindow, LOGIN_LIMIT_MESSAGE);
+    requestRateLimiter.assertAllowed(ipKey, loginFailureLimitPerIp, rateLimitWindow, LOGIN_LIMIT_MESSAGE);
+    try {
+      AuthSessionResponse response = authService.login(request, userAgent, clientIp);
+      requestRateLimiter.reset(emailKey);
+      return response;
+    } catch (UnauthorizedException exception) {
+      requestRateLimiter.record(emailKey, rateLimitWindow);
+      requestRateLimiter.record(ipKey, rateLimitWindow);
+      throw exception;
+    }
   }
 
   @PostMapping("/refresh")
@@ -77,8 +123,14 @@ public class AuthController {
 
   @PostMapping("/forgot-password/request-otp")
   public ResponseEntity<AuthOtpRequestResponse> requestForgotPasswordOtp(
-      @Valid @RequestBody AuthPasswordResetRequest request
+      @Valid @RequestBody AuthPasswordResetRequest request,
+      HttpServletRequest servletRequest
   ) {
+    // Bổ sung: giới hạn số lần xin OTP quên mật khẩu theo email và theo IP để tránh spam email.
+    requestRateLimiter.consume(
+        "forgot-otp-ip:" + resolveClientIp(servletRequest), otpRequestLimitPerIp, rateLimitWindow, OTP_REQUEST_LIMIT_MESSAGE);
+    requestRateLimiter.consume(
+        "forgot-otp-email:" + normalizeKey(request.email()), otpRequestLimitPerEmail, rateLimitWindow, OTP_REQUEST_LIMIT_MESSAGE);
     return ResponseEntity.accepted().body(authService.requestForgotPasswordOtp(request));
   }
 
@@ -97,11 +149,13 @@ public class AuthController {
     return ResponseEntity.noContent().build();
   }
 
+  // Thay thế: dùng ClientIpResolver dùng chung thay cho đoạn đọc X-Forwarded-For viết riêng ở đây.
   private String resolveClientIp(HttpServletRequest servletRequest) {
-    String forwardedFor = servletRequest.getHeader("X-Forwarded-For");
-    if (forwardedFor != null && !forwardedFor.isBlank()) {
-      return forwardedFor.split(",")[0].trim();
-    }
-    return servletRequest.getRemoteAddr();
+    return ClientIpResolver.resolve(servletRequest);
   }
+
+  private String normalizeKey(String email) {
+    return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+  }
+
 }

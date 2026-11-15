@@ -42,6 +42,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
+  private static final String LOGIN_INVALID_MESSAGE = "Email hoặc mật khẩu không đúng.";
+  private static final String FORGOT_PASSWORD_OTP_ACCEPTED_MESSAGE =
+      "Nếu email đã đăng ký, mã OTP sẽ được gửi trong ít phút.";
+
   private final UserAccountRepository userAccountRepository;
   private final RoleRepository roleRepository;
   private final OtpChallengeRepository otpChallengeRepository;
@@ -110,9 +114,11 @@ public class AuthService {
   public AuthSessionResponse login(AuthLoginRequest request, String userAgent, String ipAddress) {
     String normalizedEmail = normalizeEmail(request.email());
     UserAccountEntity userAccount = userAccountRepository.findOneWithRolesByEmailIgnoreCase(normalizedEmail)
-        .orElseThrow(() -> new UnauthorizedException("Email chưa được đăng ký."));
+        .orElseThrow(() -> new UnauthorizedException(LOGIN_INVALID_MESSAGE));
+    // Thay thế: hai thông báo riêng "Email chưa được đăng ký" / "Mật khẩu không đúng" bằng một thông báo chung
+    // để không lộ email nào đã có tài khoản.
     if (!passwordEncoder.matches(request.password(), userAccount.getPasswordHash())) {
-      throw new UnauthorizedException("Mật khẩu không đúng.");
+      throw new UnauthorizedException(LOGIN_INVALID_MESSAGE);
     }
     validateUserState(userAccount);
     userAccount.markLoggedIn(OffsetDateTime.now(ZoneOffset.UTC));
@@ -156,8 +162,12 @@ public class AuthService {
   @Transactional
   public AuthOtpRequestResponse requestForgotPasswordOtp(AuthPasswordResetRequest request) {
     String normalizedEmail = normalizeEmail(request.email());
-    UserAccountEntity userAccount = userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
-        .orElseThrow(() -> new BadRequestException("Email này chưa được đăng ký."));
+    // Thay thế: không báo "Email này chưa được đăng ký" nữa; email lạ vẫn nhận phản hồi giống email hợp lệ
+    // nhưng không tạo OTP, để không lộ email nào đã có tài khoản.
+    UserAccountEntity userAccount = userAccountRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+    if (userAccount == null) {
+      return new AuthOtpRequestResponse("accepted", FORGOT_PASSWORD_OTP_ACCEPTED_MESSAGE);
+    }
 
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     String otp = generateOtp();
@@ -173,10 +183,7 @@ public class AuthService {
     otpChallengeRepository.save(otpChallenge);
     otpDeliveryService.sendForgotPasswordOtp(normalizedEmail, otp);
 
-    return new AuthOtpRequestResponse(
-        "accepted",
-        "Mã OTP đã được gửi đến email đã đăng ký."
-    );
+    return new AuthOtpRequestResponse("accepted", FORGOT_PASSWORD_OTP_ACCEPTED_MESSAGE);
   }
 
   // Sửa lỗi: thay @Transactional bằng noRollbackFor để số lần nhập sai OTP không bị rollback khi ném lỗi
