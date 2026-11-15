@@ -15,7 +15,7 @@ const publicRoutes = [
 
 for (const route of publicRoutes) {
   test(`${route} không tràn ngang và có đúng một tiêu đề chính`, async ({ page }) => {
-    await page.goto(route);
+    await page.goto(route, { waitUntil: "domcontentloaded" });
 
     await expect(page.locator("main")).toBeVisible();
     await expect(page.locator("h1")).toHaveCount(1);
@@ -32,7 +32,7 @@ for (const route of publicRoutes) {
 test("header mobile mở menu, thể hiện trang hiện tại và đóng bằng Escape", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"));
 
-  await page.goto("/support");
+  await page.goto("/support", { waitUntil: "domcontentloaded" });
   const menuButton = page.getByRole("button", { name: "Mở menu điều hướng" });
   await menuButton.click();
 
@@ -49,18 +49,18 @@ test("header mobile mở menu, thể hiện trang hiện tại và đóng bằng
 });
 
 test("HoloCraft có lối tắt phù hợp trên header desktop và menu di động", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   const viewportWidth = page.viewportSize()?.width ?? 0;
   const accessibleName = "Mở HoloCraft 3D trong tab mới";
 
-  if (viewportWidth > 1160) {
+  if (viewportWidth > 1200) {
     const link = page.locator(".desktop-main-nav").getByRole("link", { name: accessibleName });
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute("href", "https://holo-craft.bincrydev.id.vn/");
     await expect(link).toHaveAttribute("target", "_blank");
     await expect(link).toHaveAttribute("rel", /noopener/);
 
-    for (const width of [881, 900, 1024, 1101, 1160]) {
+    for (const width of [881, 900, 1024, 1101, 1160, 1161, 1180, 1200]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.locator(".desktop-main-nav")).toBeHidden();
       const menuButton = page.getByRole("button", { name: "Mở menu điều hướng" });
@@ -70,7 +70,7 @@ test("HoloCraft có lối tắt phù hợp trên header desktop và menu di đ�
       await page.getByRole("dialog", { name: "Điều hướng" }).getByRole("button", { name: "Đóng menu điều hướng" }).click();
     }
 
-    for (const width of [1161, 1180, 1200, 1280, 1366]) {
+    for (const width of [1201, 1210, 1240, 1280, 1366]) {
       await page.setViewportSize({ width, height: 900 });
       const layout = await page.locator(".site-header").evaluate((header) => {
         const brand = header.querySelector(".nav-brand-stack")!.getBoundingClientRect();
@@ -112,7 +112,7 @@ test("bố cục vẫn dùng được ở màn hình 320px và mobile landscape"
     { width: 844, height: 390 }
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto("/search");
+    await page.goto("/search", { waitUntil: "domcontentloaded" });
     await expect(page.locator("h1")).toHaveCount(1);
 
     const hasOverflow = await page.evaluate(
@@ -128,7 +128,7 @@ test("trợ lý AI nằm ngoài luồng nội dung trên mobile, không che form
   for (const route of ["/search", "/login", "/manage-booking", "/check-in", "/flight-status"]) {
     for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
       await page.setViewportSize(viewport);
-      await page.goto(route);
+      await page.goto(route, { waitUntil: "domcontentloaded" });
       const bounds = await page.evaluate(() => {
         const main = document.querySelector("main")!.getBoundingClientRect();
         const assistant = document.querySelector<HTMLElement>(".chatbot-root")!;
@@ -156,7 +156,7 @@ test("các thao tác chính và phân hệ backoffice có vùng chạm đủ l�
 
   for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
-    await page.goto("/search");
+    await page.goto("/search", { waitUntil: "domcontentloaded" });
     for (const selector of [".date-input-picker-button", ".search-panel .toggle", ".filter-head .text-button"]) {
       const target = page.locator(selector).first();
       if (await target.isVisible()) {
@@ -166,12 +166,12 @@ test("các thao tác chính và phân hệ backoffice có vùng chạm đủ l�
       }
     }
 
-    await page.goto("/support");
+    await page.goto("/support", { waitUntil: "domcontentloaded" });
     const faqToggle = page.locator(".support-faq-toggle").first();
     const faqBounds = await faqToggle.boundingBox();
     expect(faqBounds?.height, `FAQ khó chạm ở ${viewport.width}px`).toBeGreaterThanOrEqual(44);
 
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     const manageBooking = page.locator(".home-hero-manage-link");
     if (await manageBooking.isVisible()) {
       const bounds = await manageBooking.boundingBox();
@@ -188,7 +188,7 @@ test("các thao tác chính và phân hệ backoffice có vùng chạm đủ l�
   });
   for (const viewport of [{ width: 320, height: 720 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
-    await page.goto("/backoffice/operations");
+    await page.goto("/backoffice/operations", { waitUntil: "domcontentloaded" });
     const activeLink = page.locator(".backoffice-module-nav-link[aria-current='page']");
     await expect(activeLink).toBeVisible();
     const navBounds = await activeLink.evaluate((element) => {
@@ -228,7 +228,7 @@ test("các thao tác chính và phân hệ backoffice có vùng chạm đủ l�
 test("bộ lọc tìm vé và FAQ không bóp chữ hoặc cắt chip trên mobile", async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes("mobile"));
 
-  await page.goto("/search");
+  await page.goto("/search", { waitUntil: "domcontentloaded" });
   const clearFilters = page.getByRole("button", { name: "Xóa bộ lọc" });
   await expect(clearFilters).toBeVisible();
   await expect(clearFilters).toHaveCSS("white-space", "nowrap");
@@ -240,7 +240,7 @@ test("bộ lọc tìm vé và FAQ không bóp chữ hoặc cắt chip trên mobi
   expect(filterBounds.buttonLeft).toBeGreaterThanOrEqual(filterBounds.headLeft);
   expect(filterBounds.buttonRight).toBeLessThanOrEqual(filterBounds.headRight + 1);
 
-  await page.goto("/support");
+  await page.goto("/support", { waitUntil: "domcontentloaded" });
   const categories = page.locator(".support-faq-category-list");
   const categoryBounds = await categories.evaluate((list) => {
     const listRect = list.getBoundingClientRect();
@@ -273,7 +273,7 @@ test("menu hồ sơ nhân viên không tự đóng khi cuộn drawer mobile và 
     mockMyNotifications: true
   });
 
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Mở menu điều hướng" }).click();
 
   const drawer = page.getByRole("dialog", { name: "Điều hướng" });

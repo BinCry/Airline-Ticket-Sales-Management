@@ -489,7 +489,7 @@
   }
 }
 
-@media (max-width: 1160px) and (min-width: 881px) {
+@media (max-width: 1200px) and (min-width: 881px) {
   .site-header > .container {
     max-width: min(100% - 24px, 1240px);
   }
