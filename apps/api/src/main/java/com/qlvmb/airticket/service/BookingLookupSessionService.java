@@ -107,7 +107,8 @@ public class BookingLookupSessionService {
     return new BookingLookupOtpResponse("accepted", "Mã OTP tra cứu đã được gửi đến email liên hệ.");
   }
 
-  @Transactional
+  // Sửa lỗi: thay @Transactional bằng noRollbackFor để số lần nhập sai OTP không bị rollback khi ném lỗi
+  @Transactional(noRollbackFor = BadRequestException.class)
   public BookingLookupVerifyOtpResponse verifyLookupOtp(BookingLookupVerifyOtpRequest request) {
     String bookingCode = normalizeBookingCode(request.bookingCode());
     String email = normalizeEmail(request.email());

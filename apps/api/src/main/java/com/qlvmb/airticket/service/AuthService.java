@@ -179,7 +179,8 @@ public class AuthService {
     );
   }
 
-  @Transactional
+  // Sửa lỗi: thay @Transactional bằng noRollbackFor để số lần nhập sai OTP không bị rollback khi ném lỗi
+  @Transactional(noRollbackFor = BadRequestException.class)
   public AuthOtpVerifyResponse verifyForgotPasswordOtp(AuthPasswordResetVerifyRequest request) {
     OtpChallengeEntity otpChallenge = requireActivePasswordResetChallenge(request.email());
     validateOtpValue(otpChallenge, request.otp());
@@ -189,7 +190,8 @@ public class AuthService {
     return new AuthOtpVerifyResponse(true, "Mã OTP hợp lệ.");
   }
 
-  @Transactional
+  // Sửa lỗi: thay @Transactional bằng noRollbackFor để số lần nhập sai OTP không bị rollback khi ném lỗi
+  @Transactional(noRollbackFor = BadRequestException.class)
   public void resetPassword(AuthResetPasswordRequest request) {
     String normalizedEmail = normalizeEmail(request.email());
     UserAccountEntity userAccount = userAccountRepository.findByEmailIgnoreCase(normalizedEmail)
