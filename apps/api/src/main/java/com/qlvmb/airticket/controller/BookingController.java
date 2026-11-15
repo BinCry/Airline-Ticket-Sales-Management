@@ -13,12 +13,17 @@ import com.qlvmb.airticket.domain.dto.RefundRequestCreateRequest;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.security.AuthenticatedUser;
 import com.qlvmb.airticket.security.JwtAuthenticationFilter;
+import com.qlvmb.airticket.security.ClientIpResolver;
 import com.qlvmb.airticket.security.PermissionCode;
+import com.qlvmb.airticket.security.RequestRateLimiter;
 import com.qlvmb.airticket.service.BookingLookupSessionService;
 import com.qlvmb.airticket.service.BookingService;
 import com.qlvmb.airticket.service.PaymentService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
+import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -38,15 +43,30 @@ public class BookingController {
 
   private final BookingService bookingService;
   private final PaymentService paymentService;
+  private static final String HOLD_LIMIT_MESSAGE =
+      "Bạn đã tạo quá nhiều giữ chỗ trong thời gian ngắn. Vui lòng thanh toán giữ chỗ hiện có hoặc thử lại sau ít phút.";
+
   private final BookingLookupSessionService bookingLookupSessionService;
+  private final RequestRateLimiter requestRateLimiter;
+  private final Duration holdRateLimitWindow;
+  private final int holdLimitPerIp;
+  private final int holdLimitPerContactEmail;
 
   public BookingController(
       BookingService bookingService,
       PaymentService paymentService,
-      BookingLookupSessionService bookingLookupSessionService
+      BookingLookupSessionService bookingLookupSessionService,
+      RequestRateLimiter requestRateLimiter,
+      @Value("${app.booking.hold-rate-limit.window-seconds:900}") long holdRateLimitWindowSeconds,
+      @Value("${app.booking.hold-rate-limit.per-ip:10}") int holdLimitPerIp,
+      @Value("${app.booking.hold-rate-limit.per-contact-email:5}") int holdLimitPerContactEmail
   ) {
     this.bookingService = bookingService;
     this.paymentService = paymentService;
+    this.requestRateLimiter = requestRateLimiter;
+    this.holdRateLimitWindow = Duration.ofSeconds(holdRateLimitWindowSeconds);
+    this.holdLimitPerIp = holdLimitPerIp;
+    this.holdLimitPerContactEmail = holdLimitPerContactEmail;
     this.bookingLookupSessionService = bookingLookupSessionService;
   }
 
@@ -62,6 +82,17 @@ public class BookingController {
     AuthenticatedUser user = authentication != null
         && authentication.getPrincipal() instanceof AuthenticatedUser authenticatedUser
         ? authenticatedUser : null;
+    // Bổ sung: giới hạn số giữ chỗ theo IP và email liên hệ để không thể giữ hết ghế của chuyến bằng
+    // các yêu cầu ẩn danh liên tục (nhân viên có quyền bán vé hộ không bị giới hạn).
+    boolean staff = user != null && user.permissions().contains(PermissionCode.BACKOFFICE_SALES);
+    if (!staff) {
+      requestRateLimiter.consume(
+          "hold-ip:" + ClientIpResolver.resolve(httpRequest), holdLimitPerIp, holdRateLimitWindow, HOLD_LIMIT_MESSAGE);
+      String contactEmail = request.contact() == null || request.contact().email() == null
+          ? "" : request.contact().email().trim().toLowerCase(Locale.ROOT);
+      requestRateLimiter.consume(
+          "hold-email:" + contactEmail, holdLimitPerContactEmail, holdRateLimitWindow, HOLD_LIMIT_MESSAGE);
+    }
     return bookingService.createHold(request, user);
   }
 
