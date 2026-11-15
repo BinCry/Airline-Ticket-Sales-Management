@@ -49,7 +49,9 @@ public class BackofficeSalesService {
     this.auditLogRepository = auditLogRepository;
   }
 
-  @Transactional(readOnly = true)
+  // Thay thế: bỏ readOnly = true vì getBookingOverview khóa chuyến bay (SELECT ... FOR UPDATE) và cập nhật
+  // booking hết hạn giữ chỗ; giao dịch chỉ đọc làm PostgreSQL báo lỗi và API trả 500.
+  @Transactional
   public List<BookingOverviewResponse> getBookings(String bookingCode, String email, Integer limit) {
     String normalizedBookingCode = normalizeBookingCode(bookingCode);
     String normalizedEmail = normalizeEmail(email);
@@ -70,6 +72,7 @@ public class BackofficeSalesService {
       return List.of();
     }
 
+    OffsetDateTime currentTime = OffsetDateTime.now();
     Map<Long, Integer> sortOrderById = new LinkedHashMap<>();
     for (int index = 0; index < bookingIds.size(); index++) {
       sortOrderById.put(bookingIds.get(index), index);
@@ -77,8 +80,17 @@ public class BackofficeSalesService {
 
     return bookingRepository.findAllDetailedByIdIn(bookingIds).stream()
         .sorted(Comparator.comparingInt(booking -> sortOrderById.getOrDefault(booking.getId(), Integer.MAX_VALUE)))
-        .map(bookingService::mapOverviewResponse)
+        .map(booking -> mapOverviewWithExpiration(booking, currentTime))
         .toList();
+  }
+
+  // Bổ sung: booking giữ chỗ đã quá hạn được cập nhật trạng thái (qua getBookingOverview) trước khi trả về,
+  // để danh sách không còn hiện "Đã giữ chỗ" và nút Xuất vé hộ cho booking đã hết hạn.
+  private BookingOverviewResponse mapOverviewWithExpiration(BookingEntity booking, OffsetDateTime currentTime) {
+    if (booking.isHold() && booking.getExpiresAt() != null && booking.isExpired(currentTime)) {
+      return bookingService.getBookingOverview(booking.getBookingCode());
+    }
+    return bookingService.mapOverviewResponse(booking);
   }
 
   @Transactional

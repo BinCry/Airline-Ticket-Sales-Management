@@ -97,6 +97,35 @@ class BackofficeSalesServiceTest {
   }
 
   @Test
+  void getBookings_shouldReconcileExpiredHoldWhenSearchByEmail() {
+    BookingEntity expiredHold = createBookingEntity(3L, "QC5003");
+    ReflectionTestUtils.setField(expiredHold, "status", BookingEntity.STATUS_HOLD);
+    ReflectionTestUtils.setField(expiredHold, "expiresAt", OffsetDateTime.now().minusMinutes(10));
+    BookingOverviewResponse reconciled = createOverview("QC5003", "cancelled", "expired");
+
+    when(bookingRepository.findRecentIdsByContactEmail(eq("khach.hang@gmail.com"), any()))
+        .thenReturn(List.of(3L));
+    when(bookingRepository.findAllDetailedByIdIn(List.of(3L))).thenReturn(List.of(expiredHold));
+    when(bookingService.getBookingOverview("QC5003")).thenReturn(reconciled);
+
+    List<BookingOverviewResponse> responses = backofficeSalesService.getBookings(null, "khach.hang@gmail.com", 20);
+
+    assertThat(responses).containsExactly(reconciled);
+    verify(bookingService, never()).mapOverviewResponse(expiredHold);
+  }
+
+  // Tra cứu theo mã gọi khóa SELECT ... FOR UPDATE nên giao dịch không được ở chế độ chỉ đọc.
+  @Test
+  void getBookings_shouldNotRunInReadOnlyTransaction() throws Exception {
+    org.springframework.transaction.annotation.Transactional transactional = BackofficeSalesService.class
+        .getMethod("getBookings", String.class, String.class, Integer.class)
+        .getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+
+    assertThat(transactional).isNotNull();
+    assertThat(transactional.readOnly()).isFalse();
+  }
+
+  @Test
   void createBooking_shouldCreateAuditLog() {
     BookingHoldRequest request = createHoldRequest();
     BookingHoldResponse holdResponse = new BookingHoldResponse(
