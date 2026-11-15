@@ -150,6 +150,9 @@ public class BookingService {
     Map<Long, FlightFareInventoryEntity> inventoryById = reconcileExpiredHolds(currentTime, lockedInventories);
     List<PreparedTripSegment> preparedTripSegments =
         buildPreparedTripSegments(request.segments(), inventoryById, currentTime);
+    if ("round_trip".equals(tripType)) {
+      validateRoundTripSegments(preparedTripSegments);
+    }
     validatePassengerAges(request.passengers(), preparedTripSegments);
 
     List<PreparedAncillary> preparedAncillaries = request.ancillaries().stream()
@@ -1302,6 +1305,23 @@ public class BookingService {
     }
 
     return steps;
+  }
+
+  // Bổ sung: chiều về phải bay ngược tuyến chiều đi và khởi hành sau khi chiều đi hạ cánh.
+  private void validateRoundTripSegments(List<PreparedTripSegment> preparedTripSegments) {
+    PreparedTripSegment outbound = preparedTripSegments.get(0);
+    PreparedTripSegment inbound = preparedTripSegments.get(1);
+    boolean dungTuyenNguoc = Objects.equals(inbound.originCode(), outbound.destinationCode())
+        && Objects.equals(inbound.destinationCode(), outbound.originCode());
+    if (!dungTuyenNguoc) {
+      throw new BadRequestException("Chiều về phải bay từ " + outbound.destinationCode()
+          + " về " + outbound.originCode() + ".");
+    }
+    OffsetDateTime outboundArrivalAt = outbound.arrivalAt() != null ? outbound.arrivalAt() : outbound.departureAt();
+    if (inbound.departureAt() == null || outboundArrivalAt == null
+        || !inbound.departureAt().isAfter(outboundArrivalAt)) {
+      throw new BadRequestException("Chiều về phải khởi hành sau khi chuyến chiều đi hạ cánh.");
+    }
   }
 
   private void validateRequestShape(String tripType, BookingHoldRequest request) {

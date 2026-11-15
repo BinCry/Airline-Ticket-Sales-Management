@@ -270,6 +270,36 @@ class BookingServiceTest {
   }
 
   @Test
+  void createHold_shouldRejectKhuHoiKhiChieuVeKhacTuyen() {
+    FlightFareInventoryEntity outbound = mockInventoryOnFlight(30101L, 601L, "VN601", 8, 1200000L, "pho_thong_tiet_kiem");
+    FlightFareInventoryEntity outboundFlex = mockInventoryOnFlight(30102L, 601L, "VN601", 6, 1700000L, "pho_thong_linh_hoat");
+    FlightFareInventoryEntity inbound = mockInventoryOnFlight(30201L, 701L, "VN701", 8, 1250000L, "pho_thong_tiet_kiem");
+    FlightFareInventoryEntity inboundFlex = mockInventoryOnFlight(30202L, 701L, "VN701", 6, 1750000L, "pho_thong_linh_hoat");
+    when(flightFareInventoryRepository.lockByIds(any())).thenReturn(List.of(outbound, outboundFlex, inbound, inboundFlex));
+    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
+
+    assertThatThrownBy(() -> bookingService.createHold(bookingHoldKhuHoiNhieuHanhKhach()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Chiều về phải bay từ HAN về SGN");
+  }
+
+  @Test
+  void createHold_shouldRejectKhuHoiKhiChieuVeBayTruocChieuDi() {
+    FlightFareInventoryEntity outbound = mockInventoryOnFlight(30101L, 601L, "VN601", 8, 1200000L, "pho_thong_tiet_kiem");
+    FlightFareInventoryEntity outboundFlex = mockInventoryOnFlight(30102L, 601L, "VN601", 6, 1700000L, "pho_thong_linh_hoat");
+    FlightFareInventoryEntity inbound = mockInventoryOnFlight(30201L, 701L, "VN701", 8, 1250000L, "pho_thong_tiet_kiem");
+    FlightFareInventoryEntity inboundFlex = mockInventoryOnFlight(30202L, 701L, "VN701", 6, 1750000L, "pho_thong_linh_hoat");
+    datThanhChieuVe(inbound, OffsetDateTime.now().plusDays(5));
+    datThanhChieuVe(inboundFlex, OffsetDateTime.now().plusDays(5));
+    when(flightFareInventoryRepository.lockByIds(any())).thenReturn(List.of(outbound, outboundFlex, inbound, inboundFlex));
+    when(bookingRepository.lockExpiredHoldsByInventoryIds(any(), any(), any())).thenReturn(List.of());
+
+    assertThatThrownBy(() -> bookingService.createHold(bookingHoldKhuHoiNhieuHanhKhach()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("khởi hành sau khi chuyến chiều đi hạ cánh");
+  }
+
+  @Test
   void createHold_shouldAllowKhuHoiNhieuHanhKhachVaChoPhepTrungSoGheKhacChuyenBay() {
     FlightFareInventoryEntity outboundSaverInventory = mockInventoryOnFlight(
         30101L,
@@ -303,6 +333,9 @@ class BookingServiceTest {
         1750000L,
         "pho_thong_linh_hoat"
     );
+    // Chiều về phải bay ngược tuyến và sau khi chiều đi hạ cánh.
+    datThanhChieuVe(returnSaverInventory, OffsetDateTime.now().plusDays(12));
+    datThanhChieuVe(returnFlexInventory, OffsetDateTime.now().plusDays(12));
 
     when(flightFareInventoryRepository.lockByIds(argThat(ids ->
         ids != null
@@ -1265,5 +1298,20 @@ class BookingServiceTest {
     lenient().when(inventory.getFlight()).thenReturn(flight);
 
     return inventory;
+  }
+
+  // Đổi chặng giả lập thành chiều về HAN -> SGN với giờ khởi hành cho trước.
+  private void datThanhChieuVe(FlightFareInventoryEntity inventory, OffsetDateTime departureAt) {
+    FlightEntity flight = inventory.getFlight();
+    AirportEntity han = mock(AirportEntity.class);
+    AirportEntity sgn = mock(AirportEntity.class);
+    lenient().when(han.getCode()).thenReturn("HAN");
+    lenient().when(han.getCityName()).thenReturn("Ha Noi");
+    lenient().when(sgn.getCode()).thenReturn("SGN");
+    lenient().when(sgn.getCityName()).thenReturn("Thanh pho Ho Chi Minh");
+    lenient().when(flight.getOriginAirport()).thenReturn(han);
+    lenient().when(flight.getDestinationAirport()).thenReturn(sgn);
+    lenient().when(flight.getDepartureAt()).thenReturn(departureAt);
+    lenient().when(flight.getArrivalAt()).thenReturn(departureAt.plusHours(2));
   }
 }
