@@ -2,6 +2,7 @@ package com.qlvmb.airticket.service;
 
 import com.qlvmb.airticket.domain.entity.BookingSegmentEntity;
 import com.qlvmb.airticket.domain.entity.FlightEntity;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -14,7 +15,30 @@ final class BookingBusinessPolicy {
   private static final Set<String> CHECKIN_BLOCKING_STATUSES =
       Set.of("boarding", "departed", "landed", "cancelled");
 
+  // Khung giờ làm thủ tục trực tuyến đã công bố trên trang chủ: mở 24 giờ, đóng 60 phút trước giờ khởi hành.
+  static final Duration CHECKIN_OPENS_BEFORE_DEPARTURE = Duration.ofHours(24);
+  static final Duration CHECKIN_CLOSES_BEFORE_DEPARTURE = Duration.ofMinutes(60);
+
   private BookingBusinessPolicy() {
+  }
+
+  // Thời điểm mở làm thủ tục cho chặng; null nếu chặng không có giờ khởi hành.
+  static OffsetDateTime thoiDiemMoLamThuTuc(BookingSegmentEntity segment) {
+    return segment == null || segment.getDepartureAt() == null
+        ? null : segment.getDepartureAt().minus(CHECKIN_OPENS_BEFORE_DEPARTURE);
+  }
+
+  static boolean chuaDenGioMoLamThuTuc(BookingSegmentEntity segment, OffsetDateTime currentTime) {
+    OffsetDateTime moLuc = thoiDiemMoLamThuTuc(segment);
+    return moLuc != null && currentTime.isBefore(moLuc);
+  }
+
+  static boolean daDongLamThuTuc(BookingSegmentEntity segment, OffsetDateTime currentTime) {
+    if (segment == null || segment.getDepartureAt() == null) {
+      return false;
+    }
+    OffsetDateTime dongLuc = segment.getDepartureAt().minus(CHECKIN_CLOSES_BEFORE_DEPARTURE);
+    return !currentTime.isBefore(dongLuc);
   }
 
   static boolean coTheTuPhucVuHoanVe(
