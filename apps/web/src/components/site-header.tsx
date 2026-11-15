@@ -20,6 +20,7 @@ import {fetchMyNotifications} from "@/lib/my-account-api";
 import {FLIGHT_NOTIFICATION_EVENT} from "@/components/realtime-notification-keeper";
 
 const DEFAULT_AVATAR_URL = "/images/default-avatar.svg";
+const HOLO_CRAFT_URL = "https://holo-craft.bincrydev.id.vn/";
 
 function MenuIcon({ open }: { open: boolean }) {
   return (
@@ -30,6 +31,39 @@ function MenuIcon({ open }: { open: boolean }) {
         <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       )}
     </svg>
+  );
+}
+
+function HoloCraftLink({
+  className,
+  onClick
+}: {
+  className: string;
+  onClick?: () => void;
+}) {
+  return (
+    <a
+      href={HOLO_CRAFT_URL}
+      className={className}
+      target="_blank"
+      rel="noreferrer noopener"
+      aria-label="Mở HoloCraft 3D trong tab mới"
+      title="Mở HoloCraft 3D trong tab mới"
+      onClick={onClick}
+    >
+      <svg className="holocraft-link-cube" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="m4.4 7.7 7.6 4.3 7.6-4.3M12 12v9" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      </svg>
+      <span className="holocraft-link-copy">
+        <span className="holocraft-link-name">HoloCraft</span>
+        <span className="holocraft-link-badge" aria-hidden="true">3D</span>
+      </span>
+      <svg className="holocraft-link-external" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M11 4h5v5M16 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 11v4H5V6h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </a>
   );
 }
 
@@ -329,6 +363,7 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          <HoloCraftLink className="nav-link nav-link-holocraft" />
         </nav>
 
         <div className="nav-row-actions">
@@ -425,6 +460,10 @@ export function SiteHeader() {
                 </Link>
               );
             })}
+            <HoloCraftLink
+              className="mobile-drawer-link mobile-drawer-link-holocraft"
+              onClick={() => setIsMobileOpen(false)}
+            />
           </nav>
 
           <a className="mobile-drawer-support" href="tel:19006868">

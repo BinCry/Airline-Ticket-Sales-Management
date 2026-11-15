@@ -84,6 +84,55 @@
   flex: 0 0 auto;
 }
 
+.desktop-main-nav .nav-link-holocraft {
+  gap: 6px;
+  border: 1px solid rgba(202, 164, 95, 0.38);
+  background: linear-gradient(135deg, rgba(202, 164, 95, 0.12), rgba(18, 61, 105, 0.04));
+  color: var(--brand-primary);
+}
+
+.desktop-main-nav .nav-link-holocraft:hover,
+.desktop-main-nav .nav-link-holocraft:focus-visible {
+  border-color: rgba(202, 164, 95, 0.68);
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+}
+
+.holocraft-link-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.holocraft-link-cube,
+.holocraft-link-external {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.nav-link-holocraft .holocraft-link-cube {
+  width: 16px;
+  height: 16px;
+  color: var(--brand-accent);
+}
+
+.nav-link-holocraft .holocraft-link-external {
+  width: 12px;
+  height: 12px;
+  opacity: 0.72;
+}
+
+.holocraft-link-badge {
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: rgba(202, 164, 95, 0.18);
+  color: var(--brand-primary);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .nav-row-compact > .nav-row-actions {
   display: flex;
   flex-wrap: nowrap;
@@ -191,6 +240,30 @@
 
 .mobile-drawer-link.active {
   box-shadow: inset 3px 0 0 var(--brand-accent);
+}
+
+.mobile-drawer-link-holocraft {
+  gap: 10px;
+  border: 1px solid rgba(202, 164, 95, 0.42);
+  background: linear-gradient(115deg, rgba(202, 164, 95, 0.13), rgba(18, 61, 105, 0.04));
+  color: var(--brand-primary);
+}
+
+.mobile-drawer-link-holocraft .holocraft-link-cube {
+  width: 19px;
+  height: 19px;
+  color: var(--brand-accent);
+}
+
+.mobile-drawer-link-holocraft .holocraft-link-copy {
+  gap: 8px;
+}
+
+.mobile-drawer-link-holocraft .holocraft-link-external {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--muted);
 }
 
 .mobile-drawer-support {
@@ -396,6 +469,23 @@
     min-height: 34px;
     padding: 0 7px;
     font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 881px) {
+  .desktop-main-nav .nav-link-holocraft {
+    gap: 4px;
+    min-width: 42px;
+    padding-inline: 8px;
+  }
+
+  .desktop-main-nav .nav-link-holocraft .holocraft-link-name,
+  .desktop-main-nav .nav-link-holocraft .holocraft-link-external {
+    display: none;
+  }
+
+  .desktop-main-nav .nav-link-holocraft .holocraft-link-copy {
+    gap: 0;
   }
 }
 

@@ -46,6 +46,52 @@ test("header mobile mở menu, thể hiện trang hiện tại và đóng bằng
   await expect(menuButton).toBeFocused();
 });
 
+test("HoloCraft có lối tắt phù hợp trên header desktop và menu di động", async ({ page }) => {
+  await page.goto("/");
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const accessibleName = "Mở HoloCraft 3D trong tab mới";
+
+  if (viewportWidth > 880) {
+    const link = page.locator(".desktop-main-nav").getByRole("link", { name: accessibleName });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "https://holo-craft.bincrydev.id.vn/");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", /noopener/);
+
+    for (const width of [881, 900, 1024, 1101, 1200, 1280, 1366]) {
+      await page.setViewportSize({ width, height: 900 });
+      const layout = await page.locator(".site-header").evaluate((header) => {
+        const brand = header.querySelector(".nav-brand-stack")!.getBoundingClientRect();
+        const nav = header.querySelector(".desktop-main-nav")!;
+        const navBounds = nav.getBoundingClientRect();
+        const actions = header.querySelector(".nav-row-actions")!.getBoundingClientRect();
+        return {
+          brandRight: brand.right,
+          navLeft: navBounds.left,
+          navRight: navBounds.right,
+          actionsLeft: actions.left,
+          navContentFits: nav.scrollWidth <= nav.clientWidth + 1,
+          pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+        };
+      });
+      expect(layout.brandRight, `Logo đè menu ở ${width}px`).toBeLessThanOrEqual(layout.navLeft + 1);
+      expect(layout.navRight, `Menu đè cụm tác vụ ở ${width}px`).toBeLessThanOrEqual(layout.actionsLeft + 1);
+      expect(layout.navContentFits, `Link HoloCraft làm tràn thanh menu ở ${width}px`).toBe(true);
+      expect(layout.pageFits, `Trang bị tràn ngang ở ${width}px`).toBe(true);
+    }
+    return;
+  }
+
+  await page.getByRole("button", { name: "Mở menu điều hướng" }).click();
+  const drawer = page.getByRole("dialog", { name: "Điều hướng" });
+  const link = drawer.getByRole("link", { name: accessibleName });
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", "https://holo-craft.bincrydev.id.vn/");
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", /noopener/);
+  expect(await link.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+});
+
 test("bố cục vẫn dùng được ở màn hình 320px và mobile landscape", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-mobile");
 
