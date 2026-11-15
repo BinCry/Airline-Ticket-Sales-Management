@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { jsonResponse, taoThoiDiemTuongLai } from "./e2e-helpers";
+import { jsonResponse, seedAuthSession, taoThoiDiemTuongLai } from "./e2e-helpers";
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://qr.sepay.vn/**", async (route) => {
@@ -149,6 +149,12 @@ test("checkout local cho xac nhan thu cong va chuyen sang manage booking", async
     }));
   });
 
+  // Nút xác nhận thủ công chỉ dành cho nhân viên có quyền backoffice.sales (BUG-20261115-T1-016).
+  await seedAuthSession(page, {
+    roles: ["customer_support"],
+    permissions: ["backoffice.sales"]
+  });
+
   await page.goto("/booking/B7D4Q2/checkout");
 
   const confirmButton = page.locator(".auth-action-row button.button.button-primary");
@@ -159,4 +165,39 @@ test("checkout local cho xac nhan thu cong va chuyen sang manage booking", async
   await expect.poll(() => callbackPayload?.bookingCode).toBe("B7D4Q2");
   await expect.poll(() => callbackPayload?.result).toBe("success");
   await expect(page).toHaveURL(/\/manage-booking\?bookingCode=B7D4Q2/);
+});
+
+test("checkout local khong hien nut xac nhan thu cong cho khach va huong dan lien he nhan vien", async ({ page }) => {
+  let callbackCalled = false;
+
+  await page.route("**/api/bookings/C8E5R3/payments/session", async (route) => {
+    await route.fulfill(jsonResponse({
+      bookingCode: "C8E5R3",
+      provider: "sepay",
+      sessionMode: "local",
+      paymentUrl: null,
+      paymentStatus: "pending",
+      expiresAt: taoThoiDiemTuongLai(15),
+      referenceCode: "SEPAY-000000000002",
+      amount: 990000,
+      bankName: null,
+      accountNumber: null,
+      accountHolderName: null,
+      qrCodeUrl: null,
+      qrCodeDataUrl: null,
+      discountAmount: 0,
+      appliedVoucherCode: null
+    }));
+  });
+
+  await page.route("**/api/payments/callback", async (route) => {
+    callbackCalled = true;
+    await route.fulfill({ status: 403, body: "" });
+  });
+
+  await page.goto("/booking/C8E5R3/checkout");
+
+  await expect(page.getByRole("heading", { name: "Chờ nhân viên xác nhận thanh toán" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tôi đã hoàn tất thanh toán", exact: true })).toHaveCount(0);
+  expect(callbackCalled).toBe(false);
 });

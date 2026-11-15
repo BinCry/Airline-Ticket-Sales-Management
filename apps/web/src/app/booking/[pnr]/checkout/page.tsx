@@ -20,7 +20,7 @@ import {
   createPaymentSession,
   removeVoucherFromBooking
 } from "@/lib/booking-api";
-import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
+import { coTheXacNhanThanhToanThuCong, laPhienThanhToanLocalDangCho } from "@/lib/checkout-payment";
 import { formatCurrency, formatDateTime as formatDateTimeText } from "@/lib/format";
 import { fetchMyVouchers, type MyVoucher } from "@/lib/my-account-api";
 import { pushToast } from "@/lib/toast";
@@ -129,6 +129,7 @@ export default function BookingCheckoutPage() {
   const [isRemovingVoucher, setIsRemovingVoucher] = useState(false);
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
   const [isMemberSession, setIsMemberSession] = useState(false);
+  const [authPermissions, setAuthPermissions] = useState<string[]>([]);
   const [voucherCode, setVoucherCode] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [voucherErrorMessage, setVoucherErrorMessage] = useState<string | null>(null);
@@ -156,6 +157,7 @@ export default function BookingCheckoutPage() {
     const storedSession = loadActiveAuthSession();
     setAccessToken(storedSession?.accessToken);
     setIsMemberSession(storedSession?.user.roles.includes("member") ?? false);
+    setAuthPermissions(storedSession?.user.permissions ?? []);
   }, []);
 
   useEffect(() => {
@@ -346,7 +348,9 @@ export default function BookingCheckoutPage() {
   );
   const isPaymentClosed = Boolean(holdExpiredMessage) || isClosedPaymentStatus(session?.paymentStatus);
   const paymentQrCodeUrl = isPaymentClosed ? null : resolveFallbackQrCodeUrl(session);
-  const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session);
+  const coTheXacNhanThuCong = !isPaymentClosed && coTheXacNhanThanhToanThuCong(session, authPermissions);
+  // Phiên local nhưng người xem không phải nhân viên: hướng dẫn liên hệ để được xác nhận thanh toán.
+  const canLienHeXacNhanThuCong = !isPaymentClosed && !coTheXacNhanThuCong && laPhienThanhToanLocalDangCho(session);
   const isHoldingSession = session?.paymentStatus === "pending" && !isPaymentClosed;
   const voucherActionsDisabled = isLoading || isPaying || isUpdatingPayment || paymentNeedsVerification || isPaymentClosed || session?.paymentStatus !== "pending";
 
@@ -659,6 +663,18 @@ export default function BookingCheckoutPage() {
                       <p>
                         Tổng thanh toán hiện tại đã bao gồm mức giảm{" "}
                         {formatCurrency(session.discountAmount)}.
+                      </p>
+                    </div>
+                  ) : null}
+                  {canLienHeXacNhanThuCong ? (
+                    <div className="auth-note-card">
+                      <div className="auth-note-head">
+                        <h3>Chờ nhân viên xác nhận thanh toán</h3>
+                        <span className="pill">Chưa bật SePay tự động</span>
+                      </div>
+                      <p>
+                        Hệ thống chưa bật đối soát SePay tự động. Sau khi chuyển khoản, vui lòng liên hệ tổng đài
+                        1900 6868 và đọc mã đặt chỗ {bookingCode} để nhân viên xác nhận và xuất vé.
                       </p>
                     </div>
                   ) : null}
