@@ -15,6 +15,8 @@ import com.qlvmb.airticket.exception.BadRequestException;
 import com.qlvmb.airticket.exception.NotFoundException;
 import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -482,12 +484,19 @@ public class PaymentService {
   }
 
   private void validateWebhookAuthorization(String authorizationHeader) {
+    // Thay thế: trước đây thiếu khóa webhook thì bỏ qua kiểm tra (mặc định mở); nay từ chối mọi webhook
+    // cho đến khi cấu hình APP_PAYMENT_SEPAY_WEBHOOK_API_KEY.
     if (sePayWebhookApiKey == null) {
-      return;
+      LOGGER.warn("Từ chối webhook SePay vì chưa cấu hình khóa webhook (APP_PAYMENT_SEPAY_WEBHOOK_API_KEY).");
+      throw new UnauthorizedException("Webhook SePay kh\u00f4ng h\u1ee3p l\u1ec7.");
     }
 
     String expectedValue = SEPAY_CALLBACK_AUTH_PREFIX + sePayWebhookApiKey;
-    if (!expectedValue.equals(authorizationHeader == null ? "" : authorizationHeader.trim())) {
+    String actualValue = authorizationHeader == null ? "" : authorizationHeader.trim();
+    // So sánh thời gian hằng để không lộ khóa qua thời gian phản hồi.
+    if (!MessageDigest.isEqual(
+        expectedValue.getBytes(StandardCharsets.UTF_8),
+        actualValue.getBytes(StandardCharsets.UTF_8))) {
       throw new UnauthorizedException("Webhook SePay kh\u00f4ng h\u1ee3p l\u1ec7.");
     }
   }
