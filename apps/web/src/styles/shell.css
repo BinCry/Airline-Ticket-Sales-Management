@@ -472,7 +472,7 @@
   }
 }
 
-@media (max-width: 1300px) and (min-width: 881px) {
+@media (max-width: 1400px) and (min-width: 881px) {
   .desktop-main-nav .nav-link-holocraft {
     gap: 4px;
     min-width: 42px;

@@ -70,7 +70,7 @@ test("HoloCraft có lối tắt phù hợp trên header desktop và menu di đ�
       await page.getByRole("dialog", { name: "Điều hướng" }).getByRole("button", { name: "Đóng menu điều hướng" }).click();
     }
 
-    for (const width of [1201, 1210, 1240, 1280, 1366]) {
+    for (const width of [1201, 1210, 1240, 1280, 1301, 1366, 1400, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       const layout = await page.locator(".site-header").evaluate((header) => {
         const brand = header.querySelector(".nav-brand-stack")!.getBoundingClientRect();
