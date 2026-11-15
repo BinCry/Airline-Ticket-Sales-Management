@@ -1157,7 +1157,10 @@ export default function AccountPage() {
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => setIsProfileFormVisible((value) => !value)}
+                  onClick={() => {
+                    setProfileActionSuccess(null);
+                    setIsProfileFormVisible((value) => !value);
+                  }}
                   aria-expanded={isProfileFormVisible}
                 >
                   Cập nhật hồ sơ
@@ -1165,7 +1168,10 @@ export default function AccountPage() {
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => setIsAvatarFormVisible((value) => !value)}
+                  onClick={() => {
+                    setAvatarActionSuccess(null);
+                    setIsAvatarFormVisible((value) => !value);
+                  }}
                   aria-expanded={isAvatarFormVisible}
                 >
                   Đổi ảnh
@@ -1186,6 +1192,26 @@ export default function AccountPage() {
         <div className="section-gap" />
         <div className="section-split account-dashboard-grid">
           <div>
+            {/* Thay thế: trước đây thông báo thành công chỉ nằm trong hộp thoại, mà hộp thoại đóng ngay khi lưu
+                nên người dùng không bao giờ thấy; nay hiện thông báo ngoài hộp thoại (BUG-20261115-T1-017). */}
+            {avatarActionSuccess && !isAvatarFormVisible ? (
+              <div className="auth-note-card" role="status">
+                <div className="auth-note-head">
+                  <h3>Đã cập nhật ảnh đại diện</h3>
+                  <span className="pill">Đã lưu</span>
+                </div>
+                <p>{avatarActionSuccess}</p>
+              </div>
+            ) : null}
+            {profileActionSuccess && !isProfileFormVisible ? (
+              <div className="auth-note-card" role="status">
+                <div className="auth-note-head">
+                  <h3>Cập nhật hồ sơ thành công</h3>
+                  <span className="pill">Đã lưu</span>
+                </div>
+                <p>{profileActionSuccess}</p>
+              </div>
+            ) : null}
             {activeProfile && isAvatarFormVisible ? (
               <div className="account-modal-backdrop" role="presentation">
                 <div
@@ -1251,15 +1277,6 @@ export default function AccountPage() {
                       <span className="pill">Cần kiểm tra lại</span>
                     </div>
                     <p>{avatarActionError}</p>
-                  </div>
-                ) : null}
-                {avatarActionSuccess ? (
-                  <div className="auth-note-card">
-                    <div className="auth-note-head">
-                      <h3>Đã cập nhật ảnh đại diện</h3>
-                      <span className="pill">Đã lưu</span>
-                    </div>
-                    <p>{avatarActionSuccess}</p>
                   </div>
                 ) : null}
                 </div>
