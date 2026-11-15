@@ -3,6 +3,8 @@ package com.qlvmb.airticket.controller;
 import com.qlvmb.airticket.domain.dto.CheckinCompleteRequest;
 import com.qlvmb.airticket.domain.dto.CheckinCompleteResponse;
 import com.qlvmb.airticket.security.AuthenticatedUser;
+import com.qlvmb.airticket.security.PermissionCode;
+import com.qlvmb.airticket.service.BookingService;
 import com.qlvmb.airticket.service.BookingLookupSessionService;
 import com.qlvmb.airticket.service.CheckinService;
 import jakarta.validation.Valid;
@@ -21,13 +23,16 @@ public class CheckinController {
 
   private final CheckinService checkinService;
   private final BookingLookupSessionService bookingLookupSessionService;
+  private final BookingService bookingService;
 
   public CheckinController(
       CheckinService checkinService,
-      BookingLookupSessionService bookingLookupSessionService
+      BookingLookupSessionService bookingLookupSessionService,
+      BookingService bookingService
   ) {
     this.checkinService = checkinService;
     this.bookingLookupSessionService = bookingLookupSessionService;
+    this.bookingService = bookingService;
   }
 
   @PostMapping("/complete")
@@ -45,7 +50,16 @@ public class CheckinController {
       String bookingCode,
       String lookupToken
   ) {
-    if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser) {
+    // Sửa lỗi: trước đây mọi tài khoản đăng nhập đều bỏ qua kiểm tra; nay khách hàng phải là chủ booking
+    // hoặc có phiên tra cứu OTP hợp lệ, giống luồng quản lý đặt chỗ.
+    if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser authenticatedUser) {
+      if (authenticatedUser.permissions().contains(PermissionCode.CUSTOMER_SELF_SERVICE)) {
+        if (lookupToken != null && !lookupToken.isBlank()) {
+          bookingLookupSessionService.assertLookupSessionAllowed(bookingCode, lookupToken);
+        } else {
+          bookingService.assertOwnedByAuthenticatedUser(bookingCode, authenticatedUser);
+        }
+      }
       return;
     }
     bookingLookupSessionService.assertLookupSessionAllowed(bookingCode, lookupToken);

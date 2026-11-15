@@ -1129,6 +1129,43 @@ class ControllerSecurityTest {
   }
 
   @Test
+  void completeCheckin_shouldReturnNotFoundForCustomerWhenBookingNotOwned() throws Exception {
+    org.mockito.Mockito.doThrow(new NotFoundException("Khong tim thay dat cho."))
+        .when(bookingService)
+        .assertOwnedByAuthenticatedUser(ArgumentMatchers.eq("A6C2P1"), ArgumentMatchers.any());
+
+    mockMvc.perform(post("/api/check-in/complete")
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "bookingCode": "A6C2P1",
+                  "ticketNumbers": ["7380000000001"]
+                }
+                """)
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void completeCheckin_shouldAllowCustomerWithValidLookupToken() throws Exception {
+    org.mockito.Mockito.doThrow(new NotFoundException("Khong tim thay dat cho."))
+        .when(bookingService)
+        .assertOwnedByAuthenticatedUser(ArgumentMatchers.eq("A6C2P1"), ArgumentMatchers.any());
+
+    mockMvc.perform(post("/api/check-in/complete")
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "bookingCode": "A6C2P1",
+                  "ticketNumbers": ["7380000000001"]
+                }
+                """)
+            .header("X-Booking-Lookup-Token", "lookup-token-hop-le")
+            .header(HttpHeaders.AUTHORIZATION, bearerToken(List.of("customer"), List.of("customer.self_service"))))
+        .andExpect(status().isOk());
+  }
+
+  @Test
   void getCmsHomepage_shouldAllowPublicAccess() throws Exception {
     mockMvc.perform(get("/api/cms/homepage"))
         .andExpect(status().isOk());
