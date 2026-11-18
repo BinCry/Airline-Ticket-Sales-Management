@@ -19,6 +19,7 @@ import com.qlvmb.airticket.domain.entity.FlightEntity;
 import com.qlvmb.airticket.domain.entity.FlightFareInventoryEntity;
 import com.qlvmb.airticket.domain.entity.PaymentTransactionEntity;
 import com.qlvmb.airticket.exception.NotFoundException;
+import com.qlvmb.airticket.exception.UnauthorizedException;
 import com.qlvmb.airticket.repository.PaymentTransactionRepository;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
@@ -35,6 +36,9 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 @ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class PaymentServiceTest {
+
+  private static final String WEBHOOK_KEY = "khoa-webhook-test";
+  private static final String WEBHOOK_AUTH = "Apikey " + WEBHOOK_KEY;
 
   @Mock
   private BookingService bookingService;
@@ -59,7 +63,7 @@ class PaymentServiceTest {
         paymentTransactionRepository,
         "",
         "",
-        "",
+        WEBHOOK_KEY,
         "BIDV",
         "",
         "",
@@ -325,7 +329,7 @@ class PaymentServiceTest {
     when(bookingService.lockDetailedBooking(eq("A6C2W1"), any())).thenReturn(booking);
     when(bookingService.generateUniqueTicketNumber()).thenReturn("7380000000101");
 
-    paymentService.handleSePayWebhook(request, null);
+    paymentService.handleSePayWebhook(request, WEBHOOK_AUTH);
 
     assertThat(booking.isTicketed()).isTrue();
     assertThat(booking.getPaymentStatus()).isEqualTo(BookingEntity.PAYMENT_STATUS_PAID);
@@ -359,7 +363,7 @@ class PaymentServiceTest {
     when(bookingService.lockDetailedBooking(eq("A6C2W2"), any())).thenReturn(booking);
     when(bookingService.generateUniqueTicketNumber()).thenReturn("7380000000102");
 
-    paymentService.handleSePayWebhook(request, null);
+    paymentService.handleSePayWebhook(request, WEBHOOK_AUTH);
 
     assertThat(booking.isTicketed()).isTrue();
     assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionEntity.STATUS_PAID);
@@ -389,7 +393,7 @@ class PaymentServiceTest {
         .thenReturn(Optional.of(transaction));
     when(bookingService.lockDetailedBooking(eq("A6C2W3"), any())).thenReturn(booking);
 
-    paymentService.handleSePayWebhook(request, null);
+    paymentService.handleSePayWebhook(request, WEBHOOK_AUTH);
 
     assertThat(booking.isHold()).isTrue();
     assertThat(booking.getPaymentStatus()).isEqualTo(BookingEntity.PAYMENT_STATUS_PENDING);
@@ -416,7 +420,7 @@ class PaymentServiceTest {
         "FT123456782"
     );
 
-    paymentService.handleSePayWebhook(request, null);
+    paymentService.handleSePayWebhook(request, WEBHOOK_AUTH);
 
     assertThat(booking.isHold()).isTrue();
     assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionEntity.STATUS_PENDING);
@@ -448,12 +452,50 @@ class PaymentServiceTest {
         .thenReturn(Optional.of(transaction));
     when(bookingService.lockDetailedBooking(eq("A6C2W5"), any())).thenReturn(booking);
 
-    paymentService.handleSePayWebhook(request, null);
+    paymentService.handleSePayWebhook(request, WEBHOOK_AUTH);
 
     assertThat(booking.isTicketed()).isFalse();
     assertThat(booking.getTickets()).isEmpty();
     assertThat(transaction.getStatus()).isEqualTo(PaymentTransactionEntity.STATUS_EXPIRED);
     assertThat(output).contains("SEPAY-777788889999", "A6C2W5", "hoàn tiền");
+  }
+
+  // Khóa webhook sai hoặc thiếu cấu hình khóa thì phải từ chối, không được xuất vé.
+  @Test
+  void handleSePayWebhook_shouldRejectWrongApiKey() {
+    SePayWebhookRequest request = new SePayWebhookRequest(
+        123461L, "MBBank", "2026-05-22 01:25:00", "0985512831", null, null,
+        "SEPAY777788880000", "in", null, 5000L, 0L, "FT123456784");
+
+    assertThatThrownBy(() -> paymentService.handleSePayWebhook(request, "Apikey sai-khoa"))
+        .isInstanceOf(UnauthorizedException.class);
+    assertThatThrownBy(() -> paymentService.handleSePayWebhook(request, null))
+        .isInstanceOf(UnauthorizedException.class);
+  }
+
+  @Test
+  void handleSePayWebhook_shouldRejectWhenWebhookKeyNotConfigured() {
+    PaymentService service = new PaymentService(
+        bookingService,
+        memberVoucherService,
+        notificationOutboxService,
+        paymentTransactionRepository,
+        "",
+        "",
+        "",
+        "BIDV",
+        "",
+        "",
+        900,
+        "https://userapi.sepay.vn/v2",
+        "https://qr.sepay.vn/img"
+    );
+    SePayWebhookRequest request = new SePayWebhookRequest(
+        123462L, "MBBank", "2026-05-22 01:25:00", "0985512831", null, null,
+        "SEPAY777788880001", "in", null, 5000L, 0L, "FT123456785");
+
+    assertThatThrownBy(() -> service.handleSePayWebhook(request, null))
+        .isInstanceOf(UnauthorizedException.class);
   }
 
   @Test

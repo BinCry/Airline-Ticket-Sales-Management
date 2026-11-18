@@ -120,26 +120,19 @@ export default function RegisterPage() {
           <span className="section-eyebrow">Đăng ký</span>
           <h2>Chuẩn bị tài khoản khách hàng mới</h2>
         </div>
-        <StatusChip
-          tone={
-            isPrepared
-              ? "success"
-              : isSubmitting
-                ? "info"
-                : isFormValid
-                  ? "success"
-                  : "warning"
-          }
-          label={
-            isPrepared
-              ? "Sẵn sàng sử dụng"
-              : isSubmitting
-                ? "Đang tạo tài khoản"
-                : isFormValid
-                  ? "Mật khẩu đạt chuẩn"
-                  : "Cần bổ sung thông tin"
-          }
-        />
+        {/* Bỏ nhãn "Cần bổ sung thông tin": chỉ hiện chip khi đã có trạng thái cụ thể. */}
+        {isPrepared || isSubmitting || isFormValid ? (
+          <StatusChip
+            tone={isSubmitting && !isPrepared ? "info" : "success"}
+            label={
+              isPrepared
+                ? "Sẵn sàng sử dụng"
+                : isSubmitting
+                  ? "Đang tạo tài khoản"
+                  : "Mật khẩu đạt chuẩn"
+            }
+          />
+        ) : null}
       </div>
 
       {isPrepared && authSession ? (

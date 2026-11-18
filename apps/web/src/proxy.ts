@@ -8,6 +8,7 @@ import {
   sanitizeUserRoles
 } from "@/lib/access-control";
 import { parseJwtPayload, readJwtExpirationSeconds, readJwtStringArray } from "@/lib/jwt";
+import { layDuongDanNoiBoAnToan } from "@/lib/safe-redirect";
 
 const ACCESS_TOKEN_COOKIE = "qlvmb.access_token";
 
@@ -35,8 +36,9 @@ function sanitizeRedirectTarget(value: string | null): string | null {
     return null;
   }
 
-  const trimmed = value.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+  // Thay thế: dùng kiểm tra chung để chặn cả "/\example.org" (trước đây chỉ chặn "//").
+  const trimmed = layDuongDanNoiBoAnToan(value);
+  if (!trimmed) {
     return null;
   }
 

@@ -15,6 +15,8 @@ import com.qlvmb.airticket.exception.ConflictException;
 import com.qlvmb.airticket.repository.BoardingPassRepository;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,6 +43,13 @@ public class CheckinService {
       "Mỗi lần làm thủ tục chỉ áp dụng cho một chiều bay.";
   private static final String CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE =
       "Không thể làm thủ tục trực tuyến khi chuyến bay đã bắt đầu hoặc không còn hợp lệ.";
+  private static final String CHECKIN_NOT_OPEN_MESSAGE_PREFIX =
+      "Chưa đến giờ làm thủ tục trực tuyến. Thủ tục mở từ ";
+  private static final String CHECKIN_CLOSED_MESSAGE =
+      "Đã đóng làm thủ tục trực tuyến (60 phút trước giờ khởi hành). Vui lòng làm thủ tục tại quầy sân bay.";
+  private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+  private static final DateTimeFormatter CHECKIN_TIME_FORMAT =
+      DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
   private static final String CHECKIN_CANCELLED_MESSAGE =
       "Không thể làm thủ tục trực tuyến cho chuyến bay đã hủy.";
   private static final String CHECKIN_SEAT_INVALID_MESSAGE =
@@ -126,6 +135,18 @@ public class CheckinService {
         throw new BadRequestException(CHECKIN_CANCELLED_MESSAGE);
       }
       throw new BadRequestException(CHECKIN_JOURNEY_NOT_AVAILABLE_MESSAGE);
+    }
+
+    // Bổ sung: chỉ cho làm thủ tục từ 24 giờ đến 60 phút trước giờ khởi hành, đúng thông tin trên trang chủ.
+    if (BookingBusinessPolicy.chuaDenGioMoLamThuTuc(representativeSegment, currentTime)) {
+      throw new BadRequestException(CHECKIN_NOT_OPEN_MESSAGE_PREFIX
+          + BookingBusinessPolicy.thoiDiemMoLamThuTuc(representativeSegment)
+              .atZoneSameInstant(VIETNAM_ZONE)
+              .format(CHECKIN_TIME_FORMAT)
+          + " (24 giờ trước giờ khởi hành).");
+    }
+    if (BookingBusinessPolicy.daDongLamThuTuc(representativeSegment, currentTime)) {
+      throw new BadRequestException(CHECKIN_CLOSED_MESSAGE);
     }
 
     String selectedFlightScopeKey = resolveFlightScopeKey(representativeTicket);

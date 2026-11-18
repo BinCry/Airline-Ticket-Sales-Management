@@ -53,6 +53,12 @@ app:
     otp:
       password-reset-ttl-seconds: ${APP_AUTH_OTP_PASSWORD_RESET_TTL_SECONDS:300}
       max-attempts: ${APP_AUTH_OTP_MAX_ATTEMPTS:5}
+    rate-limit:
+      window-seconds: ${APP_AUTH_RATE_LIMIT_WINDOW_SECONDS:900}
+      login-failures-per-email: ${APP_AUTH_RATE_LIMIT_LOGIN_FAILURES_PER_EMAIL:5}
+      login-failures-per-ip: ${APP_AUTH_RATE_LIMIT_LOGIN_FAILURES_PER_IP:20}
+      otp-requests-per-email: ${APP_AUTH_RATE_LIMIT_OTP_REQUESTS_PER_EMAIL:3}
+      otp-requests-per-ip: ${APP_AUTH_RATE_LIMIT_OTP_REQUESTS_PER_IP:10}
     oauth:
       frontend-callback-url: ${APP_AUTH_OAUTH_FRONTEND_CALLBACK_URL:http://localhost:3000/oauth/callback}
       state-ttl-seconds: ${APP_AUTH_OAUTH_STATE_TTL_SECONDS:300}
@@ -75,6 +81,11 @@ app:
       order-duration-seconds: ${APP_PAYMENT_SEPAY_ORDER_DURATION_SECONDS:${SEPAY_ORDER_DURATION_SECONDS:900}}
       api-base-url: ${APP_PAYMENT_SEPAY_API_BASE_URL:${SEPAY_API_BASE_URL:https://userapi.sepay.vn/v2}}
       qr-base-url: ${APP_PAYMENT_SEPAY_QR_BASE_URL:${SEPAY_QR_BASE_URL:https://qr.sepay.vn/img}}
+  booking:
+    hold-rate-limit:
+      window-seconds: ${APP_BOOKING_HOLD_RATE_LIMIT_WINDOW_SECONDS:900}
+      per-ip: ${APP_BOOKING_HOLD_RATE_LIMIT_PER_IP:10}
+      per-contact-email: ${APP_BOOKING_HOLD_RATE_LIMIT_PER_CONTACT_EMAIL:5}
   baggage:
     accept-cutoff-minutes: ${APP_BAGGAGE_ACCEPT_CUTOFF_MINUTES:60}
   upload:

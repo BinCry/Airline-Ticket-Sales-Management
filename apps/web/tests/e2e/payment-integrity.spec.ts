@@ -160,8 +160,11 @@ async function setupIntegrityScenario(page: Page, context: BrowserContext, mode:
   const origin = localOrigin(info.project.use.baseURL, "baseURL");
   const apiOrigins = mockApiOrigins(origin, info);
   const expiresAt = new Date(Date.now() + 3600000).toISOString();
+  // Kịch bản thanh toán local cần quyền backoffice.sales mới thấy nút xác nhận thủ công (BUG-20261115-T1-016).
+  const local = mode.startsWith("local-");
   const user = { id: 151, email: "member@example.test", displayName: "Hội viên thử nghiệm", phone: null,
-    avatarUrl: null, emailVerified: true, roles: ["member"], permissions: ["member.loyalty"] };
+    avatarUrl: null, emailVerified: true, roles: ["member"],
+    permissions: local ? ["member.loyalty", "backoffice.sales"] : ["member.loyalty"] };
   const token = "mock." + Buffer.from(JSON.stringify({ type: "access", sub: "151", roles: user.roles,
     permissions: user.permissions, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url") + ".mock";
   await context.addCookies([{ name: "qlvmb.access_token", value: token, url: origin }]);
@@ -177,7 +180,6 @@ async function setupIntegrityScenario(page: Page, context: BrowserContext, mode:
   const paymentGate = new Promise<void>(resolve => { releasePayment = resolve; });
   const listGate = new Promise<void>(resolve => { releaseList = resolve; });
   page.on("pageerror", error => errors.push(error.message));
-  const local = mode.startsWith("local-");
   const pay = () => ({ bookingCode: "P6TEST", provider: "sepay", sessionMode: local ? "local" : "live",
     paymentUrl: null, paymentStatus: "pending", expiresAt, referenceCode: "SEPAY-000000000001", amount,
     bankName: local ? null : "BIDV", accountNumber: local ? null : "0000000000",

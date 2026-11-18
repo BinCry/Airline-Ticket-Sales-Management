@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -24,6 +26,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
   private static final String BAD_REQUEST_MESSAGE =
       "D\u1eef li\u1ec7u g\u1eedi l\u00ean kh\u00f4ng h\u1ee3p l\u1ec7.";
@@ -131,6 +135,8 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception) {
+    // Bổ sung: ghi stack trace để lỗi 500 có dấu vết trong log API (trước đây bị nuốt im lặng).
+    LOGGER.error("Lỗi không mong đợi khi xử lý yêu cầu API.", exception);
     return buildErrorResponse(
         HttpStatus.INTERNAL_SERVER_ERROR,
         SYSTEM_ERROR_MESSAGE,

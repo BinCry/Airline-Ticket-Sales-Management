@@ -163,6 +163,28 @@ class CheckinServiceTest {
   }
 
   @Test
+  void completeCheckin_shouldRejectBeforeWindowOpens() {
+    BookingEntity booking = ticketedBooking("A6C2P1", "one_way", false, OffsetDateTime.now().plusDays(4), "scheduled");
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+
+    assertThatThrownBy(() -> checkinService.completeCheckin(
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+    )).isInstanceOf(BadRequestException.class).hasMessageContaining("Chưa đến giờ làm thủ tục");
+  }
+
+  @Test
+  void completeCheckin_shouldRejectWithinSixtyMinutesBeforeDeparture() {
+    BookingEntity booking = ticketedBooking("A6C2P1", "one_way", false, OffsetDateTime.now().plusMinutes(45), "scheduled");
+    when(bookingService.getBookingNotFoundMessage()).thenReturn("Khong tim thay dat cho.");
+    when(bookingService.lockDetailedBooking("A6C2P1", "Khong tim thay dat cho.")).thenReturn(booking);
+
+    assertThatThrownBy(() -> checkinService.completeCheckin(
+        new CheckinCompleteRequest("A6C2P1", java.util.List.of("7380000000001"), java.util.List.of())
+    )).isInstanceOf(BadRequestException.class).hasMessageContaining("Đã đóng làm thủ tục");
+  }
+
+  @Test
   void completeCheckin_shouldRejectWhenJourneyAlreadyStarted() {
     BookingEntity booking = ticketedBooking(
         "A6C2P1",
@@ -199,7 +221,7 @@ class CheckinServiceTest {
   @Test
   void completeCheckin_shouldReuseSeatTheoDungFlightKhiBookingMotChieuCoNhieuFareSegment() {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
-    OffsetDateTime departureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime departureAt = OffsetDateTime.now().plusHours(6);
     OffsetDateTime arrivalAt = departureAt.plusHours(2);
     BookingEntity booking = BookingEntity.createHold(
         "A6C2P1",
@@ -303,7 +325,7 @@ class CheckinServiceTest {
 
   private BookingEntity heldBooking(String bookingCode) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(5);
-    OffsetDateTime departureAt = OffsetDateTime.now().plusDays(3);
+    OffsetDateTime departureAt = OffsetDateTime.now().plusHours(6);
     OffsetDateTime arrivalAt = departureAt.plusHours(2);
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
@@ -342,7 +364,7 @@ class CheckinServiceTest {
         bookingCode,
         tripType,
         checkedIn,
-        OffsetDateTime.now().plusDays(3),
+        OffsetDateTime.now().plusHours(6),
         "scheduled"
     );
   }
@@ -441,8 +463,8 @@ class CheckinServiceTest {
 
   private BookingEntity roundTripBooking(String bookingCode, boolean outboundCheckedIn) {
     OffsetDateTime createdAt = OffsetDateTime.now().minusMinutes(10);
-    OffsetDateTime outboundDepartureAt = OffsetDateTime.now().plusDays(3);
-    OffsetDateTime returnDepartureAt = OffsetDateTime.now().plusDays(7);
+    OffsetDateTime outboundDepartureAt = OffsetDateTime.now().plusHours(6);
+    OffsetDateTime returnDepartureAt = OffsetDateTime.now().plusDays(3);
     BookingEntity booking = BookingEntity.createHold(
         bookingCode,
         "round_trip",

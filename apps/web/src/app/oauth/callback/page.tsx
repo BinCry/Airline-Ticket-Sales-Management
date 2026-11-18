@@ -7,16 +7,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { StatusChip } from "@/components/status-chip";
 import { exchangeOAuthCode, resolveAuthErrorMessage } from "@/lib/auth-api";
 import { persistAuthSession } from "@/lib/auth-session";
-
-function resolveSafeRedirectTarget(value: string | null | undefined) {
-  const redirectTo = value?.trim();
-
-  if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
-    return "/";
-  }
-
-  return redirectTo;
-}
+import { resolveSafeRedirectTarget } from "@/lib/safe-redirect";
 
 function OAuthCallbackContent() {
   const searchParams = useSearchParams();

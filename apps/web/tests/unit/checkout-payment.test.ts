@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { ApiPaymentSessionResponse } from "@qlvmb/shared-types";
 
-import { coTheXacNhanThanhToanThuCong } from "@/lib/checkout-payment";
+import {
+  coTheXacNhanThanhToanThuCong,
+  laPhienThanhToanLocalDangCho
+} from "@/lib/checkout-payment";
+
+const QUYEN_NHAN_VIEN = ["backoffice.sales"];
 
 function taoPhienThanhToan(
   overrides: Partial<ApiPaymentSessionResponse> = {}
@@ -28,8 +33,21 @@ function taoPhienThanhToan(
 }
 
 describe("checkout-payment", () => {
-  it("cho phep xac nhan thu cong voi phien local dang cho thanh toan", () => {
-    expect(coTheXacNhanThanhToanThuCong(taoPhienThanhToan())).toBe(true);
+  it("cho phep nhan vien co quyen backoffice.sales xac nhan thu cong phien local dang cho", () => {
+    expect(coTheXacNhanThanhToanThuCong(taoPhienThanhToan(), QUYEN_NHAN_VIEN)).toBe(true);
+  });
+
+  it("khong hien nut xac nhan thu cong cho khach hang khong co quyen backoffice.sales", () => {
+    expect(coTheXacNhanThanhToanThuCong(taoPhienThanhToan())).toBe(false);
+    expect(
+      coTheXacNhanThanhToanThuCong(taoPhienThanhToan(), ["booking.self_service"])
+    ).toBe(false);
+  });
+
+  it("nhan dien phien local dang cho de hien loi nhac lien he nhan vien", () => {
+    expect(laPhienThanhToanLocalDangCho(taoPhienThanhToan())).toBe(true);
+    expect(laPhienThanhToanLocalDangCho(taoPhienThanhToan({ sessionMode: "live" }))).toBe(false);
+    expect(laPhienThanhToanLocalDangCho(null)).toBe(false);
   });
 
   it("khong cho phep xac nhan thu cong voi phien live", () => {
@@ -37,7 +55,8 @@ describe("checkout-payment", () => {
       coTheXacNhanThanhToanThuCong(
         taoPhienThanhToan({
           sessionMode: "live"
-        })
+        }),
+        QUYEN_NHAN_VIEN
       )
     ).toBe(false);
   });
@@ -47,7 +66,8 @@ describe("checkout-payment", () => {
       coTheXacNhanThanhToanThuCong(
         taoPhienThanhToan({
           paymentStatus: "paid"
-        })
+        }),
+        QUYEN_NHAN_VIEN
       )
     ).toBe(false);
   });
