@@ -51,7 +51,7 @@ class LoyaltyPostgresIntegrationTest {
   @EnableJpaRepositories(basePackageClasses = BookingRepository.class)
   @Import({LoyaltyEngineService.class, LoyaltyReconciliationService.class, MemberLoyaltyService.class,
       NotificationOutboxService.class, NotificationDeliveryConfig.class, BookingService.class, MemberVoucherService.class,
-      ProductCatalogService.class, BackofficeOperationsService.class, SeatMapService.class})
+      ProductCatalogService.class, VoucherConditionService.class, VoucherLockService.class, BackofficeOperationsService.class, SeatMapService.class})
   static class TestConfiguration {
   }
 

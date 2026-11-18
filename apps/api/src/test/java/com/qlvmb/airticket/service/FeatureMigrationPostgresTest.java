@@ -97,9 +97,10 @@ class FeatureMigrationPostgresTest {
           .containsEntry("read_at", null)
           .containsEntry("flight_code", null)
           .containsEntry("dedup_key", null);
-      assertThat(jdbc.queryForObject(
-          "select version from flyway_schema_history where success order by installed_rank desc limit 1", String.class))
-          .isEqualTo("35");
+      // Trước đây cố định "35"; nay kiểm tra đã lên ít nhất V35 để không hỏng mỗi khi thêm migration mới.
+      assertThat(Integer.parseInt(jdbc.queryForObject(
+          "select version from flyway_schema_history where success order by installed_rank desc limit 1", String.class)))
+          .isGreaterThanOrEqualTo(35);
     } finally {
       // Schema name is generated in this test, never user-supplied.
       jdbc.execute("drop schema if exists " + schema + " cascade");
