@@ -40,11 +40,16 @@ class SeatMapPostgresIntegrationTest {
       FlightSearchMapper.class, BackofficeOperationsService.class, FinanceService.class, PaymentService.class})
   static class TestConfiguration {}
 
+  private static final String WEBHOOK_KEY = "khoa-webhook-tich-hop";
+  private static final String WEBHOOK_AUTH = "Apikey " + WEBHOOK_KEY;
+
   @DynamicPropertySource
   static void database(DynamicPropertyRegistry properties) {
     properties.add("spring.datasource.url", () -> System.getenv("LOYALTY_TEST_DB_URL"));
     properties.add("spring.datasource.username", () -> System.getenv().getOrDefault("LOYALTY_TEST_DB_USER", "loyalty_test"));
     properties.add("spring.datasource.password", () -> System.getenv().getOrDefault("LOYALTY_TEST_DB_PASSWORD", ""));
+    // Bổ sung: webhook SePay nay bắt buộc có khóa, nên cấu hình khóa thử cho PaymentService.
+    properties.add("app.payment.sepay.webhook-api-key", () -> WEBHOOK_KEY);
     properties.add("spring.flyway.schemas", () -> SCHEMA);
     properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
     properties.add("spring.datasource.hikari.connection-init-sql", () -> "set search_path to " + SCHEMA);
@@ -84,7 +89,7 @@ class SeatMapPostgresIntegrationTest {
 
   // Kịch bản 2, 14, 17: gán tàu khác, trạng thái bảo trì và sơ đồ từng chặng.
   @Test void aircraftSwitchAndRoundTripUseSeparateLayouts() {
-    long outbound = flight(null), inbound = flight(null);
+    long outbound = flight(null), inbound = returnFlight(null);
     var small = plane(layout(List.of(new SeatMapResponse.Row(12,ProductCatalogService.FARE_SAVER,List.of("A","F"))), List.of()));
     switchAircraft(inbound, small.id());
     assertThat(seats.getSeatMap(inbound).seats()).hasSize(2);
@@ -168,7 +173,7 @@ class SeatMapPostgresIntegrationTest {
     jdbc.update("update booking set expires_at=now()-interval '1 minute' where booking_code=?",expired);
     checkin.completeCheckin(new CheckinCompleteRequest(legacy,List.of(ticket),List.of(
         new CheckinCompleteRequest.SeatSelectionRequest(ticket,"12A"))));
-    payments.handleSePayWebhook(webhook(session.referenceCode()),null);
+    payments.handleSePayWebhook(webhook(session.referenceCode()),WEBHOOK_AUTH);
     assertExpiredWithoutTickets(expired);
     assertThat(jdbc.queryForObject("select status from payment_transaction where order_code=?",String.class,session.referenceCode()))
         .isEqualTo("EXPIRED");
@@ -188,7 +193,7 @@ class SeatMapPostgresIntegrationTest {
             .setParameter("code",session.referenceCode()).getSingleResult();
         assertThat(transaction.getBooking().getStatus()).isEqualTo("HOLD");
         loaded.countDown(); await(changed);
-        payments.handleSePayWebhook(webhook(session.referenceCode()),null);
+        payments.handleSePayWebhook(webhook(session.referenceCode()),WEBHOOK_AUTH);
         return true;
       }));
       assertThat(loaded.await(10,TimeUnit.SECONDS)).isTrue();
@@ -209,7 +214,7 @@ class SeatMapPostgresIntegrationTest {
     String legacy = hold(flight,"12B"), ticket = issue(legacy).getFirst();
     jdbc.update("delete from booking_seat_selection where booking_id=(select id from booking where booking_code=?)",legacy);
     jdbc.update("update booking set expires_at=now()-interval '1 minute' where booking_code=?",expired);
-    var results = concurrently(() -> { payments.handleSePayWebhook(webhook(session.referenceCode()),null); return true; },
+    var results = concurrently(() -> { payments.handleSePayWebhook(webhook(session.referenceCode()),WEBHOOK_AUTH); return true; },
         () -> checkin.completeCheckin(new CheckinCompleteRequest(legacy,List.of(ticket),List.of(
             new CheckinCompleteRequest.SeatSelectionRequest(ticket,"12A")))));
     assertThat(results).noneMatch(o -> o instanceof Throwable);
@@ -339,9 +344,11 @@ class SeatMapPostgresIntegrationTest {
   }
 
   @Test void oppositeRoundTripLockOrderDoesNotDeadlock() throws Exception {
-    long first = flight(null), second = flight(null);
+    // Thay thế: hai khứ hồi đảo thứ tự chặng trên cùng cặp chuyến không còn hợp lệ (chiều về phải bay ngược tuyến và sau chiều đi),
+    // nên chiều về được tạo trước để có id nhỏ hơn: thứ tự khóa theo id khác thứ tự chặng, hai giao dịch cùng giữ một cặp ghế vẫn chỉ một bên thắng.
+    long second = returnFlight(null), first = flight(null);
     assertOneWinner(() -> bookings.createHold(request(List.of(first,second),List.of(List.of("12A"),List.of("12A")),ProductCatalogService.FARE_SAVER)),
-        () -> bookings.createHold(request(List.of(second,first),List.of(List.of("12A"),List.of("12A")),ProductCatalogService.FARE_SAVER)));
+        () -> bookings.createHold(request(List.of(first,second),List.of(List.of("12A"),List.of("12A")),ProductCatalogService.FARE_SAVER)));
   }
 
   // Hồi quy: thu nhỏ cabin khi còn giữ chỗ hết hạn chưa được dọn phải ra đúng số ghế còn bán.
@@ -378,14 +385,24 @@ class SeatMapPostgresIntegrationTest {
         (rs,n) -> List.of(rs.getInt(1),rs.getInt(2)),flight,ProductCatalogService.FARE_SAVER).getFirst();
   }
 
+  // Thay thế: chuyến mặc định khởi hành sau 20 giờ (trước là 3 ngày) để nằm trong khung làm thủ tục 24 giờ đến 60 phút.
   private long flight(Long aircraftId) {
+    return flight(aircraftId,"SGN","HAN","20 hours");
+  }
+
+  // Chiều về của khứ hồi phải bay ngược tuyến và khởi hành sau khi chiều đi hạ cánh.
+  private long returnFlight(Long aircraftId) {
+    return flight(aircraftId,"HAN","SGN","2 days");
+  }
+
+  private long flight(Long aircraftId, String origin, String destination, String departsIn) {
     if (aircraftId==null) aircraftId=jdbc.queryForObject("select id from aircraft where registration_code='VN-DEMO-A321'",Long.class);
     String code = "ST"+UUID.randomUUID().toString().replace("-","").substring(0,12).toUpperCase();
     long id = jdbc.queryForObject("""
         insert into flight(code,origin_airport_id,destination_airport_id,departure_at,arrival_at,status,sales_open,aircraft_id)
-        values (?,(select id from airport where code='SGN'),(select id from airport where code='HAN'),
-          now()+interval '3 days',now()+interval '3 days 2 hours','scheduled',true,?) returning id
-        """,Long.class,code,aircraftId);
+        values (?,(select id from airport where code=?),(select id from airport where code=?),
+          now()+?::interval,now()+?::interval+interval '2 hours','scheduled',true,?) returning id
+        """,Long.class,code,origin,destination,departsIn,departsIn,aircraftId);
     for (String fare: ProductCatalogService.FIXED_FARE_FAMILIES) jdbc.update("""
         insert into flight_fare_inventory(flight_id,fare_family,total_seats,available_seats,price) values (?,?,120,120,1250000)
         """,id,fare);
